@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
-  { label: "Tenant Management", to: "/tenants", icon: Building2 },
+  { label: "Bank Management", to: "/tenants", icon: Building2 },
 ] as const;
 
 export function AppShell({

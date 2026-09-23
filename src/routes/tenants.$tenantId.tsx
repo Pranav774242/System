@@ -48,7 +48,7 @@ function TenantDetailPage() {
         <div className="surface-card flex flex-col items-center gap-3 p-16 text-center">
           <p className="font-medium">This tenant no longer exists</p>
           <Button variant="outline" onClick={() => navigate({ to: "/tenants" })}>
-            Back to Tenant Management
+            Back to Bank Management
           </Button>
         </div>
       </AppShell>
@@ -62,7 +62,7 @@ function TenantDetailPage() {
           to="/tenants"
           className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
-          <ArrowLeft className="size-4" /> Back to Tenant Management
+          <ArrowLeft className="size-4" /> Back to Bank Management
         </Link>
 
         <div className="surface-card animate-rise flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">

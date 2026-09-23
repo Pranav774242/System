@@ -131,7 +131,7 @@ function TenantsPage() {
       subtitle={`${tenants.length} tenants onboarded on the platform`}
       actions={
         <Button onClick={() => setDrawerOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90">
-          <Plus className="size-4" /> Create Tenant
+          <Plus className="size-4" /> Create Bank
         </Button>
       }
     >
@@ -175,7 +175,7 @@ function TenantsPage() {
                 Try a different search term or status filter, or onboard a new bank / NBFC tenant.
               </p>
               <Button variant="outline" onClick={() => setDrawerOpen(true)}>
-                <Plus className="size-4" /> Create Tenant
+                <Plus className="size-4" /> Create Bank
               </Button>
             </div>
           ) : (
