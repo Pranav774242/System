@@ -94,18 +94,52 @@ function LoginPage() {
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const otpValue = otp.join("");
 
-  const submitCredentials = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!emailValid || password.length < 6) return;
-    setBusy(true);
+const submitCredentials = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (!emailValid || password.length < 6) return;
+
+  setBusy(true);
+
+  try {
+    const response = await fetch(
+      "https://los-backend-355v.onrender.com/api/v1/auth/login",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      toast.error(data.message || "Login failed");
+      return;
+    }
+
+    console.log("Login API response:", data);
+
+    setStep(2);
+    setSeconds(30);
+
+    toast.success("OTP sent to your registered email and mobile");
+
     setTimeout(() => {
-      setBusy(false);
-      setStep(2);
-      setSeconds(30);
-      toast.success("OTP sent to your registered email and mobile");
-      setTimeout(() => inputs.current[0]?.focus(), 150);
-    }, 700);
-  };
+      inputs.current[0]?.focus();
+    }, 150);
+  } catch (error) {
+    console.error("Login API error:", error);
+    toast.error("Unable to connect to server");
+  } finally {
+    setBusy(false);
+  }
+};
 
   const verify = (e: React.FormEvent) => {
     e.preventDefault();

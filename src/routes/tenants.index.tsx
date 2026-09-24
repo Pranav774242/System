@@ -205,8 +205,7 @@ function TenantsPage() {
                     <tr
                       key={t.id}
                       onClick={() => navigate({ to: "/tenants/$tenantId", params: { tenantId: t.id } })}
-                      className="cursor-pointer border-t border-border transition-colors hover:bg-secondary/60"
-                    >
+                      className="cursor-pointer border-t border-border transition-colors hover:bg-secondary/60">
                       <td className="whitespace-nowrap px-4 py-3 font-medium">{tenantFullName(t)}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{t.employeeId}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{t.email}</td>
