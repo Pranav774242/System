@@ -102,26 +102,25 @@ const submitCredentials = async (e: React.FormEvent) => {
   setBusy(true);
 
   try {
-    const response = await fetch(
-      "https://los-backend-355v.onrender.com/api/v1/auth/login",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
-      }
-    );
+  const response = await fetch(
+  "https://los-backend-355v.onrender.com/api/v1/auth/login",
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email,
+      password,
+    }),
+  },
+);
 
-    const data = await response.json();
+const data = await response.json();
 
-    if (!response.ok) {
-      toast.error(data.message || "Login failed");
-      return;
-    }
+if (!response.ok) {
+  throw new Error(data.message || "Login failed");
+}
 
     console.log("Login API response:", data);
 
