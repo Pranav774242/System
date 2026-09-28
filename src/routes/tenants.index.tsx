@@ -300,7 +300,6 @@ function TenantsPage() {
         onOpenChange={setDrawerOpen}
         onSubmit={(input) => {
           createTenant(input);
-          toast.success("Tenant created successfully");
         }}
       />
     </AppShell>

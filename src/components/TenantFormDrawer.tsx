@@ -1,17 +1,10 @@
 import {
   useEffect,
   useState,
-  type ChangeEvent,
   type ReactNode,
 } from "react";
-
-import {
-  Loader2,
-  Plus,
-  Trash2,
-  Upload,
-  X,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   type InstituteType,
@@ -23,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { postAdminJson } from "@/lib/admin-api";
 
 import {
   Sheet,
@@ -32,8 +25,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-
-import { Switch } from "@/components/ui/switch";
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
@@ -73,27 +64,48 @@ const emptyBranch: BranchInput = {
 const emptyForm = {
   instituteName: "",
   instituteType: "" as InstituteType | "",
-
   legalName: "",
   shortName: "",
   registrationNumber: "",
   regulatoryAuthority: "",
+  regulatoryAuthorityId: "",
+  regulatoryStatus: "ACTIVE" as "ACTIVE" | "INACTIVE",
+  PAN: "",
+  CIN: "",
   website: "",
-
+  logo: "",
   country: "India",
   state: "",
   city: "",
   pinCode: "",
-
   registeredAddress: "",
   corporateAddress: "",
   sameAsRegistered: false,
-
   contactEmail: "",
   contactPhone: "",
-
   designation: "",
   status: "Active" as TenantStatus,
+};
+
+/* -------------------------------------------------------------------------- */
+/* API Payload                                                                */
+/* -------------------------------------------------------------------------- */
+
+type BankOnboardPayload = {
+  institution_name: string;
+  legal_name: string;
+  institution_type:
+
+    | "NBFC"
+    | "BANK";
+  registration_number: string;
+  PAN: string;
+  CIN: string;
+  website: string;
+  logo: string;
+  regulatory_authority_id: string;
+  regulatory_status: "ACTIVE" | "INACTIVE";
+  country: string;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -107,6 +119,11 @@ type FormErrors = {
   shortName?: string;
   registrationNumber?: string;
   regulatoryAuthority?: string;
+  regulatoryAuthorityId?: string;
+  regulatoryStatus?: string;
+  PAN?: string;
+  CIN?: string;
+  logo?: string;
   website?: string;
   country?: string;
   state?: string;
@@ -129,17 +146,32 @@ type BranchErrors = {
 };
 
 /* -------------------------------------------------------------------------- */
-/* Validation                                                                 */
+/* Validation Helpers                                                         */
 /* -------------------------------------------------------------------------- */
 
 const ifscPattern = /^[A-Z]{4}0[A-Z0-9]{6}$/;
 
+function isHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+
+    return (
+      url.protocol === "http:" ||
+      url.protocol === "https:"
+    );
+  } catch {
+    return false;
+  }
+}
+
 function getFormErrors(
   form: typeof emptyForm,
+  creating: boolean,
 ): FormErrors {
   const errors: FormErrors = {};
 
   /* Institute Name */
+
   if (!form.instituteName.trim()) {
     errors.instituteName =
       "Institute name is required";
@@ -151,12 +183,14 @@ function getFormErrors(
   }
 
   /* Institute Type */
+
   if (!form.instituteType) {
     errors.instituteType =
       "Institute type is required";
   }
 
   /* Legal Name */
+
   if (!form.legalName.trim()) {
     errors.legalName =
       "Legal name is required";
@@ -167,16 +201,8 @@ function getFormErrors(
       "Enter a valid legal name";
   }
 
-  /* Short Name */
-  // if (
-  //   form.shortName.length > 0 &&
-  //   !form.shortName.trim()
-  // ) {
-  //   errors.shortName =
-  //     "Short name cannot contain only spaces";
-  // }
-
   /* Registration Number */
+
   if (!form.registrationNumber.trim()) {
     errors.registrationNumber =
       "Registration number is required";
@@ -194,93 +220,151 @@ function getFormErrors(
     }
   }
 
-  /* Regulatory Authority */
-  if (
-    form.regulatoryAuthority.length > 0 &&
-    !form.regulatoryAuthority.trim()
-  ) {
-    errors.regulatoryAuthority =
-      "Regulatory authority cannot contain only spaces";
-  }
-
   /* Website */
+
   if (
     form.website.trim() &&
-    !/^https?:\/\/.+\..+/.test(
-      form.website.trim(),
-    )
+    !isHttpUrl(form.website.trim())
   ) {
     errors.website =
       "Enter a valid URL starting with http:// or https://";
   }
 
   /* Country */
+
   if (!form.country.trim()) {
-    errors.country = "Country is required";
+    errors.country =
+      "Country is required";
   }
 
-  /* State */
-  if (!form.state.trim()) {
-    errors.state = "State is required";
-  }
+  /*
+   * CREATE BANK VALIDATION
+   */
 
-  /* City */
-  if (!form.city.trim()) {
-    errors.city = "City is required";
-  }
+  if (creating) {
+    /* PAN */
 
-  /* PIN */
-  if (!form.pinCode.trim()) {
-    errors.pinCode =
-      "PIN code is required";
-  } else if (
-    !/^\d{6}$/.test(
-      form.pinCode.trim(),
-    )
-  ) {
-    errors.pinCode =
-      "Enter a valid 6-digit PIN code";
-  }
+    if (
+      form.PAN.trim() &&
+      !/^[A-Z]{5}\d{4}[A-Z]$/.test(
+        form.PAN.trim().toUpperCase(),
+      )
+    ) {
+      errors.PAN =
+        "Enter a valid 10-character Indian PAN";
+    }
 
-  /* Registered Address */
-  if (!form.registeredAddress.trim()) {
-    errors.registeredAddress =
-      "Registered address is required";
-  }
+    /* CIN */
 
-  /* Corporate Address */
-  if (
-    !form.sameAsRegistered &&
-    !form.corporateAddress.trim()
-  ) {
-    errors.corporateAddress =
-      "Corporate office address is required";
-  }
+    if (
+      form.CIN.trim() &&
+      !/^[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}$/.test(
+        form.CIN.trim().toUpperCase(),
+      )
+    ) {
+      errors.CIN =
+        "Enter a valid 21-character CIN";
+    }
 
-  /* Contact Email */
-  if (!form.contactEmail.trim()) {
-    errors.contactEmail =
-      "Contact email is required";
-  } else if (
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-      form.contactEmail.trim(),
-    )
-  ) {
-    errors.contactEmail =
-      "Enter a valid email address";
-  }
+    /* Regulatory Authority ID */
 
-  /* Contact Phone */
-  if (!form.contactPhone.trim()) {
-    errors.contactPhone =
-      "Contact phone is required";
-  } else if (
-    !/^[6-9]\d{9}$/.test(
-      form.contactPhone.trim(),
-    )
-  ) {
-    errors.contactPhone =
-      "Enter a valid 10-digit mobile number starting with 6-9";
+    if (!form.regulatoryAuthorityId.trim()) {
+      errors.regulatoryAuthorityId =
+        "Regulatory authority ID is required";
+    } else if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        form.regulatoryAuthorityId.trim(),
+      )
+    ) {
+      errors.regulatoryAuthorityId =
+        "Enter a valid UUID";
+    }
+
+    /* Regulatory Status */
+
+    if (!form.regulatoryStatus) {
+      errors.regulatoryStatus =
+        "Regulatory status is required";
+    }
+
+    /* Logo */
+
+    if (
+      form.logo.trim() &&
+      !isHttpUrl(form.logo.trim())
+    ) {
+      errors.logo =
+        "Enter a valid logo URL starting with http:// or https://";
+    }
+  } else {
+    /* EDIT VALIDATION */
+
+    if (
+      form.regulatoryAuthority.length > 0 &&
+      !form.regulatoryAuthority.trim()
+    ) {
+      errors.regulatoryAuthority =
+        "Regulatory authority cannot contain only spaces";
+    }
+
+    if (!form.state.trim()) {
+      errors.state =
+        "State is required";
+    }
+
+    if (!form.city.trim()) {
+      errors.city =
+        "City is required";
+    }
+
+    if (!form.pinCode.trim()) {
+      errors.pinCode =
+        "PIN code is required";
+    } else if (
+      !/^\d{6}$/.test(
+        form.pinCode.trim(),
+      )
+    ) {
+      errors.pinCode =
+        "Enter a valid 6-digit PIN code";
+    }
+
+    if (!form.registeredAddress.trim()) {
+      errors.registeredAddress =
+        "Registered address is required";
+    }
+
+    if (
+      !form.sameAsRegistered &&
+      !form.corporateAddress.trim()
+    ) {
+      errors.corporateAddress =
+        "Corporate office address is required";
+    }
+
+    if (!form.contactEmail.trim()) {
+      errors.contactEmail =
+        "Contact email is required";
+    } else if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        form.contactEmail.trim(),
+      )
+    ) {
+      errors.contactEmail =
+        "Enter a valid email address";
+    }
+
+    if (!form.contactPhone.trim()) {
+      errors.contactPhone =
+        "Contact phone is required";
+    } else if (
+      !/^[6-9]\d{9}$/.test(
+        form.contactPhone.trim(),
+      )
+    ) {
+      errors.contactPhone =
+        "Enter a valid 10-digit mobile number starting with 6-9";
+    }
   }
 
   return errors;
@@ -297,6 +381,7 @@ function getBranchErrors(
     const errors: BranchErrors = {};
 
     /* IFSC */
+
     if (!branch.ifscCode.trim()) {
       errors.ifscCode =
         "IFSC code is required";
@@ -312,12 +397,14 @@ function getBranchErrors(
     }
 
     /* Branch Name */
+
     if (!branch.branchName.trim()) {
       errors.branchName =
         "Branch name is required";
     }
 
     /* Branch Code */
+
     if (
       branch.branchCode.length > 0 &&
       !branch.branchCode.trim()
@@ -327,24 +414,28 @@ function getBranchErrors(
     }
 
     /* Address */
+
     if (!branch.address.trim()) {
       errors.address =
         "Branch address is required";
     }
 
     /* City */
+
     if (!branch.city.trim()) {
       errors.city =
         "City is required";
     }
 
     /* State */
+
     if (!branch.state.trim()) {
       errors.state =
         "State is required";
     }
 
     /* PIN */
+
     if (!branch.pinCode.trim()) {
       errors.pinCode =
         "PIN code is required";
@@ -378,12 +469,6 @@ export function TenantFormDrawer({
     useState<BranchInput[]>([
       { ...emptyBranch },
     ]);
-
-  const [logoFile, setLogoFile] =
-    useState<File | null>(null);
-
-  const [logoPreview, setLogoPreview] =
-    useState<string | null>(null);
 
   const [busy, setBusy] =
     useState(false);
@@ -419,12 +504,16 @@ export function TenantFormDrawer({
   /* ------------------------------------------------------------------------ */
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
 
     setSubmitted(false);
     setTouched({});
     setTouchedBranches({});
     setBusy(false);
+
+    /* CREATE */
 
     if (!tenant) {
       setForm({
@@ -435,19 +524,10 @@ export function TenantFormDrawer({
         { ...emptyBranch },
       ]);
 
-      setLogoFile(null);
-      setLogoPreview(null);
-
       return;
     }
 
-    /*
-     * Tenant currently contains only the fields
-     * defined in admin-store.ts.
-     *
-     * Therefore we safely map the existing fields
-     * into this form.
-     */
+    /* EDIT */
 
     setForm({
       instituteName:
@@ -472,7 +552,22 @@ export function TenantFormDrawer({
       regulatoryAuthority:
         "",
 
+      regulatoryAuthorityId:
+        "",
+
+      regulatoryStatus:
+        "ACTIVE",
+
+      PAN:
+        "",
+
+      CIN:
+        "",
+
       website:
+        "",
+
+      logo:
         "",
 
       country:
@@ -515,14 +610,6 @@ export function TenantFormDrawer({
         "Active",
     });
 
-    /*
-     * Existing store stores branches as:
-     *
-     * { id, location }[]
-     *
-     * Convert them into the form structure.
-     */
-
     if (
       tenant.branches &&
       tenant.branches.length > 0
@@ -541,26 +628,7 @@ export function TenantFormDrawer({
         { ...emptyBranch },
       ]);
     }
-
-    setLogoFile(null);
-    setLogoPreview(null);
   }, [open, tenant]);
-
-  /* ------------------------------------------------------------------------ */
-  /* Logo Cleanup                                                             */
-  /* ------------------------------------------------------------------------ */
-
-  useEffect(() => {
-    return () => {
-      if (
-        logoPreview?.startsWith("blob:")
-      ) {
-        URL.revokeObjectURL(
-          logoPreview,
-        );
-      }
-    };
-  }, [logoPreview]);
 
   /* ------------------------------------------------------------------------ */
   /* Form Setter                                                              */
@@ -607,78 +675,6 @@ export function TenantFormDrawer({
   };
 
   /* ------------------------------------------------------------------------ */
-  /* Logo Upload                                                              */
-  /* ------------------------------------------------------------------------ */
-
-  const handleLogoChange = (
-    event: ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file =
-      event.target.files?.[0];
-
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      return;
-    }
-
-    if (file.size > 2 * 1024 * 1024) {
-      return;
-    }
-
-    if (
-      logoPreview?.startsWith("blob:")
-    ) {
-      URL.revokeObjectURL(
-        logoPreview,
-      );
-    }
-
-    setLogoFile(file);
-
-    setLogoPreview(
-      URL.createObjectURL(file),
-    );
-  };
-
-  /* ------------------------------------------------------------------------ */
-  /* Remove Logo                                                              */
-  /* ------------------------------------------------------------------------ */
-
-  const removeLogo = () => {
-    if (
-      logoPreview?.startsWith("blob:")
-    ) {
-      URL.revokeObjectURL(
-        logoPreview,
-      );
-    }
-
-    setLogoFile(null);
-    setLogoPreview(null);
-  };
-
-  /* ------------------------------------------------------------------------ */
-  /* Same Address                                                             */
-  /* ------------------------------------------------------------------------ */
-
-  const toggleSameAsRegistered = (
-    checked: boolean,
-  ) => {
-    set(
-      "sameAsRegistered",
-      checked,
-    );
-
-    if (checked) {
-      set(
-        "corporateAddress",
-        form.registeredAddress,
-      );
-    }
-  };
-
-  /* ------------------------------------------------------------------------ */
   /* Mark Form Touched                                                        */
   /* ------------------------------------------------------------------------ */
 
@@ -692,98 +688,25 @@ export function TenantFormDrawer({
   };
 
   /* ------------------------------------------------------------------------ */
-  /* Mark Branch Touched                                                      */
-  /* ------------------------------------------------------------------------ */
-
-  const markBranchTouched = (
-    index: number,
-    key: keyof BranchInput,
-  ) => {
-    setTouchedBranches(
-      (previous) => ({
-        ...previous,
-        [index]: {
-          ...(previous[index] || {}),
-          [key]: true,
-        },
-      }),
-    );
-  };
-
-  /* ------------------------------------------------------------------------ */
-  /* Remove Branch                                                            */
-  /* ------------------------------------------------------------------------ */
-
-  const removeBranch = (
-    index: number,
-  ) => {
-    if (branches.length === 1) {
-      return;
-    }
-
-    setBranches(
-      (previous) =>
-        previous.filter(
-          (_, branchIndex) =>
-            branchIndex !== index,
-        ),
-    );
-
-    setTouchedBranches(
-      (previous) => {
-        const next: Record<
-          number,
-          Partial<
-            Record<
-              keyof BranchInput,
-              boolean
-            >
-          >
-        > = {};
-
-        Object.keys(previous)
-          .map(Number)
-          .filter(
-            (branchIndex) =>
-              branchIndex !== index,
-          )
-          .forEach((branchIndex) => {
-            const value =
-              previous[branchIndex];
-
-            if (value) {
-              const newIndex =
-                branchIndex > index
-                  ? branchIndex - 1
-                  : branchIndex;
-
-              next[newIndex] = value;
-            }
-          });
-
-        return next;
-      },
-    );
-  };
-
-  /* ------------------------------------------------------------------------ */
   /* Validation                                                               */
   /* ------------------------------------------------------------------------ */
 
   const formErrors =
-    getFormErrors(form);
+    getFormErrors(form, !tenant);
 
   const branchErrors =
     getBranchErrors(branches);
 
   const isFormValid =
-    Object.keys(formErrors)
-      .length === 0 &&
-    branches.length > 0 &&
-    branchErrors.every(
-      (errors) =>
-        Object.keys(errors).length === 0,
-    );
+    Object.keys(formErrors).length === 0 &&
+    (!tenant ||
+      (
+        branches.length > 0 &&
+        branchErrors.every(
+          (errors) =>
+            Object.keys(errors).length === 0,
+        )
+      ));
 
   /* ------------------------------------------------------------------------ */
   /* Get Form Error                                                           */
@@ -805,30 +728,10 @@ export function TenantFormDrawer({
   };
 
   /* ------------------------------------------------------------------------ */
-  /* Get Branch Error                                                          */
-  /* ------------------------------------------------------------------------ */
-
-  const getBranchError = (
-    index: number,
-    key: keyof BranchErrors,
-  ) => {
-    if (
-      submitted ||
-      touchedBranches[index]?.[
-        key as keyof BranchInput
-      ]
-    ) {
-      return branchErrors[index]?.[key];
-    }
-
-    return undefined;
-  };
-
-  /* ------------------------------------------------------------------------ */
   /* Submit                                                                   */
   /* ------------------------------------------------------------------------ */
 
-  const submit = () => {
+  const submit = async () => {
     setSubmitted(true);
 
     if (!isFormValid) {
@@ -837,30 +740,26 @@ export function TenantFormDrawer({
 
     setBusy(true);
 
-    /*
-     * IMPORTANT:
-     *
-     * BankInput in your actual admin-store.ts
-     * accepts branches: string[].
-     *
-     * Therefore we convert each branch into
-     * a string instead of sending an object.
-     */
-
     const branchLocations =
-      branches.map((branch) => {
-        const name =
-          branch.branchName.trim();
+      branches
+        .filter(
+          (branch) =>
+            branch.branchName.trim() ||
+            branch.city.trim(),
+        )
+        .map((branch) => {
+          const name =
+            branch.branchName.trim();
 
-        const city =
-          branch.city.trim();
+          const city =
+            branch.city.trim();
 
-        if (city) {
-          return `${name} — ${city}`;
-        }
+          if (city) {
+            return `${name} — ${city}`;
+          }
 
-        return name;
-      });
+          return name;
+        });
 
     const payload: BankInput = {
       instituteName:
@@ -921,8 +820,85 @@ export function TenantFormDrawer({
     };
 
     try {
+      /* ================================================================ */
+      /* CREATE BANK API                                                  */
+      /* ================================================================ */
+
+      if (!tenant) {
+        const apiPayload: BankOnboardPayload = {
+          institution_name:
+            form.instituteName.trim(),
+
+          legal_name:
+            form.legalName.trim(),
+
+          institution_type:
+            form.instituteType as BankOnboardPayload["institution_type"],
+
+          registration_number:
+            form.registrationNumber.trim(),
+
+          PAN:
+            form.PAN.trim().toUpperCase(),
+
+          CIN:
+            form.CIN.trim().toUpperCase(),
+
+          website:
+            form.website.trim(),
+
+          logo:
+            form.logo.trim(),
+
+          regulatory_authority_id:
+            form.regulatoryAuthorityId.trim(),
+
+          regulatory_status:
+            form.regulatoryStatus,
+
+          country:
+            form.country.trim(),
+        };
+
+        await postAdminJson(
+          "https://los-backend-355v.onrender.com/api/v1/administration/banks/onboard",
+          apiPayload,
+        );
+      }
+
+      /* ================================================================ */
+      /* Update Frontend Store                                            */
+      /* ================================================================ */
+
       onSubmit(payload);
+
+      toast.success(
+        tenant
+          ? "Bank updated successfully"
+          : "Bank created successfully",
+      );
+
+      /* Reset */
+
+      setForm({
+        ...emptyForm,
+      });
+
+      setBranches([
+        { ...emptyBranch },
+      ]);
+
+      setSubmitted(false);
+      setTouched({});
+      setTouchedBranches({});
+
       onOpenChange(false);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to save bank",
+      );
     } finally {
       setBusy(false);
     }
@@ -941,9 +917,7 @@ export function TenantFormDrawer({
         side="right"
         className="flex w-full flex-col gap-0 overflow-hidden border-l bg-background p-0 sm:max-w-3xl"
       >
-        {/* ================================================================== */}
-        {/* Header                                                             */}
-        {/* ================================================================== */}
+        {/* Header */}
 
         <SheetHeader className="shrink-0 border-b bg-background px-6 py-5">
           <SheetTitle className="text-xl font-semibold tracking-tight">
@@ -959,16 +933,14 @@ export function TenantFormDrawer({
           </SheetDescription>
         </SheetHeader>
 
-        {/* ================================================================== */}
-        {/* Scrollable Content                                                 */}
-        {/* ================================================================== */}
+        {/* Scrollable Content */}
 
         <div className="flex-1 overflow-y-auto">
           <div className="space-y-8 px-6 py-6">
 
-            {/* ================================================================ */}
-            {/* Institute Details                                                */}
-            {/* ================================================================ */}
+            {/* ============================================================ */}
+            {/* Institute Details                                            */}
+            {/* ============================================================ */}
 
             <section className="space-y-5">
               <SectionHeading>
@@ -976,6 +948,8 @@ export function TenantFormDrawer({
               </SectionHeading>
 
               <div className="grid gap-5 sm:grid-cols-2">
+
+                {/* Institute Name */}
 
                 <Field
                   label="Institute Name"
@@ -1003,6 +977,8 @@ export function TenantFormDrawer({
                   />
                 </Field>
 
+                {/* Institute Type */}
+
                 <Field
                   label="Institute Type"
                   required
@@ -1017,8 +993,7 @@ export function TenantFormDrawer({
                     onChange={(event) =>
                       set(
                         "instituteType",
-                        event.target
-                          .value as
+                        event.target.value as
                           | InstituteType
                           | "",
                       )
@@ -1034,19 +1009,22 @@ export function TenantFormDrawer({
                       Select institute type
                     </option>
 
+                   
+
                     <option value="NBFC">
                       NBFC
                     </option>
 
-                    <option value="Cooperative Bank">
-                      Cooperative Bank
+                    <option value="BANK">
+                       Bank
                     </option>
                   </select>
                 </Field>
               </div>
 
-              <div className="grid gap-5 sm:grid-cols-2">
+              {/* Legal Name */}
 
+              <div className="grid gap-5 sm:grid-cols-2">
                 <Field
                   label="Legal Name"
                   required
@@ -1072,32 +1050,9 @@ export function TenantFormDrawer({
                     className={inputClass}
                   />
                 </Field>
-
-                {/* <Field
-                  label="Short Name"
-                  error={getFieldError(
-                    "shortName",
-                  )}
-                >
-                  <Input
-                    value={
-                      form.shortName
-                    }
-                    onChange={(event) =>
-                      set(
-                        "shortName",
-                        event.target.value,
-                      )
-                    }
-                    onBlur={() =>
-                      markTouched(
-                        "shortName",
-                      )
-                    }
-                    className={inputClass}
-                  />
-                </Field> */}
               </div>
+
+              {/* Registration + PAN */}
 
               <div className="grid gap-5 sm:grid-cols-2">
 
@@ -1128,30 +1083,80 @@ export function TenantFormDrawer({
                 </Field>
 
                 <Field
-                  label="Regulatory Authority"
-                  error={getFieldError(
-                    "regulatoryAuthority",
-                  )}
+                  label="PAN"
+                  error={getFieldError("PAN")}
                 >
                   <Input
-                    value={
-                      form.regulatoryAuthority
-                    }
+                    value={form.PAN}
                     onChange={(event) =>
                       set(
-                        "regulatoryAuthority",
-                        event.target.value,
+                        "PAN",
+                        event.target.value.toUpperCase(),
                       )
                     }
                     onBlur={() =>
-                      markTouched(
-                        "regulatoryAuthority",
-                      )
+                      markTouched("PAN")
                     }
+                    maxLength={10}
                     className={inputClass}
                   />
                 </Field>
               </div>
+
+              {/* CIN + Regulatory Authority ID */}
+
+              {!tenant && (
+                <div className="grid gap-5 sm:grid-cols-2">
+
+                  <Field
+                    label="CIN"
+                    error={getFieldError("CIN")}
+                  >
+                    <Input
+                      value={form.CIN}
+                      onChange={(event) =>
+                        set(
+                          "CIN",
+                          event.target.value.toUpperCase(),
+                        )
+                      }
+                      onBlur={() =>
+                        markTouched("CIN")
+                      }
+                      maxLength={21}
+                      className={inputClass}
+                    />
+                  </Field>
+
+                  <Field
+                    label="Regulatory Authority ID"
+                    required
+                    error={getFieldError(
+                      "regulatoryAuthorityId",
+                    )}
+                  >
+                    <Input
+                      value={
+                        form.regulatoryAuthorityId
+                      }
+                      onChange={(event) =>
+                        set(
+                          "regulatoryAuthorityId",
+                          event.target.value,
+                        )
+                      }
+                      onBlur={() =>
+                        markTouched(
+                          "regulatoryAuthorityId",
+                        )
+                      }
+                      className={inputClass}
+                    />
+                  </Field>
+                </div>
+              )}
+
+              {/* Website */}
 
               <Field
                 label="Website"
@@ -1161,9 +1166,7 @@ export function TenantFormDrawer({
               >
                 <Input
                   type="url"
-                  value={
-                    form.website
-                  }
+                  value={form.website}
                   onChange={(event) =>
                     set(
                       "website",
@@ -1179,64 +1182,68 @@ export function TenantFormDrawer({
                 />
               </Field>
 
-              {/* Logo */}
+              {/* Logo + Regulatory Status */}
 
-              <Field label="Institute Logo">
-                <div className="flex items-center gap-4 rounded-xl border border-dashed border-border bg-muted/20 p-4">
+              {!tenant && (
+                <div className="grid gap-5 sm:grid-cols-2">
 
-                  {logoPreview ? (
-                    <div className="relative shrink-0">
-                      <img
-                        src={
-                          logoPreview
-                        }
-                        alt="Institute logo preview"
-                        className="size-16 rounded-xl border border-border bg-background object-cover"
-                      />
+                  <Field
+                    label="Logo URL"
+                    error={getFieldError(
+                      "logo",
+                    )}
+                  >
+                    <Input
+                      type="url"
+                      value={form.logo}
+                      onChange={(event) =>
+                        set(
+                          "logo",
+                          event.target.value,
+                        )
+                      }
+                      onBlur={() =>
+                        markTouched("logo")
+                      }
+                      className={inputClass}
+                    />
+                  </Field>
 
-                      <button
-                        type="button"
-                        onClick={
-                          removeLogo
-                        }
-                        className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm"
-                        aria-label="Remove logo"
-                      >
-                        <X className="size-3.5" />
-                      </button>
-                    </div>
-                  ) : (
-                    <label className="flex size-16 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-dashed border-border bg-background text-muted-foreground transition hover:border-accent hover:text-accent">
-                      <Upload className="size-5" />
+                  <Field
+                    label="Regulatory Status"
+                    required
+                    error={getFieldError(
+                      "regulatoryStatus",
+                    )}
+                  >
+                    <select
+                      value={
+                        form.regulatoryStatus
+                      }
+                      onChange={(event) =>
+                        set(
+                          "regulatoryStatus",
+                          event.target.value as
+                            | "ACTIVE"
+                           
+                        )
+                      }
+                      className={selectClass}
+                    >
+                      <option value="ACTIVE">
+                        Active
+                      </option>
 
-                      <input
-                        type="file"
-                        accept="image/png,image/jpeg,image/jpg"
-                        className="hidden"
-                        onChange={
-                          handleLogoChange
-                        }
-                      />
-                    </label>
-                  )}
-
-                  <div>
-                    <p className="text-sm font-medium">
-                      Upload institute logo
-                    </p>
-
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      PNG or JPG, maximum
-                      2MB.
-                    </p>
-                  </div>
+                  
+                    </select>
+                  </Field>
                 </div>
-              </Field>
+              )}
             </section>
 
-            {/* ================================================================ */}
-            {/* Registered Office                                                 */}
-            {/* ================================================================ */}
+            {/* ============================================================ */}
+            {/* Location Details                                             */}
+            {/* ============================================================ */}
 
             <section className="space-y-5">
               <SectionHeading>
@@ -1253,9 +1260,7 @@ export function TenantFormDrawer({
                   )}
                 >
                   <Input
-                    value={
-                      form.country
-                    }
+                    value={form.country}
                     onChange={(event) =>
                       set(
                         "country",
@@ -1271,655 +1276,15 @@ export function TenantFormDrawer({
                   />
                 </Field>
 
-                <Field
-                  label="State"
-                  required
-                  error={getFieldError(
-                    "state",
-                  )}
-                >
-                  <Input
-                    value={
-                      form.state
-                    }
-                    onChange={(event) =>
-                      set(
-                        "state",
-                        event.target.value,
-                      )
-                    }
-                    onBlur={() =>
-                      markTouched(
-                        "state",
-                      )
-                    }
-                    className={inputClass}
-                  />
-                </Field>
+              
               </div>
 
-              <div className="grid gap-5 sm:grid-cols-2">
-
-                <Field
-                  label="City"
-                  required
-                  error={getFieldError(
-                    "city",
-                  )}
-                >
-                  <Input
-                    value={
-                      form.city
-                    }
-                    onChange={(event) =>
-                      set(
-                        "city",
-                        event.target.value,
-                      )
-                    }
-                    onBlur={() =>
-                      markTouched(
-                        "city",
-                      )
-                    }
-                    className={inputClass}
-                  />
-                </Field>
-
-                <Field
-                  label="PIN Code"
-                  required
-                  error={getFieldError(
-                    "pinCode",
-                  )}
-                >
-                  <Input
-                    value={
-                      form.pinCode
-                    }
-                    maxLength={6}
-                    inputMode="numeric"
-                    onChange={(event) =>
-                      set(
-                        "pinCode",
-                        event.target.value.replace(
-                          /\D/g,
-                          "",
-                        ),
-                      )
-                    }
-                    onBlur={() =>
-                      markTouched(
-                        "pinCode",
-                      )
-                    }
-                    className={inputClass}
-                  />
-                </Field>
-              </div>
-
-              <Field
-                label="Registered Address"
-                required
-                error={getFieldError(
-                  "registeredAddress",
-                )}
-              >
-                <Textarea
-                  value={
-                    form.registeredAddress
-                  }
-                  rows={3}
-                  onChange={(event) => {
-                    set(
-                      "registeredAddress",
-                      event.target.value,
-                    );
-
-                    if (
-                      form.sameAsRegistered
-                    ) {
-                      set(
-                        "corporateAddress",
-                        event.target.value,
-                      );
-                    }
-                  }}
-                  onBlur={() =>
-                    markTouched(
-                      "registeredAddress",
-                    )
-                  }
-                  className={textareaClass}
-                />
-              </Field>
-
-              {/* Corporate Address */}
-
-              <div className="space-y-3">
-
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-
-                  <Label className="text-sm font-medium">
-                    Corporate Office Address
-                    <span className="ml-1 text-destructive">
-                      *
-                    </span>
-                  </Label>
-
-                  <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                    Same as registered address
-
-                    <Switch
-                      checked={
-                        form.sameAsRegistered
-                      }
-                      onCheckedChange={
-                        toggleSameAsRegistered
-                      }
-                    />
-                  </label>
-                </div>
-
-                <Textarea
-                  value={
-                    form.corporateAddress
-                  }
-                  rows={3}
-                  disabled={
-                    form.sameAsRegistered
-                  }
-                  onChange={(event) =>
-                    set(
-                      "corporateAddress",
-                      event.target.value,
-                    )
-                  }
-                  onBlur={() =>
-                    markTouched(
-                      "corporateAddress",
-                    )
-                  }
-                  className={`${textareaClass} ${
-                    form.sameAsRegistered
-                      ? "cursor-not-allowed opacity-60"
-                      : ""
-                  }`}
-                />
-
-                {getFieldError(
-                  "corporateAddress",
-                ) && (
-                  <p className="text-xs font-medium text-destructive">
-                    {
-                      getFieldError(
-                        "corporateAddress",
-                      )
-                    }
-                  </p>
-                )}
-              </div>
-            </section>
-
-            {/* ================================================================ */}
-            {/* Contact Details                                                   */}
-            {/* ================================================================ */}
-
-            <section className="space-y-5">
-              <SectionHeading>
-                Contact Details
-              </SectionHeading>
-
-              <div className="grid gap-5 sm:grid-cols-2">
-
-                <Field
-                  label="Contact Email"
-                  required
-                  error={getFieldError(
-                    "contactEmail",
-                  )}
-                >
-                  <Input
-                    type="email"
-                    value={
-                      form.contactEmail
-                    }
-                    onChange={(event) =>
-                      set(
-                        "contactEmail",
-                        event.target.value,
-                      )
-                    }
-                    onBlur={() =>
-                      markTouched(
-                        "contactEmail",
-                      )
-                    }
-                    className={inputClass}
-                  />
-                </Field>
-
-                <Field
-                  label="Contact Phone"
-                  required
-                  error={getFieldError(
-                    "contactPhone",
-                  )}
-                >
-                  <Input
-                    type="tel"
-                    value={
-                      form.contactPhone
-                    }
-                    maxLength={10}
-                    inputMode="numeric"
-                    onChange={(event) =>
-                      set(
-                        "contactPhone",
-                        event.target.value.replace(
-                          /\D/g,
-                          "",
-                        ),
-                      )
-                    }
-                    onBlur={() =>
-                      markTouched(
-                        "contactPhone",
-                      )
-                    }
-                    className={inputClass}
-                  />
-                </Field>
-              </div>
-
-              <div className="grid gap-5 sm:grid-cols-2">
-
-                <Field label="Designation">
-                  <Input
-                    value={
-                      form.designation
-                    }
-                    onChange={(event) =>
-                      set(
-                        "designation",
-                        event.target.value,
-                      )
-                    }
-                    className={inputClass}
-                  />
-                </Field>
-
-                <Field label="Status">
-                  <select
-                    value={
-                      form.status
-                    }
-                    onChange={(event) =>
-                      set(
-                        "status",
-                        event.target
-                          .value as TenantStatus,
-                      )
-                    }
-                    className={selectClass}
-                  >
-                    <option value="Active">
-                      Active
-                    </option>
-
-                    <option value="Inactive">
-                      Inactive
-                    </option>
-                  </select>
-                </Field>
-              </div>
-            </section>
-
-            {/* ================================================================ */}
-            {/* Branches                                                         */}
-            {/* ================================================================ */}
-
-            <section className="space-y-5">
-
-              <div className="flex items-center justify-between">
-                <SectionHeading>
-                  Branch Information
-                </SectionHeading>
-
-                <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-                  {branches.length}{" "}
-                  {branches.length === 1
-                    ? "Branch"
-                    : "Branches"}
-                </span>
-              </div>
-
-              <div className="space-y-4">
-
-                {branches.map(
-                  (branch, index) => (
-                    <div
-                      key={index}
-                      className="space-y-5 rounded-xl border border-border bg-card p-5 shadow-sm"
-                    >
-
-                      {/* Branch Header */}
-
-                      <div className="flex items-center justify-between border-b border-border pb-3">
-
-                        <div>
-                          <p className="text-sm font-semibold">
-                            Branch{" "}
-                            {index + 1}
-                          </p>
-
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            Branch identification
-                            and location details
-                          </p>
-                        </div>
-
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                          disabled={
-                            branches.length ===
-                            1
-                          }
-                          onClick={() =>
-                            removeBranch(
-                              index,
-                            )
-                          }
-                          aria-label="Remove branch"
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </div>
-
-                      {/* Branch Identification */}
-
-                      <div className="grid gap-5 sm:grid-cols-3">
-
-                        <Field
-                          label="IFSC Code"
-                          required
-                          error={getBranchError(
-                            index,
-                            "ifscCode",
-                          )}
-                        >
-                          <Input
-                            value={
-                              branch.ifscCode
-                            }
-                            maxLength={11}
-                            onChange={(
-                              event,
-                            ) =>
-                              setBranchField(
-                                index,
-                                "ifscCode",
-                                event
-                                  .target
-                                  .value,
-                              )
-                            }
-                            onBlur={() =>
-                              markBranchTouched(
-                                index,
-                                "ifscCode",
-                              )
-                            }
-                            className={`${inputClass} uppercase`}
-                          />
-                        </Field>
-
-                        <Field
-                          label="Branch Name"
-                          required
-                          error={getBranchError(
-                            index,
-                            "branchName",
-                          )}
-                        >
-                          <Input
-                            value={
-                              branch.branchName
-                            }
-                            onChange={(
-                              event,
-                            ) =>
-                              setBranchField(
-                                index,
-                                "branchName",
-                                event
-                                  .target
-                                  .value,
-                              )
-                            }
-                            onBlur={() =>
-                              markBranchTouched(
-                                index,
-                                "branchName",
-                              )
-                            }
-                            className={inputClass}
-                          />
-                        </Field>
-
-                        <Field
-                          label="Branch Code"
-                          error={getBranchError(
-                            index,
-                            "branchCode",
-                          )}
-                        >
-                          <Input
-                            value={
-                              branch.branchCode
-                            }
-                            onChange={(
-                              event,
-                            ) =>
-                              setBranchField(
-                                index,
-                                "branchCode",
-                                event
-                                  .target
-                                  .value,
-                              )
-                            }
-                            onBlur={() =>
-                              markBranchTouched(
-                                index,
-                                "branchCode",
-                              )
-                            }
-                            className={inputClass}
-                          />
-                        </Field>
-                      </div>
-
-                      {/* Branch Address */}
-
-                      <Field
-                        label="Branch Address"
-                        required
-                        error={getBranchError(
-                          index,
-                          "address",
-                        )}
-                      >
-                        <Textarea
-                          value={
-                            branch.address
-                          }
-                          rows={3}
-                          onChange={(
-                            event,
-                          ) =>
-                            setBranchField(
-                              index,
-                              "address",
-                              event.target
-                                .value,
-                            )
-                          }
-                          onBlur={() =>
-                            markBranchTouched(
-                              index,
-                              "address",
-                            )
-                          }
-                          className={
-                            textareaClass
-                          }
-                        />
-                      </Field>
-
-                      {/* Branch Location */}
-
-                      <div className="grid gap-5 sm:grid-cols-3">
-
-                        <Field
-                          label="City"
-                          required
-                          error={getBranchError(
-                            index,
-                            "city",
-                          )}
-                        >
-                          <Input
-                            value={
-                              branch.city
-                            }
-                            onChange={(
-                              event,
-                            ) =>
-                              setBranchField(
-                                index,
-                                "city",
-                                event
-                                  .target
-                                  .value,
-                              )
-                            }
-                            onBlur={() =>
-                              markBranchTouched(
-                                index,
-                                "city",
-                              )
-                            }
-                            className={inputClass}
-                          />
-                        </Field>
-
-                        <Field
-                          label="State"
-                          required
-                          error={getBranchError(
-                            index,
-                            "state",
-                          )}
-                        >
-                          <Input
-                            value={
-                              branch.state
-                            }
-                            onChange={(
-                              event,
-                            ) =>
-                              setBranchField(
-                                index,
-                                "state",
-                                event
-                                  .target
-                                  .value,
-                              )
-                            }
-                            onBlur={() =>
-                              markBranchTouched(
-                                index,
-                                "state",
-                              )
-                            }
-                            className={inputClass}
-                          />
-                        </Field>
-
-                        <Field
-                          label="PIN Code"
-                          required
-                          error={getBranchError(
-                            index,
-                            "pinCode",
-                          )}
-                        >
-                          <Input
-                            value={
-                              branch.pinCode
-                            }
-                            maxLength={6}
-                            inputMode="numeric"
-                            onChange={(
-                              event,
-                            ) =>
-                              setBranchField(
-                                index,
-                                "pinCode",
-                                event.target.value.replace(
-                                  /\D/g,
-                                  "",
-                                ),
-                              )
-                            }
-                            onBlur={() =>
-                              markBranchTouched(
-                                index,
-                                "pinCode",
-                              )
-                            }
-                            className={inputClass}
-                          />
-                        </Field>
-
-                      </div>
-                    </div>
-                  ),
-                )}
-              </div>
-
-              {/* Add Branch */}
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() =>
-                  setBranches(
-                    (previous) => [
-                      ...previous,
-                      {
-                        ...emptyBranch,
-                      },
-                    ],
-                  )
-                }
-              >
-                <Plus className="size-4" />
-                Add another branch
-              </Button>
+              
             </section>
           </div>
         </div>
 
-        {/* ================================================================== */}
-        {/* Footer                                                             */}
-        {/* ================================================================== */}
+        {/* Footer */}
 
         <div className="flex shrink-0 justify-end gap-3 border-t bg-background px-6 py-4">
 
@@ -1949,7 +1314,6 @@ export function TenantFormDrawer({
               ? "Save Changes"
               : "Create Bank"}
           </Button>
-
         </div>
       </SheetContent>
     </Sheet>
@@ -1965,9 +1329,6 @@ const inputClass =
 
 const selectClass =
   "flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none transition-all focus:border-accent focus:ring-2 focus:ring-accent/20";
-
-const textareaClass =
-  "min-h-20 resize-none rounded-lg border-input bg-background text-sm shadow-sm transition-all placeholder:text-muted-foreground/60 focus:border-accent focus:ring-2 focus:ring-accent/20";
 
 /* -------------------------------------------------------------------------- */
 /* Section Heading                                                            */
@@ -2008,6 +1369,7 @@ function Field({
     <div className="space-y-1.5">
       <Label className="text-sm font-medium text-foreground">
         {label}
+
         {required && (
           <span className="ml-1 text-destructive">
             *

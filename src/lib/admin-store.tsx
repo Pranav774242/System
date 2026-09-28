@@ -9,7 +9,11 @@ import {
 } from "react";
 
 export type TenantStatus = "Active" | "Inactive";
-export type InstituteType = "NBFC" | "Cooperative Bank";
+export type InstituteType =
+  | "NBFC"
+  | "Cooperative Bank"
+  | "COMMERCIAL_BANK"
+  | "COOPERATIVE_BANK";
 
 export type Branch = { id: string; location: string };
 
@@ -337,7 +341,7 @@ export type TenantInput = BankInput;
 type AdminStore = {
   authed: boolean;
   adminName: string;
-  login: () => void;
+  login: (accessToken: string) => void;
   logout: () => void;
   theme: "light" | "dark";
   toggleTheme: () => void;
@@ -352,12 +356,27 @@ type AdminStore = {
 
 const Ctx = createContext<AdminStore | null>(null);
 
+export function getAccessToken() {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem("accessToken");
+}
+
 export function AdminStoreProvider({ children }: { children: ReactNode }) {
   const [authed, setAuthed] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [tenants, setTenants] = useState<Tenant[]>(SEED_TENANTS);
   const [users, setUsers] = useState<User[]>([]);
   const [activity, setActivity] = useState<ActivityItem[]>(SEED_ACTIVITY);
+
+  const login = useCallback((accessToken: string) => {
+    window.localStorage.setItem("accessToken", accessToken);
+    setAuthed(true);
+  }, []);
+
+  const logout = useCallback(() => {
+    window.localStorage.removeItem("accessToken");
+    setAuthed(false);
+  }, []);
 
   useEffect(() => {
     const stored = window.localStorage.getItem("los-theme");
@@ -479,8 +498,8 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
     () => ({
       authed,
       adminName: "Pranav Jangam",
-      login: () => setAuthed(true),
-      logout: () => setAuthed(false),
+      login,
+      logout,
       theme,
       toggleTheme: () => setTheme((t) => (t === "dark" ? "light" : "dark")),
       tenants,
@@ -491,7 +510,7 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
       toggleTenantStatus,
       createUser,
     }),
-    [authed, theme, tenants, users, activity, createTenant, updateTenant, toggleTenantStatus, createUser],
+    [authed, theme, tenants, users, activity, createTenant, updateTenant, toggleTenantStatus, createUser, login, logout],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
