@@ -9,6 +9,7 @@ import {
 } from "react";
 
 export type TenantStatus = "Active" | "Inactive";
+export type InstituteType = "NBFC" | "Cooperative Bank";
 
 export type Branch = { id: string; location: string };
 
@@ -26,7 +27,51 @@ export type Tenant = {
   status: TenantStatus;
   createdAt: string;
   activity: { id: string; text: string; at: string }[];
+  instituteName: string;
+  instituteType: InstituteType;
+  registrationNumber: string;
+  contactEmail: string;
+  contactPhone: string;
 };
+
+export type BankInput = {
+  instituteName: string;
+  instituteType: InstituteType | "";
+  registrationNumber: string;
+  contactEmail: string;
+  contactPhone: string;
+  branches: string[];
+  legalName?: string;
+  shortName?: string;
+  regulatoryAuthority?: string;
+  website?: string;
+  country?: string;
+  state?: string;
+  city?: string;
+  pinCode?: string;
+  registeredAddress?: string;
+  corporateAddress?: string;
+  designation?: string;
+  status?: TenantStatus;
+};
+
+export type User = {
+  id: string;
+  bankId: string;
+  bankName: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  employeeId: string;
+  designation: string;
+  officialEmail: string;
+  mobileNumber: string;
+  branch: string;
+  organization: "Head Quarter" | "Branch";
+  createdAt: string;
+};
+
+export type UserInput = Omit<User, "id" | "createdAt">;
 
 export type ActivityItem = {
   id: string;
@@ -58,12 +103,28 @@ export const nextId = (prefix = "id") => `${prefix}-${++idSeq}`;
 const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
 
 function makeTenant(
-  partial: Omit<Tenant, "id" | "createdAt" | "activity" | "branches"> & { branches: string[] },
+  partial: Omit<
+    Tenant,
+    | "id"
+    | "createdAt"
+    | "activity"
+    | "branches"
+    | "instituteName"
+    | "instituteType"
+    | "registrationNumber"
+    | "contactEmail"
+    | "contactPhone"
+  > & { branches: string[] },
   createdDaysAgo: number,
 ): Tenant {
   const createdAt = daysAgo(createdDaysAgo);
   return {
     ...partial,
+    instituteName: partial.organization,
+    instituteType: "NBFC",
+    registrationNumber: partial.employeeId,
+    contactEmail: partial.email,
+    contactPhone: partial.mobile,
     id: nextId("tnt"),
     branches: partial.branches.map((location) => ({ id: nextId("br"), location })),
     createdAt,
@@ -271,18 +332,7 @@ export const PRODUCT_USAGE = [
   { product: "Home Loan", tenants: 3 },
 ];
 
-export type TenantInput = {
-  firstName: string;
-  middleName?: string;
-  lastName: string;
-  employeeId: string;
-  email: string;
-  mobile: string;
-  organization: string;
-  branches: string[];
-  designation: string;
-  status: TenantStatus;
-};
+export type TenantInput = BankInput;
 
 type AdminStore = {
   authed: boolean;
@@ -292,10 +342,12 @@ type AdminStore = {
   theme: "light" | "dark";
   toggleTheme: () => void;
   tenants: Tenant[];
+  users: User[];
   activity: ActivityItem[];
-  createTenant: (input: TenantInput) => Tenant;
-  updateTenant: (id: string, input: TenantInput) => void;
+  createTenant: (input: BankInput) => Tenant;
+  updateTenant: (id: string, input: BankInput) => void;
   toggleTenantStatus: (id: string) => void;
+  createUser: (input: UserInput) => User;
 };
 
 const Ctx = createContext<AdminStore | null>(null);
@@ -304,6 +356,7 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
   const [authed, setAuthed] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [tenants, setTenants] = useState<Tenant[]>(SEED_TENANTS);
+  const [users, setUsers] = useState<User[]>([]);
   const [activity, setActivity] = useState<ActivityItem[]>(SEED_ACTIVITY);
 
   useEffect(() => {
@@ -324,31 +377,52 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const createTenant = useCallback(
-    (input: TenantInput) => {
+    (input: BankInput) => {
       const now = new Date().toISOString();
       const tenant: Tenant = {
-        ...input,
+        firstName: input.instituteName,
+        lastName: "",
+        employeeId: input.registrationNumber,
+        email: input.contactEmail,
+        mobile: input.contactPhone,
+        organization: input.instituteName,
+        designation: input.designation ?? "",
+        status: input.status ?? "Active",
+        instituteName: input.instituteName,
+        instituteType: input.instituteType as InstituteType,
+        registrationNumber: input.registrationNumber,
+        contactEmail: input.contactEmail,
+        contactPhone: input.contactPhone,
         id: nextId("tnt"),
         branches: input.branches.map((location) => ({ id: nextId("br"), location })),
         createdAt: now,
         activity: [{ id: nextId("act"), text: "Tenant account created", at: now }],
       };
       setTenants((prev) => [tenant, ...prev]);
-      pushActivity(`Tenant '${input.organization}' created`, "created");
+      pushActivity(`Tenant '${input.instituteName}' created`, "created");
       return tenant;
     },
     [pushActivity],
   );
 
   const updateTenant = useCallback(
-    (id: string, input: TenantInput) => {
+    (id: string, input: BankInput) => {
       const now = new Date().toISOString();
       setTenants((prev) =>
         prev.map((t) =>
           t.id === id
             ? {
                 ...t,
-                ...input,
+              instituteName: input.instituteName,
+                instituteType: input.instituteType as InstituteType,
+              registrationNumber: input.registrationNumber,
+              contactEmail: input.contactEmail,
+              contactPhone: input.contactPhone,
+                organization: input.instituteName,
+                email: input.contactEmail,
+                mobile: input.contactPhone,
+                designation: input.designation ?? t.designation,
+                status: input.status ?? t.status,
                 branches: input.branches.map((location) => ({ id: nextId("br"), location })),
                 activity: [
                   { id: nextId("act"), text: "Tenant details updated", at: now },
@@ -358,7 +432,17 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
             : t,
         ),
       );
-      pushActivity(`Tenant '${input.organization}' updated`, "updated");
+      pushActivity(`Tenant '${input.instituteName}' updated`, "updated");
+    },
+    [pushActivity],
+  );
+
+  const createUser = useCallback(
+    (input: UserInput) => {
+      const user: User = { ...input, id: nextId("usr"), createdAt: new Date().toISOString() };
+      setUsers((prev) => [user, ...prev]);
+      pushActivity(`User '${[input.firstName, input.middleName, input.lastName].filter(Boolean).join(" ")}' created`, "created");
+      return user;
     },
     [pushActivity],
   );
@@ -400,12 +484,14 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
       theme,
       toggleTheme: () => setTheme((t) => (t === "dark" ? "light" : "dark")),
       tenants,
+      users,
       activity,
       createTenant,
       updateTenant,
       toggleTenantStatus,
+      createUser,
     }),
-    [authed, theme, tenants, activity, createTenant, updateTenant, toggleTenantStatus],
+    [authed, theme, tenants, users, activity, createTenant, updateTenant, toggleTenantStatus, createUser],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

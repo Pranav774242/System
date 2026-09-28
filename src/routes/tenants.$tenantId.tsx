@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TenantFormDrawer } from "@/components/TenantFormDrawer";
+import { UserFormDrawer } from "@/components/UserFormDrawer";
 import {
   formatDate,
   formatRelative,
@@ -41,6 +42,7 @@ function TenantDetailPage() {
   const { tenants, updateTenant, toggleTenantStatus } = useAdminStore();
   const tenant = tenants.find((t) => t.id === tenantId);
   const [editOpen, setEditOpen] = useState(false);
+  const [userDrawerOpen, setUserDrawerOpen] = useState(false);
 
   if (!tenant) {
     return (
@@ -56,7 +58,7 @@ function TenantDetailPage() {
   }
 
   return (
-    <AppShell title={tenantFullName(tenant)} subtitle={tenant.organization}>
+    <AppShell title={tenant.instituteName} subtitle={tenant.instituteType}>
       <div className="space-y-6">
         <Link
           to="/tenants"
@@ -81,6 +83,9 @@ function TenantDetailPage() {
             </div>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setUserDrawerOpen(true)}>
+              Add User
+            </Button>
             <Button
               variant="outline"
               onClick={() => {
@@ -112,6 +117,12 @@ function TenantDetailPage() {
               Personal Details
             </h3>
             <dl className="space-y-4">
+              <Row label="Institute Name" value={tenant.instituteName} />
+              <Row label="Institute Type" value={tenant.instituteType} />
+              <Row label="Registration Number" value={tenant.registrationNumber} />
+              <Row label="Official Email" value={tenant.contactEmail} />
+              <Row label="Official Mobile Number" value={tenant.contactPhone} />
+              <Row label="Branch" value={tenant.branches.map((branch) => branch.location).join(", ")} />
               <Row label="First Name" value={tenant.firstName} />
               <Row label="Middle Name" value={tenant.middleName || "—"} />
               <Row label="Last Name" value={tenant.lastName} />
@@ -187,6 +198,11 @@ function TenantDetailPage() {
           updateTenant(tenant.id, input);
           toast.success("Tenant updated successfully");
         }}
+      />
+      <UserFormDrawer
+        open={userDrawerOpen}
+        onOpenChange={setUserDrawerOpen}
+        bank={tenant}
       />
     </AppShell>
   );

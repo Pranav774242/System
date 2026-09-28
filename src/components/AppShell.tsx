@@ -3,12 +3,14 @@ import { useEffect, useState, type ReactNode } from "react";
 import {
   LayoutDashboard,
   Building2,
+  Users,
   PanelLeftClose,
   PanelLeftOpen,
   Moon,
   Sun,
   LogOut,
   ShieldCheck,
+  ArrowLeft,
 } from "lucide-react";
 
 import { useAdminStore } from "@/lib/admin-store";
@@ -26,6 +28,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
   { label: "Bank Management", to: "/tenants", icon: Building2 },
+  { label: "User Management", to: "/users", icon: Users },
 ] as const;
 
 export function AppShell({
@@ -72,7 +75,9 @@ export function AppShell({
           {!collapsed && (
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">Banking LOS</p>
-              <p className="truncate text-xs text-sidebar-foreground/60">System Administrator</p>
+              <p className="truncate text-xs text-sidebar-foreground/60">
+                System Administrator
+              </p>
             </div>
           )}
         </div>
@@ -93,7 +98,10 @@ export function AppShell({
                 )}
               >
                 <Icon
-                  className={cn("size-5 shrink-0", active && "text-sidebar-primary")}
+                  className={cn(
+                    "size-5 shrink-0",
+                    active && "text-sidebar-primary",
+                  )}
                   strokeWidth={2}
                 />
                 {!collapsed && <span className="truncate">{label}</span>}
@@ -121,30 +129,64 @@ export function AppShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-background/80 px-4 backdrop-blur-md md:px-8">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => window.history.back()}
+            aria-label="Go back"
+            title="Go back"
+          >
+            <ArrowLeft className="size-5" />
+          </Button>
+
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-lg font-semibold tracking-tight">{title}</h1>
-            {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
+            <h1 className="truncate text-lg font-semibold tracking-tight">
+              {title}
+            </h1>
+            {subtitle && (
+              <p className="truncate text-xs text-muted-foreground">
+                {subtitle}
+              </p>
+            )}
           </div>
+
           <div className="flex items-center gap-2">
             {actions}
-            <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
-              {theme === "dark" ? <Sun className="size-5" /> : <Moon className="size-5" />}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? (
+                <Sun className="size-5" />
+              ) : (
+                <Moon className="size-5" />
+              )}
             </Button>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 rounded-full border border-border p-1 pr-3 transition-colors hover:bg-secondary">
                   <span className="grid size-8 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
                     {adminInitials}
                   </span>
-                  <span className="hidden text-sm font-medium sm:inline">{adminName}</span>
+                  <span className="hidden text-sm font-medium sm:inline">
+                    {adminName}
+                  </span>
                 </button>
               </DropdownMenuTrigger>
+
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuLabel>
                   <p className="text-sm font-medium">{adminName}</p>
-                  <p className="text-xs font-normal text-muted-foreground">System Administrator</p>
+                  <p className="text-xs font-normal text-muted-foreground">
+                    System Administrator
+                  </p>
                 </DropdownMenuLabel>
+
                 <DropdownMenuSeparator />
+
                 <DropdownMenuItem
                   onClick={() => {
                     logout();
@@ -158,7 +200,9 @@ export function AppShell({
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
+        <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
+          {children}
+        </main>
       </div>
     </div>
   );

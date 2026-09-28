@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TenantFormDrawer } from "@/components/TenantFormDrawer";
-import { tenantFullName, useAdminStore, type Tenant } from "@/lib/admin-store";
+import { useAdminStore, type Tenant } from "@/lib/admin-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -53,7 +53,7 @@ export const Route = createFileRoute("/tenants/")({
   component: TenantsPage,
 });
 
-type SortKey = "name" | "employeeId" | "organization" | "branches" | "designation" | "status";
+type SortKey = "instituteName" | "instituteType" | "registrationNumber" | "contactEmail" | "contactPhone" | "branches";
 
 const PAGE_SIZE = 10;
 
@@ -63,7 +63,7 @@ function TenantsPage() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
-    key: "name",
+    key: "instituteName",
     dir: "asc",
   });
   const [page, setPage] = useState(1);
@@ -81,8 +81,8 @@ function TenantsPage() {
     const q = query.trim().toLowerCase();
     const value = (t: Tenant, key: SortKey) => {
       switch (key) {
-        case "name":
-          return tenantFullName(t).toLowerCase();
+        case "instituteName":
+          return t.instituteName.toLowerCase();
         case "branches":
           return t.branches.length;
         default:
@@ -94,7 +94,7 @@ function TenantsPage() {
       .filter((t) =>
         !q
           ? true
-          : [tenantFullName(t), t.employeeId, t.email, t.mobile, t.organization, t.designation]
+          : [t.instituteName, t.instituteType, t.registrationNumber, t.contactEmail, t.contactPhone, t.branches.map((b) => b.location).join(" ")]
               .join(" ")
               .toLowerCase()
               .includes(q),
@@ -114,14 +114,12 @@ function TenantsPage() {
     setSort((prev) => ({ key, dir: prev.key === key && prev.dir === "asc" ? "desc" : "asc" }));
 
   const columns: { key: SortKey | null; label: string; className?: string }[] = [
-    { key: "name", label: "Full Name" },
-    { key: "employeeId", label: "Employee ID" },
-    { key: null, label: "Office Email" },
-    { key: null, label: "Mobile Number" },
-    { key: "organization", label: "Organization" },
-    { key: "branches", label: "Branches" },
-    { key: "designation", label: "Designation" },
-    { key: "status", label: "Status" },
+    { key: "instituteName", label: "Institute Name" },
+    { key: "instituteType", label: "Institute Type" },
+    { key: "registrationNumber", label: "Registration Number" },
+    { key: "contactEmail", label: "Email" },
+    { key: "contactPhone", label: "Mobile Number" },
+    { key: "branches", label: "Branch" },
     { key: null, label: "" },
   ];
 
@@ -206,16 +204,12 @@ function TenantsPage() {
                       key={t.id}
                       onClick={() => navigate({ to: "/tenants/$tenantId", params: { tenantId: t.id } })}
                       className="cursor-pointer border-t border-border transition-colors hover:bg-secondary/60">
-                      <td className="whitespace-nowrap px-4 py-3 font-medium">{tenantFullName(t)}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{t.employeeId}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{t.email}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{t.mobile}</td>
-                      <td className="whitespace-nowrap px-4 py-3">{t.organization}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{t.branches.length}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{t.designation}</td>
-                      <td className="px-4 py-3">
-                        <StatusBadge status={t.status} />
-                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 font-medium">{t.instituteName}</td>
+                      <td className="whitespace-nowrap px-4 py-3">{t.instituteType}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{t.registrationNumber}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{t.contactEmail}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{t.contactPhone}</td>
+                      <td className="whitespace-nowrap px-4 py-3">{t.branches.map((b) => b.location).join(", ")}</td>
                       <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -245,7 +239,7 @@ function TenantsPage() {
                               onClick={() => {
                                 toggleTenantStatus(t.id);
                                 toast.success(
-                                  `${tenantFullName(t)} is now ${t.status === "Active" ? "Inactive" : "Active"}`,
+                                  `${t.instituteName} is now ${t.status === "Active" ? "Inactive" : "Active"}`,
                                 );
                               }}
                             >
