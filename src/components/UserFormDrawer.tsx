@@ -16,7 +16,7 @@ type AddUserForm = {
   email: string;
   password: string;
   twoFactorEnabled: boolean;
-  status: "ACTIVE" | "INACTIVE";
+  status: "ACTIVE" | "INACTIVE"| "OPERATIVE";
   name: string;
   dateOfBirth: string;
   mobile: string;
@@ -34,7 +34,7 @@ type AddUserPayload = {
   email: string;
   password: string;
   "2fA": boolean;
-  Status: "ACTIVE" | "INACTIVE";
+  Status: "ACTIVE" | "INACTIVE"| "OPERATIVE";
   Name: string;
   DOB: string;
   Mobile: string;
@@ -54,7 +54,7 @@ const emptyForm: AddUserForm = {
   email: "",
   password: "",
   twoFactorEnabled: false,
-  status: "ACTIVE",
+  status: "OPERATIVE",
   name: "",
   dateOfBirth: "",
   mobile: "",
@@ -146,7 +146,7 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
       email: form.email.trim(),
       password: form.password,
       "2fA": form.twoFactorEnabled,
-      Status: form.status,
+      Status: form.status === "OPERATIVE" ? "OPERATIVE" : form.status,
       Name: form.name.trim(),
       DOB: form.dateOfBirth,
       Mobile: form.mobile.trim(),
@@ -277,6 +277,7 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
                 <Select value={form.status} onValueChange={(value) => set("status", value as AddUserForm["status"])}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="OPERATIVE">OPERATIVE</SelectItem>
                     <SelectItem value="ACTIVE">Active</SelectItem>
                     <SelectItem value="INACTIVE">Inactive</SelectItem>
                   </SelectContent>
