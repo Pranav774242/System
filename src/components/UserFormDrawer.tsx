@@ -104,14 +104,14 @@ function validateForm(form: AddUserForm): FormErrors {
   if (!form.gender) errors.gender = "Gender is required";
   if (!form.designation.trim()) errors.designation = "Designation is required";
   if (!form.role) errors.role = "Role is required";
-  if (!form.loginBranch.trim()) errors.loginBranch = "Login branch is required";
+  // if (!form.loginBranch.trim()) errors.loginBranch = "Login branch is required";
   return errors;
 }
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  bank: Pick<Tenant, "id" | "instituteName">;
+  bank: Pick<Tenant, "id" | "pkid" | "instituteName">;
 };
 
 export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
@@ -124,7 +124,7 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
     if (!open) return;
     setForm({
       ...emptyForm,
-      bankId: /^\d+$/.test(bank.id) ? bank.id : "",
+      bankId: bank.pkid != null ? String(bank.pkid) : "",
     });
     setSubmitted(false);
     setBusy(false);
@@ -154,7 +154,7 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
       Designation: form.designation.trim(),
       Role: form.role,
       M_Br_access: form.mainBranchAccess,
-      Login_Branch: form.loginBranch.trim(),
+      Login_Branch: "",
       Holiday_Login: form.holidayLogin,
     };
 
@@ -282,9 +282,9 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Login Branch" required error={fieldError("loginBranch")}>
+              {/* <Field label="Login Branch" required error={fieldError("loginBranch")}>
                 <Input value={form.loginBranch} onChange={(event) => set("loginBranch", event.target.value)} placeholder="Branch code" />
-              </Field>
+              </Field> */}
             </div>
           </section>
 

@@ -1,3 +1,4 @@
+
 import {
   createContext,
   useCallback,
@@ -9,13 +10,15 @@ import {
 } from "react";
 
 export type TenantStatus = "Active" | "Inactive";
-export type InstituteType =
-  | "NBFC"
-  | "Cooperative Bank"
-  | "COMMERCIAL_BANK"
-  | "COOPERATIVE_BANK";
 
-export type Branch = { id: string; location: string };
+export type InstituteType =
+  | "BANK"
+  | "NBFC";
+
+export type Branch = {
+  id: string;
+  location: string;
+};
 
 export type Tenant = {
   id: string;
@@ -30,12 +33,21 @@ export type Tenant = {
   designation: string;
   status: TenantStatus;
   createdAt: string;
-  activity: { id: string; text: string; at: string }[];
+  pkid?: number;
+  activity: {
+    id: string;
+    text: string;
+    at: string;
+  }[];
+
   instituteName: string;
   instituteType: InstituteType;
   registrationNumber: string;
   contactEmail: string;
   contactPhone: string;
+
+  cin: string;
+  regulatoryAuthorityId: string;
 };
 
 export type BankInput = {
@@ -45,9 +57,14 @@ export type BankInput = {
   contactEmail: string;
   contactPhone: string;
   branches: string[];
+
   legalName?: string;
   shortName?: string;
+
+  cin?: string;
   regulatoryAuthority?: string;
+  regulatoryAuthorityId?: string;
+
   website?: string;
   country?: string;
   state?: string;
@@ -55,6 +72,7 @@ export type BankInput = {
   pinCode?: string;
   registeredAddress?: string;
   corporateAddress?: string;
+
   designation?: string;
   status?: TenantStatus;
 };
@@ -94,7 +112,9 @@ export const DESIGNATIONS = [
 ];
 
 export function tenantFullName(t: Tenant) {
-  return [t.firstName, t.middleName, t.lastName].filter(Boolean).join(" ");
+  return [t.firstName, t.middleName, t.lastName]
+    .filter(Boolean)
+    .join(" ");
 }
 
 export function initials(t: Tenant) {
@@ -102,9 +122,14 @@ export function initials(t: Tenant) {
 }
 
 let idSeq = 1000;
-export const nextId = (prefix = "id") => `${prefix}-${++idSeq}`;
 
-const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+export const nextId = (prefix = "id") =>
+  `${prefix}-${++idSeq}`;
+
+const daysAgo = (n: number) =>
+  new Date(
+    Date.now() - n * 86_400_000,
+  ).toISOString();
 
 function makeTenant(
   partial: Omit<
@@ -118,26 +143,50 @@ function makeTenant(
     | "registrationNumber"
     | "contactEmail"
     | "contactPhone"
-  > & { branches: string[] },
+    | "cin"
+    | "regulatoryAuthorityId"
+  > & {
+    branches: string[];
+  },
   createdDaysAgo: number,
 ): Tenant {
   const createdAt = daysAgo(createdDaysAgo);
+
   return {
     ...partial,
+
     instituteName: partial.organization,
     instituteType: "NBFC",
     registrationNumber: partial.employeeId,
     contactEmail: partial.email,
     contactPhone: partial.mobile,
+
+    cin: "",
+    regulatoryAuthorityId: "",
+
     id: nextId("tnt"),
-    branches: partial.branches.map((location) => ({ id: nextId("br"), location })),
+
+    branches: partial.branches.map(
+      (location) => ({
+        id: nextId("br"),
+        location,
+      }),
+    ),
+
     createdAt,
+
     activity: [
-      { id: nextId("act"), text: "Tenant account created", at: createdAt },
+      {
+        id: nextId("act"),
+        text: "Tenant account created",
+        at: createdAt,
+      },
       {
         id: nextId("act"),
         text: `Status set to ${partial.status}`,
-        at: daysAgo(Math.max(createdDaysAgo - 1, 0)),
+        at: daysAgo(
+          Math.max(createdDaysAgo - 1, 0),
+        ),
       },
     ],
   };
@@ -153,12 +202,17 @@ const SEED_TENANTS: Tenant[] = [
       email: "aarav.mehta@abcfinance.in",
       mobile: "+91 98200 41253",
       organization: "ABC Finance Ltd",
-      branches: ["Mumbai — Andheri East", "Mumbai — Lower Parel", "Pune — Kothrud"],
+      branches: [
+        "Mumbai — Andheri East",
+        "Mumbai — Lower Parel",
+        "Pune — Kothrud",
+      ],
       designation: "Regional Director",
       status: "Active",
     },
     62,
   ),
+
   makeTenant(
     {
       firstName: "Priya",
@@ -167,12 +221,16 @@ const SEED_TENANTS: Tenant[] = [
       email: "priya.raghavan@sundarbancorp.com",
       mobile: "+91 99401 77812",
       organization: "Sundar Bank Corp",
-      branches: ["Chennai — T Nagar", "Coimbatore — RS Puram"],
+      branches: [
+        "Chennai — T Nagar",
+        "Coimbatore — RS Puram",
+      ],
       designation: "Branch Manager",
       status: "Active",
     },
     54,
   ),
+
   makeTenant(
     {
       firstName: "Rohit",
@@ -188,6 +246,7 @@ const SEED_TENANTS: Tenant[] = [
     },
     47,
   ),
+
   makeTenant(
     {
       firstName: "Neha",
@@ -196,12 +255,17 @@ const SEED_TENANTS: Tenant[] = [
       email: "neha.kulkarni@grihafinserv.com",
       mobile: "+91 93726 55401",
       organization: "Griha Finserv",
-      branches: ["Bengaluru — Indiranagar", "Bengaluru — Whitefield", "Mysuru — Saraswathipuram"],
+      branches: [
+        "Bengaluru — Indiranagar",
+        "Bengaluru — Whitefield",
+        "Mysuru — Saraswathipuram",
+      ],
       designation: "Relationship Manager",
       status: "Active",
     },
     38,
   ),
+
   makeTenant(
     {
       firstName: "Imran",
@@ -211,12 +275,16 @@ const SEED_TENANTS: Tenant[] = [
       email: "imran.qureshi@northstarbank.in",
       mobile: "+91 90045 31287",
       organization: "Northstar Bank",
-      branches: ["Delhi — Connaught Place", "Noida — Sector 62"],
+      branches: [
+        "Delhi — Connaught Place",
+        "Noida — Sector 62",
+      ],
       designation: "Credit Analyst",
       status: "Active",
     },
     30,
   ),
+
   makeTenant(
     {
       firstName: "Sneha",
@@ -231,6 +299,7 @@ const SEED_TENANTS: Tenant[] = [
     },
     24,
   ),
+
   makeTenant(
     {
       firstName: "Vikram",
@@ -240,12 +309,17 @@ const SEED_TENANTS: Tenant[] = [
       email: "vikram.nair@keralagold.in",
       mobile: "+91 94470 87654",
       organization: "Kerala Gold Finance",
-      branches: ["Kochi — MG Road", "Thrissur — Round West", "Kozhikode — Mavoor Road"],
+      branches: [
+        "Kochi — MG Road",
+        "Thrissur — Round West",
+        "Kozhikode — Mavoor Road",
+      ],
       designation: "Branch Manager",
       status: "Active",
     },
     17,
   ),
+
   makeTenant(
     {
       firstName: "Ananya",
@@ -254,12 +328,16 @@ const SEED_TENANTS: Tenant[] = [
       email: "ananya.bose@bengalcreditunion.in",
       mobile: "+91 98310 45560",
       organization: "Bengal Credit Union",
-      branches: ["Kolkata — Salt Lake", "Howrah — Shibpur"],
+      branches: [
+        "Kolkata — Salt Lake",
+        "Howrah — Shibpur",
+      ],
       designation: "Operations Head",
       status: "Active",
     },
     11,
   ),
+
   makeTenant(
     {
       firstName: "Karan",
@@ -274,6 +352,7 @@ const SEED_TENANTS: Tenant[] = [
     },
     5,
   ),
+
   makeTenant(
     {
       firstName: "Meera",
@@ -283,7 +362,10 @@ const SEED_TENANTS: Tenant[] = [
       email: "meera.pillai@zenithhousing.com",
       mobile: "+91 99000 76432",
       organization: "Zenith Housing Finance",
-      branches: ["Ahmedabad — Navrangpura", "Surat — Adajan"],
+      branches: [
+        "Ahmedabad — Navrangpura",
+        "Surat — Adajan",
+      ],
       designation: "Credit Analyst",
       status: "Active",
     },
@@ -292,8 +374,18 @@ const SEED_TENANTS: Tenant[] = [
 ];
 
 const SEED_ACTIVITY: ActivityItem[] = [
-  { id: nextId("f"), text: "Tenant 'Zenith Housing Finance' created", at: daysAgo(2), kind: "created" },
-  { id: nextId("f"), text: "Product 'Gold Loan' updated", at: daysAgo(3), kind: "updated" },
+  {
+    id: nextId("f"),
+    text: "Tenant 'Zenith Housing Finance' created",
+    at: daysAgo(2),
+    kind: "created",
+  },
+  {
+    id: nextId("f"),
+    text: "Product 'Gold Loan' updated",
+    at: daysAgo(3),
+    kind: "updated",
+  },
   {
     id: nextId("f"),
     text: "Rule 'Max LTV 75%' assigned to Gold Loan",
@@ -306,8 +398,18 @@ const SEED_ACTIVITY: ActivityItem[] = [
     at: daysAgo(6),
     kind: "status",
   },
-  { id: nextId("f"), text: "Tenant 'Punjab Agri Finance' created", at: daysAgo(5), kind: "created" },
-  { id: nextId("f"), text: "Product 'Vehicle Loan' created", at: daysAgo(8), kind: "created" },
+  {
+    id: nextId("f"),
+    text: "Tenant 'Punjab Agri Finance' created",
+    at: daysAgo(5),
+    kind: "created",
+  },
+  {
+    id: nextId("f"),
+    text: "Product 'Vehicle Loan' created",
+    at: daysAgo(8),
+    kind: "created",
+  },
   {
     id: nextId("f"),
     text: "Rule 'Min CIBIL 700' assigned to Personal Loan",
@@ -341,167 +443,812 @@ export type TenantInput = BankInput;
 type AdminStore = {
   authed: boolean;
   adminName: string;
+
   login: (accessToken: string) => void;
   logout: () => void;
+
   theme: "light" | "dark";
   toggleTheme: () => void;
+
   tenants: Tenant[];
   users: User[];
   activity: ActivityItem[];
+
   createTenant: (input: BankInput) => Tenant;
-  updateTenant: (id: string, input: BankInput) => void;
+  updateTenant: (
+    id: string,
+    input: BankInput,
+  ) => void;
+
   toggleTenantStatus: (id: string) => void;
+
   createUser: (input: UserInput) => User;
 };
 
 const Ctx = createContext<AdminStore | null>(null);
 
 export function getAccessToken() {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem("accessToken");
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return window.localStorage.getItem(
+    "accessToken",
+  );
 }
 
-export function AdminStoreProvider({ children }: { children: ReactNode }) {
-  const [authed, setAuthed] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [tenants, setTenants] = useState<Tenant[]>(SEED_TENANTS);
-  const [users, setUsers] = useState<User[]>([]);
-  const [activity, setActivity] = useState<ActivityItem[]>(SEED_ACTIVITY);
+/*
+ * ============================================================
+ * BACKEND ORGANIZATION RESPONSE
+ * ============================================================
+ */
 
-  const login = useCallback((accessToken: string) => {
-    window.localStorage.setItem("accessToken", accessToken);
-    setAuthed(true);
-  }, []);
+type OrganizationApiResponse = {
+  id?: string;
+  pkid?: number;
+
+  name?: string;
+  type?: string;
+
+  institution_name?: string;
+  institution_type?: string;
+
+  registration_number?: string;
+  registration_id?: string;
+
+  regulatory_authority?: string;
+  regulatory_authority_id?: string;
+
+  cin?: string;
+  cin_no?: string;
+  cin_number?: string;
+
+  regulatory_status?: string;
+  status?: string;
+
+  country?: string;
+  state?: string;
+  city?: string;
+  pin_code?: string;
+
+  registered_address?: string;
+  corporate_address?: string;
+
+  contact_email?: string;
+  contact_phone?: string;
+
+  website?: string;
+  legal_name?: string;
+  short_name?: string;
+
+  created_at?: string;
+  updated_at?: string;
+
+  db_name?: string;
+  db_host?: string;
+  db_port?: number;
+
+  branches?: unknown[];
+};
+
+/*
+ * ============================================================
+ * MAP BACKEND ORGANIZATION TO TENANT
+ * ============================================================
+ */
+
+function mapOrganizationToTenant(
+  organization: OrganizationApiResponse,
+): Tenant {
+  const instituteName =
+    organization.institution_name ??
+    organization.name ??
+    "";
+
+  const instituteTypeRaw =
+    organization.institution_type ??
+    organization.type ??
+    "";
+
+  /*
+   * IMPORTANT:
+   * Only BANK and NBFC are allowed.
+   */
+  const instituteType: InstituteType =
+    instituteTypeRaw.toUpperCase() === "NBFC"
+      ? "NBFC"
+      : "BANK";
+
+  const registrationNumber =
+    organization.registration_number ??
+    organization.registration_id ??
+    "";
+
+  const regulatoryAuthorityId =
+    organization.regulatory_authority_id ??
+    organization.regulatory_authority ??
+    "";
+
+  const cin =
+    organization.cin_no ??
+    organization.cin_number ??
+    organization.cin ??
+    "";
+
+  const backendStatus =
+    organization.status ??
+    organization.regulatory_status ??
+    "ACTIVE";
+
+  const frontendStatus: TenantStatus =
+    backendStatus.toUpperCase() === "ACTIVE"
+      ? "Active"
+      : "Inactive";
+
+  return {
+    id:
+      organization.id ??
+      String(
+        organization.pkid ??
+          nextId("tnt"),
+      ),
+
+    /*
+     * Existing Tenant fields
+     */
+    firstName: instituteName,
+    middleName: "",
+    lastName: "",
+
+    employeeId:
+      registrationNumber,
+
+    email:
+      organization.contact_email ??
+      "",
+
+    mobile:
+      organization.contact_phone ??
+      "",
+
+    organization:
+      instituteName,
+
+    branches: [],
+
+    designation:
+      "Relationship Manager",
+
+    status:
+      frontendStatus,
+
+    createdAt:
+      organization.created_at ??
+      new Date().toISOString(),
+
+    activity: [],
+
+    /*
+     * Bank fields
+     */
+    instituteName,
+
+    instituteType,
+
+    registrationNumber,
+
+    contactEmail:
+      organization.contact_email ??
+      "",
+
+    contactPhone:
+      organization.contact_phone ??
+      "",
+
+    cin,
+
+    regulatoryAuthorityId,
+  };
+}
+
+/*
+ * ============================================================
+ * GET ORGANIZATIONS API
+ * ============================================================
+ */
+
+async function fetchOrganizations(): Promise<
+  Tenant[] | null
+> {
+  const token = getAccessToken();
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(
+      "https://los-backend-355v.onrender.com/api/v1/administration/organizations",
+      {
+        method: "GET",
+
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    if (!response.ok) {
+      console.error(
+        "Organizations GET failed:",
+        response.status,
+      );
+
+      return null;
+    }
+
+    const responseText =
+      await response.text();
+
+    if (!responseText) {
+      return [];
+    }
+
+    let responseData: unknown;
+
+    try {
+      responseData =
+        JSON.parse(responseText);
+    } catch (error) {
+      console.error(
+        "Invalid organizations API response:",
+        error,
+      );
+
+      return null;
+    }
+
+    let organizations: OrganizationApiResponse[] =
+      [];
+
+    /*
+     * Direct array response
+     */
+    if (Array.isArray(responseData)) {
+      organizations =
+        responseData as OrganizationApiResponse[];
+    }
+
+    /*
+     * { data: [...] } response
+     */
+    else if (
+      responseData &&
+      typeof responseData === "object"
+    ) {
+      const body =
+        responseData as {
+          data?: unknown;
+        };
+
+      if (Array.isArray(body.data)) {
+        organizations =
+          body.data as OrganizationApiResponse[];
+      }
+    }
+
+    console.log(
+      "Organizations received:",
+      organizations,
+    );
+
+    const mappedTenants =
+      organizations.map(
+        mapOrganizationToTenant,
+      );
+
+    console.log(
+      "Organizations mapped to tenants:",
+      mappedTenants,
+    );
+
+    return mappedTenants;
+  } catch (error) {
+    console.error(
+      "Failed to fetch organizations:",
+      error,
+    );
+
+    return null;
+  }
+}
+
+export function AdminStoreProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const [authed, setAuthed] =
+    useState(() =>
+      Boolean(getAccessToken()),
+    );
+
+  const [theme, setTheme] =
+    useState<"light" | "dark">("light");
+
+  const [tenants, setTenants] =
+    useState<Tenant[]>(SEED_TENANTS);
+
+  const [users, setUsers] =
+    useState<User[]>([]);
+
+  const [activity, setActivity] =
+    useState<ActivityItem[]>(
+      SEED_ACTIVITY,
+    );
+
+  /*
+   * ==========================================================
+   * LOGIN
+   * ==========================================================
+   */
+
+  const login = useCallback(
+    (accessToken: string) => {
+      window.localStorage.setItem(
+        "accessToken",
+        accessToken,
+      );
+
+      setAuthed(true);
+    },
+    [],
+  );
+
+  /*
+   * ==========================================================
+   * LOGOUT
+   * ==========================================================
+   */
 
   const logout = useCallback(() => {
-    window.localStorage.removeItem("accessToken");
+    window.localStorage.removeItem(
+      "accessToken",
+    );
+
     setAuthed(false);
+
+    setTenants(SEED_TENANTS);
+  }, []);
+
+  /*
+   * ==========================================================
+   * LOAD API TENANTS INTO STORE
+   * ==========================================================
+   *
+   * IMPORTANT:
+   *
+   * tenants.index.tsx remains unchanged.
+   *
+   * The list page already has its own GET call.
+   *
+   * This store also gets the same API data because
+   * the detail page reads tenants from useAdminStore().
+   */
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadOrganizations =
+      async () => {
+        if (!getAccessToken()) {
+          return;
+        }
+
+        const apiTenants =
+          await fetchOrganizations();
+
+        if (cancelled) {
+          return;
+        }
+
+        /*
+         * Do not replace existing data if
+         * the API request failed.
+         */
+        if (apiTenants !== null) {
+          setTenants(apiTenants);
+        }
+      };
+
+    loadOrganizations();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authed]);
+
+  /*
+   * ==========================================================
+   * THEME
+   * ==========================================================
+   */
+
+  useEffect(() => {
+    const stored =
+      window.localStorage.getItem(
+        "los-theme",
+      );
+
+    if (
+      stored === "dark" ||
+      stored === "light"
+    ) {
+      setTheme(stored);
+    }
   }, []);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem("los-theme");
-    if (stored === "dark" || stored === "light") setTheme(stored);
-  }, []);
+    document.documentElement.classList.toggle(
+      "dark",
+      theme === "dark",
+    );
 
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-    window.localStorage.setItem("los-theme", theme);
+    window.localStorage.setItem(
+      "los-theme",
+      theme,
+    );
   }, [theme]);
 
-  const pushActivity = useCallback((text: string, kind: ActivityItem["kind"]) => {
-    setActivity((prev) => [
-      { id: nextId("f"), text, at: new Date().toISOString(), kind },
-      ...prev,
-    ]);
-  }, []);
+  /*
+   * ==========================================================
+   * ACTIVITY
+   * ==========================================================
+   */
+
+  const pushActivity = useCallback(
+    (
+      text: string,
+      kind: ActivityItem["kind"],
+    ) => {
+      setActivity((prev) => [
+        {
+          id: nextId("f"),
+          text,
+          at: new Date().toISOString(),
+          kind,
+        },
+        ...prev,
+      ]);
+    },
+    [],
+  );
+
+  /*
+   * ==========================================================
+   * CREATE TENANT
+   * ==========================================================
+   */
 
   const createTenant = useCallback(
     (input: BankInput) => {
-      const now = new Date().toISOString();
+      const now =
+        new Date().toISOString();
+
       const tenant: Tenant = {
-        firstName: input.instituteName,
+        firstName:
+          input.instituteName,
+
+        middleName: "",
+
         lastName: "",
-        employeeId: input.registrationNumber,
-        email: input.contactEmail,
-        mobile: input.contactPhone,
-        organization: input.instituteName,
-        designation: input.designation ?? "",
-        status: input.status ?? "Active",
-        instituteName: input.instituteName,
-        instituteType: input.instituteType as InstituteType,
-        registrationNumber: input.registrationNumber,
-        contactEmail: input.contactEmail,
-        contactPhone: input.contactPhone,
+
+        employeeId:
+          input.registrationNumber,
+
+        email:
+          input.contactEmail,
+
+        mobile:
+          input.contactPhone,
+
+        organization:
+          input.instituteName,
+
+        designation:
+          input.designation ?? "",
+
+        status:
+          input.status ?? "Active",
+
+        instituteName:
+          input.instituteName,
+
+        instituteType:
+          input.instituteType as InstituteType,
+
+        registrationNumber:
+          input.registrationNumber,
+
+        contactEmail:
+          input.contactEmail,
+
+        contactPhone:
+          input.contactPhone,
+
+        cin:
+          input.cin ?? "",
+
+        regulatoryAuthorityId:
+          input.regulatoryAuthorityId ??
+          "",
+
         id: nextId("tnt"),
-        branches: input.branches.map((location) => ({ id: nextId("br"), location })),
+
+        branches:
+          input.branches.map(
+            (location) => ({
+              id: nextId("br"),
+              location,
+            }),
+          ),
+
         createdAt: now,
-        activity: [{ id: nextId("act"), text: "Tenant account created", at: now }],
+
+        activity: [
+          {
+            id: nextId("act"),
+            text: "Tenant account created",
+            at: now,
+          },
+        ],
       };
-      setTenants((prev) => [tenant, ...prev]);
-      pushActivity(`Tenant '${input.instituteName}' created`, "created");
+
+      setTenants((prev) => [
+        tenant,
+        ...prev,
+      ]);
+
+      pushActivity(
+        `Tenant '${input.instituteName}' created`,
+        "created",
+      );
+
       return tenant;
     },
     [pushActivity],
   );
 
+  /*
+   * ==========================================================
+   * UPDATE TENANT
+   * ==========================================================
+   */
+
   const updateTenant = useCallback(
-    (id: string, input: BankInput) => {
-      const now = new Date().toISOString();
+    (
+      id: string,
+      input: BankInput,
+    ) => {
+      const now =
+        new Date().toISOString();
+
       setTenants((prev) =>
-        prev.map((t) =>
-          t.id === id
+        prev.map((tenant) =>
+          tenant.id === id
             ? {
-                ...t,
-              instituteName: input.instituteName,
-                instituteType: input.instituteType as InstituteType,
-              registrationNumber: input.registrationNumber,
-              contactEmail: input.contactEmail,
-              contactPhone: input.contactPhone,
-                organization: input.instituteName,
-                email: input.contactEmail,
-                mobile: input.contactPhone,
-                designation: input.designation ?? t.designation,
-                status: input.status ?? t.status,
-                branches: input.branches.map((location) => ({ id: nextId("br"), location })),
+                ...tenant,
+
+                instituteName:
+                  input.instituteName,
+
+                instituteType:
+                  input.instituteType as InstituteType,
+
+                registrationNumber:
+                  input.registrationNumber,
+
+                contactEmail:
+                  input.contactEmail,
+
+                contactPhone:
+                  input.contactPhone,
+
+                cin:
+                  input.cin ??
+                  tenant.cin,
+
+                regulatoryAuthorityId:
+                  input.regulatoryAuthorityId ??
+                  tenant.regulatoryAuthorityId,
+
+                organization:
+                  input.instituteName,
+
+                email:
+                  input.contactEmail,
+
+                mobile:
+                  input.contactPhone,
+
+                designation:
+                  input.designation ??
+                  tenant.designation,
+
+                status:
+                  input.status ??
+                  tenant.status,
+
+                branches:
+                  input.branches.map(
+                    (location) => ({
+                      id: nextId("br"),
+                      location,
+                    }),
+                  ),
+
                 activity: [
-                  { id: nextId("act"), text: "Tenant details updated", at: now },
-                  ...t.activity,
+                  {
+                    id: nextId("act"),
+                    text: "Tenant details updated",
+                    at: now,
+                  },
+                  ...tenant.activity,
                 ],
               }
-            : t,
+            : tenant,
         ),
       );
-      pushActivity(`Tenant '${input.instituteName}' updated`, "updated");
+
+      pushActivity(
+        `Tenant '${input.instituteName}' updated`,
+        "updated",
+      );
     },
     [pushActivity],
   );
 
+  /*
+   * ==========================================================
+   * CREATE USER
+   * ==========================================================
+   */
+
   const createUser = useCallback(
     (input: UserInput) => {
-      const user: User = { ...input, id: nextId("usr"), createdAt: new Date().toISOString() };
-      setUsers((prev) => [user, ...prev]);
-      pushActivity(`User '${[input.firstName, input.middleName, input.lastName].filter(Boolean).join(" ")}' created`, "created");
+      const user: User = {
+        ...input,
+
+        id: nextId("usr"),
+
+        createdAt:
+          new Date().toISOString(),
+      };
+
+      setUsers((prev) => [
+        user,
+        ...prev,
+      ]);
+
+      pushActivity(
+        `User '${[
+          input.firstName,
+          input.middleName,
+          input.lastName,
+        ]
+          .filter(Boolean)
+          .join(" ")}' created`,
+        "created",
+      );
+
       return user;
     },
     [pushActivity],
   );
 
-  const toggleTenantStatus = useCallback(
-    (id: string) => {
-      const now = new Date().toISOString();
-      setTenants((prev) =>
-        prev.map((t) => {
-          if (t.id !== id) return t;
-          const status: TenantStatus = t.status === "Active" ? "Inactive" : "Active";
-          return {
-            ...t,
-            status,
-            activity: [
-              { id: nextId("act"), text: `Status changed to ${status}`, at: now },
-              ...t.activity,
-            ],
-          };
-        }),
-      );
-      const t = tenants.find((x) => x.id === id);
-      if (t) {
-        pushActivity(
-          `Tenant '${t.organization}' status changed to ${t.status === "Active" ? "Inactive" : "Active"}`,
-          "status",
+  /*
+   * ==========================================================
+   * TOGGLE TENANT STATUS
+   * ==========================================================
+   */
+
+  const toggleTenantStatus =
+    useCallback(
+      (id: string) => {
+        const now =
+          new Date().toISOString();
+
+        setTenants((prev) =>
+          prev.map((tenant) => {
+            if (tenant.id !== id) {
+              return tenant;
+            }
+
+            const status: TenantStatus =
+              tenant.status === "Active"
+                ? "Inactive"
+                : "Active";
+
+            return {
+              ...tenant,
+
+              status,
+
+              activity: [
+                {
+                  id: nextId("act"),
+                  text: `Status changed to ${status}`,
+                  at: now,
+                },
+                ...tenant.activity,
+              ],
+            };
+          }),
         );
-      }
-    },
-    [pushActivity, tenants],
-  );
+
+        const tenant =
+          tenants.find(
+            (item) => item.id === id,
+          );
+
+        if (tenant) {
+          pushActivity(
+            `Tenant '${tenant.organization}' status changed to ${
+              tenant.status === "Active"
+                ? "Inactive"
+                : "Active"
+            }`,
+            "status",
+          );
+        }
+      },
+      [pushActivity, tenants],
+    );
+
+  /*
+   * ==========================================================
+   * STORE VALUE
+   * ==========================================================
+   */
 
   const value = useMemo<AdminStore>(
     () => ({
       authed,
-      adminName: "Pranav Jangam",
+
+      adminName:
+        "Pranav Jangam",
+
       login,
+
       logout,
+
       theme,
-      toggleTheme: () => setTheme((t) => (t === "dark" ? "light" : "dark")),
+
+      toggleTheme: () =>
+        setTheme((current) =>
+          current === "dark"
+            ? "light"
+            : "dark",
+        ),
+
+      tenants,
+
+      users,
+
+      activity,
+
+      createTenant,
+
+      updateTenant,
+
+      toggleTenantStatus,
+
+      createUser,
+    }),
+    [
+      authed,
+      theme,
       tenants,
       users,
       activity,
@@ -509,35 +1256,94 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
       updateTenant,
       toggleTenantStatus,
       createUser,
-    }),
-    [authed, theme, tenants, users, activity, createTenant, updateTenant, toggleTenantStatus, createUser, login, logout],
+      login,
+      logout,
+    ],
   );
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={value}>
+      {children}
+    </Ctx.Provider>
+  );
 }
+
+/*
+ * ============================================================
+ * USE ADMIN STORE
+ * ============================================================
+ */
 
 export function useAdminStore() {
   const ctx = useContext(Ctx);
-  if (!ctx) throw new Error("useAdminStore must be used inside AdminStoreProvider");
+
+  if (!ctx) {
+    throw new Error(
+      "useAdminStore must be used inside AdminStoreProvider",
+    );
+  }
+
   return ctx;
 }
 
-export function formatRelative(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.round(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.round(hours / 24);
-  if (days < 30) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+/*
+ * ============================================================
+ * DATE HELPERS
+ * ============================================================
+ */
+
+export function formatRelative(
+  iso: string,
+) {
+  const diff =
+    Date.now() -
+    new Date(iso).getTime();
+
+  const mins = Math.round(
+    diff / 60000,
+  );
+
+  if (mins < 1) {
+    return "just now";
+  }
+
+  if (mins < 60) {
+    return `${mins}m ago`;
+  }
+
+  const hours = Math.round(
+    mins / 60,
+  );
+
+  if (hours < 24) {
+    return `${hours}h ago`;
+  }
+
+  const days = Math.round(
+    hours / 24,
+  );
+
+  if (days < 30) {
+    return `${days}d ago`;
+  }
+
+  return new Date(
+    iso,
+  ).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+  });
 }
 
-export function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, {
+export function formatDate(
+  iso: string,
+) {
+  return new Date(
+    iso,
+  ).toLocaleDateString(undefined, {
     day: "numeric",
     month: "short",
     year: "numeric",
   });
 }
+

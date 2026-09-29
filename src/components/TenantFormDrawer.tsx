@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
 import { postAdminJson } from "@/lib/admin-api";
 
 import {
@@ -64,25 +65,39 @@ const emptyBranch: BranchInput = {
 const emptyForm = {
   instituteName: "",
   instituteType: "" as InstituteType | "",
+
   legalName: "",
   shortName: "",
+
   registrationNumber: "",
+
   regulatoryAuthority: "",
+
+  // Optional field
   regulatoryAuthorityId: "",
+
   regulatoryStatus: "ACTIVE" as "ACTIVE" | "INACTIVE",
+
   PAN: "",
   CIN: "",
+
   website: "",
   logo: "",
+
   country: "India",
+
   state: "",
   city: "",
   pinCode: "",
+
   registeredAddress: "",
   corporateAddress: "",
+
   sameAsRegistered: false,
+
   contactEmail: "",
   contactPhone: "",
+
   designation: "",
   status: "Active" as TenantStatus,
 };
@@ -94,17 +109,25 @@ const emptyForm = {
 type BankOnboardPayload = {
   institution_name: string;
   legal_name: string;
-  institution_type:
 
+  institution_type:
     | "NBFC"
     | "BANK";
+
   registration_number: string;
+
   PAN: string;
   CIN: string;
+
   website: string;
   logo: string;
+
   regulatory_authority_id: string;
-  regulatory_status: "ACTIVE" | "INACTIVE";
+
+  regulatory_status:
+    | "ACTIVE"
+    | "INACTIVE";
+
   country: string;
 };
 
@@ -115,22 +138,32 @@ type BankOnboardPayload = {
 type FormErrors = {
   instituteName?: string;
   instituteType?: string;
+
   legalName?: string;
   shortName?: string;
+
   registrationNumber?: string;
+
   regulatoryAuthority?: string;
+
   regulatoryAuthorityId?: string;
+
   regulatoryStatus?: string;
+
   PAN?: string;
   CIN?: string;
+
   logo?: string;
   website?: string;
+
   country?: string;
   state?: string;
   city?: string;
   pinCode?: string;
+
   registeredAddress?: string;
   corporateAddress?: string;
+
   contactEmail?: string;
   contactPhone?: string;
 };
@@ -149,7 +182,8 @@ type BranchErrors = {
 /* Validation Helpers                                                         */
 /* -------------------------------------------------------------------------- */
 
-const ifscPattern = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+const ifscPattern =
+  /^[A-Z]{4}0[A-Z0-9]{6}$/;
 
 function isHttpUrl(value: string) {
   try {
@@ -163,6 +197,10 @@ function isHttpUrl(value: string) {
     return false;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Form Validation                                                            */
+/* -------------------------------------------------------------------------- */
 
 function getFormErrors(
   form: typeof emptyForm,
@@ -237,9 +275,9 @@ function getFormErrors(
       "Country is required";
   }
 
-  /*
-   * CREATE BANK VALIDATION
-   */
+  /* ------------------------------------------------------------------------ */
+  /* CREATE BANK VALIDATION                                                   */
+  /* ------------------------------------------------------------------------ */
 
   if (creating) {
     /* PAN */
@@ -266,19 +304,16 @@ function getFormErrors(
         "Enter a valid 21-character CIN";
     }
 
-    /* Regulatory Authority ID */
-
-    if (!form.regulatoryAuthorityId.trim()) {
-      errors.regulatoryAuthorityId =
-        "Regulatory authority ID is required";
-    } else if (
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        form.regulatoryAuthorityId.trim(),
-      )
-    ) {
-      errors.regulatoryAuthorityId =
-        "Enter a valid UUID";
-    }
+    /*
+     * Regulatory Authority ID
+     *
+     * IMPORTANT:
+     * No validation here.
+     *
+     * It is optional.
+     * It can be blank.
+     * UUID format is NOT checked.
+     */
 
     /* Regulatory Status */
 
@@ -297,7 +332,9 @@ function getFormErrors(
         "Enter a valid logo URL starting with http:// or https://";
     }
   } else {
-    /* EDIT VALIDATION */
+    /* ---------------------------------------------------------------------- */
+    /* EDIT VALIDATION                                                        */
+    /* ---------------------------------------------------------------------- */
 
     if (
       form.regulatoryAuthority.length > 0 &&
@@ -329,7 +366,9 @@ function getFormErrors(
         "Enter a valid 6-digit PIN code";
     }
 
-    if (!form.registeredAddress.trim()) {
+    if (
+      !form.registeredAddress.trim()
+    ) {
       errors.registeredAddress =
         "Registered address is required";
     }
@@ -538,58 +577,43 @@ export function TenantFormDrawer({
       instituteType:
         tenant.instituteType || "",
 
-      legalName:
-        "",
+      legalName: "",
 
-      shortName:
-        "",
+      shortName: "",
 
       registrationNumber:
         tenant.registrationNumber ||
         tenant.employeeId ||
         "",
 
-      regulatoryAuthority:
-        "",
+      regulatoryAuthority: "",
 
       regulatoryAuthorityId:
+        tenant.regulatoryAuthorityId ||
         "",
 
-      regulatoryStatus:
-        "ACTIVE",
+      regulatoryStatus: "ACTIVE",
 
-      PAN:
-        "",
+      PAN: "",
 
       CIN:
+        tenant.cin ||
         "",
 
-      website:
-        "",
+      website: "",
 
-      logo:
-        "",
+      logo: "",
 
-      country:
-        "India",
+      country: "India",
 
-      state:
-        "",
+      state: "",
+      city: "",
+      pinCode: "",
 
-      city:
-        "",
+      registeredAddress: "",
+      corporateAddress: "",
 
-      pinCode:
-        "",
-
-      registeredAddress:
-        "",
-
-      corporateAddress:
-        "",
-
-      sameAsRegistered:
-        false,
+      sameAsRegistered: false,
 
       contactEmail:
         tenant.contactEmail ||
@@ -618,6 +642,7 @@ export function TenantFormDrawer({
         tenant.branches.map(
           (branch) => ({
             ...emptyBranch,
+
             branchName:
               branch.location || "",
           }),
@@ -664,6 +689,7 @@ export function TenantFormDrawer({
 
           return {
             ...branch,
+
             [key]:
               key === "ifscCode"
                 ? value.toUpperCase()
@@ -761,6 +787,10 @@ export function TenantFormDrawer({
           return name;
         });
 
+    /* ---------------------------------------------------------------------- */
+    /* Frontend Store Payload                                                 */
+    /* ---------------------------------------------------------------------- */
+
     const payload: BankInput = {
       instituteName:
         form.instituteName.trim(),
@@ -788,6 +818,20 @@ export function TenantFormDrawer({
 
       regulatoryAuthority:
         form.regulatoryAuthority.trim(),
+
+      /*
+       * Regulatory Authority ID is optional.
+       * No validation is applied.
+       */
+      regulatoryAuthorityId:
+        form.regulatoryAuthorityId.trim(),
+
+      /*
+       * CIN is passed to the frontend store
+       * so it can be displayed in the bank list.
+       */
+      cin:
+        form.CIN.trim().toUpperCase(),
 
       website:
         form.website.trim(),
@@ -850,6 +894,10 @@ export function TenantFormDrawer({
           logo:
             form.logo.trim(),
 
+          /*
+           * Optional on frontend.
+           * If blank, an empty string is sent.
+           */
           regulatory_authority_id:
             form.regulatoryAuthorityId.trim(),
 
@@ -938,9 +986,9 @@ export function TenantFormDrawer({
         <div className="flex-1 overflow-y-auto">
           <div className="space-y-8 px-6 py-6">
 
-            {/* ============================================================ */}
-            {/* Institute Details                                            */}
-            {/* ============================================================ */}
+            {/* ========================================================== */}
+            {/* Institute Details                                           */}
+            {/* ========================================================== */}
 
             <section className="space-y-5">
               <SectionHeading>
@@ -1009,14 +1057,12 @@ export function TenantFormDrawer({
                       Select institute type
                     </option>
 
-                   
-
                     <option value="NBFC">
                       NBFC
                     </option>
 
                     <option value="BANK">
-                       Bank
+                      Bank
                     </option>
                   </select>
                 </Field>
@@ -1084,7 +1130,9 @@ export function TenantFormDrawer({
 
                 <Field
                   label="PAN"
-                  error={getFieldError("PAN")}
+                  error={getFieldError(
+                    "PAN",
+                  )}
                 >
                   <Input
                     value={form.PAN}
@@ -1101,6 +1149,7 @@ export function TenantFormDrawer({
                     className={inputClass}
                   />
                 </Field>
+
               </div>
 
               {/* CIN + Regulatory Authority ID */}
@@ -1110,7 +1159,9 @@ export function TenantFormDrawer({
 
                   <Field
                     label="CIN"
-                    error={getFieldError("CIN")}
+                    error={getFieldError(
+                      "CIN",
+                    )}
                   >
                     <Input
                       value={form.CIN}
@@ -1130,7 +1181,6 @@ export function TenantFormDrawer({
 
                   <Field
                     label="Regulatory Authority ID"
-                    required
                     error={getFieldError(
                       "regulatoryAuthorityId",
                     )}
@@ -1153,6 +1203,7 @@ export function TenantFormDrawer({
                       className={inputClass}
                     />
                   </Field>
+
                 </div>
               )}
 
@@ -1225,7 +1276,7 @@ export function TenantFormDrawer({
                           "regulatoryStatus",
                           event.target.value as
                             | "ACTIVE"
-                           
+                            | "INACTIVE",
                         )
                       }
                       className={selectClass}
@@ -1234,18 +1285,22 @@ export function TenantFormDrawer({
                         Active
                       </option>
 
-                  
+                      <option value="INACTIVE">
+                        Inactive
+                      </option>
                     </select>
                   </Field>
+
                 </div>
               )}
             </section>
 
-            {/* ============================================================ */}
-            {/* Location Details                                             */}
-            {/* ============================================================ */}
+            {/* ========================================================== */}
+            {/* Location Details                                            */}
+            {/* ========================================================== */}
 
             <section className="space-y-5">
+
               <SectionHeading>
                 Registered & Location Details
               </SectionHeading>
@@ -1276,10 +1331,8 @@ export function TenantFormDrawer({
                   />
                 </Field>
 
-              
               </div>
 
-              
             </section>
           </div>
         </div>
@@ -1314,6 +1367,7 @@ export function TenantFormDrawer({
               ? "Save Changes"
               : "Create Bank"}
           </Button>
+
         </div>
       </SheetContent>
     </Sheet>
@@ -1341,11 +1395,13 @@ function SectionHeading({
 }) {
   return (
     <div className="flex items-center gap-3">
+
       <h3 className="text-sm font-semibold tracking-tight text-foreground">
         {children}
       </h3>
 
       <div className="h-px flex-1 bg-border" />
+
     </div>
   );
 }
@@ -1367,7 +1423,9 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
+
       <Label className="text-sm font-medium text-foreground">
+
         {label}
 
         {required && (
@@ -1375,6 +1433,7 @@ function Field({
             *
           </span>
         )}
+
       </Label>
 
       {children}
@@ -1384,6 +1443,7 @@ function Field({
           {error}
         </p>
       )}
+
     </div>
   );
 }
