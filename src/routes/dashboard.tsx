@@ -1,16 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   Building2,
   CheckCircle2,
@@ -26,14 +16,7 @@ import {
 
 import { AppShell } from "@/components/AppShell";
 import { StatusBadge } from "@/components/StatusBadge";
-import {
-  ONBOARDING_TREND,
-  PRODUCT_USAGE,
-  formatRelative,
-  tenantFullName,
-  useAdminStore,
-  type ActivityItem,
-} from "@/lib/admin-store";
+import { ONBOARDING_TREND, PRODUCT_USAGE, formatRelative, tenantFullName, useAdminStore, type ActivityItem } from "@/lib/admin-store";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/dashboard")({
@@ -42,8 +25,7 @@ export const Route = createFileRoute("/dashboard")({
       { title: "Dashboard — System Administrator Panel" },
       {
         name: "description",
-        content:
-          "Platform overview for the Banking LOS admin: tenant counts, onboarding trends, product usage and recent activity.",
+        content: "Platform overview for the Banking LOS admin: tenant counts, onboarding trends, product usage and recent activity.",
       },
       { property: "og:title", content: "Dashboard — System Administrator Panel" },
       {
@@ -83,9 +65,7 @@ function DashboardPage() {
   const loaded = useLoaded();
 
   const active = tenants.filter((t) => t.status === "Active").length;
-  const recent = [...tenants]
-    .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
-    .slice(0, 5);
+  const recent = [...tenants].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)).slice(0, 5);
 
   const stats = [
     { label: "Total Tenants", value: tenants.length, trend: "+12.5%", icon: Building2 },
@@ -110,11 +90,7 @@ function DashboardPage() {
                   <Icon className="size-4.5" />
                 </span>
               </div>
-              {loaded ? (
-                <p className="mt-3 text-3xl font-bold tracking-tight">{value}</p>
-              ) : (
-                <Skeleton className="mt-3 h-9 w-16" />
-              )}
+              {loaded ? <p className="mt-3 text-3xl font-bold tracking-tight">{value}</p> : <Skeleton className="mt-3 h-9 w-16" />}
               <p className="mt-2 flex items-center gap-1 text-xs font-medium text-success">
                 <TrendingUp className="size-3.5" /> {trend}
               </p>
@@ -147,11 +123,7 @@ function DashboardPage() {
                       axisLine={false}
                       tick={{ fontSize: 12, fill: "var(--color-muted-foreground)" }}
                     />
-                    <YAxis
-                      tickLine={false}
-                      axisLine={false}
-                      tick={{ fontSize: 12, fill: "var(--color-muted-foreground)" }}
-                    />
+                    <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "var(--color-muted-foreground)" }} />
                     <Tooltip
                       contentStyle={{
                         background: "var(--color-card)",
@@ -161,13 +133,7 @@ function DashboardPage() {
                         color: "var(--color-card-foreground)",
                       }}
                     />
-                    <Area
-                      type="monotone"
-                      dataKey="tenants"
-                      stroke="var(--color-accent)"
-                      strokeWidth={2.5}
-                      fill="url(#tenantFill)"
-                    />
+                    <Area type="monotone" dataKey="tenants" stroke="var(--color-accent)" strokeWidth={2.5} fill="url(#tenantFill)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -194,11 +160,7 @@ function DashboardPage() {
                       tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
                       tickFormatter={(v: string) => v.replace(" Loan", "")}
                     />
-                    <YAxis
-                      tickLine={false}
-                      axisLine={false}
-                      tick={{ fontSize: 12, fill: "var(--color-muted-foreground)" }}
-                    />
+                    <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "var(--color-muted-foreground)" }} />
                     <Tooltip
                       cursor={{ fill: "var(--color-secondary)" }}
                       contentStyle={{
@@ -223,10 +185,7 @@ function DashboardPage() {
           <div className="surface-card animate-rise p-5 lg:col-span-3">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-semibold">Recently Added Tenants</h2>
-              <Link
-                to="/tenants"
-                className="inline-flex items-center gap-1 text-sm font-medium text-accent hover:underline"
-              >
+              <Link to="/tenants" className="inline-flex items-center gap-1 text-sm font-medium text-accent hover:underline">
                 View all <ArrowUpRight className="size-3.5" />
               </Link>
             </div>
@@ -243,10 +202,7 @@ function DashboardPage() {
                   </thead>
                   <tbody>
                     {recent.map((t) => (
-                      <tr
-                        key={t.id}
-                        className="border-b border-border/60 last:border-0 hover:bg-secondary/50"
-                      >
+                      <tr key={t.id} className="border-b border-border/60 last:border-0 hover:bg-secondary/50">
                         <td className="py-3 font-medium">
                           <Link to="/tenants/$tenantId" params={{ tenantId: t.id }}>
                             {tenantFullName(t)}
@@ -256,9 +212,7 @@ function DashboardPage() {
                         <td className="py-3">
                           <StatusBadge status={t.status} />
                         </td>
-                        <td className="py-3 text-right text-muted-foreground">
-                          {formatRelative(t.createdAt)}
-                        </td>
+                        <td className="py-3 text-right text-muted-foreground">{formatRelative(t.createdAt)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -281,9 +235,7 @@ function DashboardPage() {
                   const Icon = activityIcon[item.kind];
                   return (
                     <li key={item.id} className="flex gap-3">
-                      <span
-                        className={`grid size-8 shrink-0 place-items-center rounded-lg ${activityTone[item.kind]}`}
-                      >
+                      <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${activityTone[item.kind]}`}>
                         <Icon className="size-4" />
                       </span>
                       <div className="min-w-0">

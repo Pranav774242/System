@@ -1,7 +1,6 @@
 import { getAccessToken } from "@/lib/admin-store";
 
-export const USERS_API_URL =
-  "https://los-backend-355v.onrender.com/api/v1/administration/users?organizationId=5";
+export const USERS_API_URL = "https://los-backend-355v.onrender.com/api/v1/administration/users?organizationId=5";
 
 export type ApiUser = {
   id: number;
@@ -119,25 +118,19 @@ export async function getUsers(): Promise<ApiUser[]> {
       // Ignore invalid JSON response.
     }
 
-    throw new Error(
-      message || `Unable to load users (${response.status})`,
-    );
+    throw new Error(message || `Unable to load users (${response.status})`);
   }
 
   const result: UsersResponse = await response.json();
 
   if (!result.success) {
-    throw new Error(
-      result.message || "Unable to load users",
-    );
+    throw new Error(result.message || "Unable to load users");
   }
 
   return Array.isArray(result.data) ? result.data : [];
 }
 
-export async function getUserById(
-  userId: string,
-): Promise<ApiUser | null> {
+export async function getUserById(userId: string): Promise<ApiUser | null> {
   const users = await getUsers();
 
   const id = Number(userId);
@@ -146,67 +139,30 @@ export async function getUserById(
     return null;
   }
 
-  return (
-    users.find(
-      (user) =>
-        user.id === id ||
-        user.pkid === id,
-    ) || null
-  );
+  return users.find((user) => user.id === id || user.pkid === id) || null;
 }
 
 export function getUserName(user: ApiUser): string {
-  return (
-    user.fullName ||
-    user.name ||
-    [
-      user.first_name,
-      user.middle_name,
-      user.last_name,
-    ]
-      .filter(Boolean)
-      .join(" ") ||
-    "Unnamed User"
-  );
+  return user.fullName || user.name || [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(" ") || "Unnamed User";
 }
 
 export function getUserRole(user: ApiUser): string {
-  return (
-    user.role_name ||
-    user.role ||
-    "—"
-  );
+  return user.role_name || user.role || "—";
 }
 
 export function getUserStatus(user: ApiUser): string {
-  return (
-    user.status ||
-    (user.is_active ? "OPERATIVE" : "INACTIVE")
-  );
+  return user.status || (user.is_active ? "OPERATIVE" : "INACTIVE");
 }
 
 export function getUserBranch(user: ApiUser): string {
-  return (
-    user.login_branch_name ||
-    user.login_branch ||
-    "—"
-  );
+  return user.login_branch_name || user.login_branch || "—";
 }
 
-export function getUserDateOfBirth(
-  user: ApiUser,
-): string {
-  return (
-    user.date_of_birth ||
-    user.dob ||
-    user.DOB ||
-    "—"
-  );
+export function getUserDateOfBirth(user: ApiUser): string {
+  return user.date_of_birth || user.dob || user.DOB || "—";
 }
 
-export function formatUserDate(
-  value?: string,
-): string {
+export function formatUserDate(value?: string): string {
   if (!value) {
     return "—";
   }
@@ -224,9 +180,7 @@ export function formatUserDate(
   });
 }
 
-export function formatUserDateTime(
-  value?: string,
-): string {
+export function formatUserDateTime(value?: string): string {
   if (!value) {
     return "—";
   }

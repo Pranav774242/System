@@ -1,19 +1,8 @@
-
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 export type TenantStatus = "Active" | "Inactive";
 
-export type InstituteType =
-  | "BANK"
-  | "NBFC";
+export type InstituteType = "BANK" | "NBFC";
 
 export type Branch = {
   id: string;
@@ -112,9 +101,7 @@ export const DESIGNATIONS = [
 ];
 
 export function tenantFullName(t: Tenant) {
-  return [t.firstName, t.middleName, t.lastName]
-    .filter(Boolean)
-    .join(" ");
+  return [t.firstName, t.middleName, t.lastName].filter(Boolean).join(" ");
 }
 
 export function initials(t: Tenant) {
@@ -123,13 +110,9 @@ export function initials(t: Tenant) {
 
 let idSeq = 1000;
 
-export const nextId = (prefix = "id") =>
-  `${prefix}-${++idSeq}`;
+export const nextId = (prefix = "id") => `${prefix}-${++idSeq}`;
 
-const daysAgo = (n: number) =>
-  new Date(
-    Date.now() - n * 86_400_000,
-  ).toISOString();
+const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
 
 function makeTenant(
   partial: Omit<
@@ -166,12 +149,10 @@ function makeTenant(
 
     id: nextId("tnt"),
 
-    branches: partial.branches.map(
-      (location) => ({
-        id: nextId("br"),
-        location,
-      }),
-    ),
+    branches: partial.branches.map((location) => ({
+      id: nextId("br"),
+      location,
+    })),
 
     createdAt,
 
@@ -184,9 +165,7 @@ function makeTenant(
       {
         id: nextId("act"),
         text: `Status set to ${partial.status}`,
-        at: daysAgo(
-          Math.max(createdDaysAgo - 1, 0),
-        ),
+        at: daysAgo(Math.max(createdDaysAgo - 1, 0)),
       },
     ],
   };
@@ -202,11 +181,7 @@ const SEED_TENANTS: Tenant[] = [
       email: "aarav.mehta@abcfinance.in",
       mobile: "+91 98200 41253",
       organization: "ABC Finance Ltd",
-      branches: [
-        "Mumbai — Andheri East",
-        "Mumbai — Lower Parel",
-        "Pune — Kothrud",
-      ],
+      branches: ["Mumbai — Andheri East", "Mumbai — Lower Parel", "Pune — Kothrud"],
       designation: "Regional Director",
       status: "Active",
     },
@@ -221,10 +196,7 @@ const SEED_TENANTS: Tenant[] = [
       email: "priya.raghavan@sundarbancorp.com",
       mobile: "+91 99401 77812",
       organization: "Sundar Bank Corp",
-      branches: [
-        "Chennai — T Nagar",
-        "Coimbatore — RS Puram",
-      ],
+      branches: ["Chennai — T Nagar", "Coimbatore — RS Puram"],
       designation: "Branch Manager",
       status: "Active",
     },
@@ -255,11 +227,7 @@ const SEED_TENANTS: Tenant[] = [
       email: "neha.kulkarni@grihafinserv.com",
       mobile: "+91 93726 55401",
       organization: "Griha Finserv",
-      branches: [
-        "Bengaluru — Indiranagar",
-        "Bengaluru — Whitefield",
-        "Mysuru — Saraswathipuram",
-      ],
+      branches: ["Bengaluru — Indiranagar", "Bengaluru — Whitefield", "Mysuru — Saraswathipuram"],
       designation: "Relationship Manager",
       status: "Active",
     },
@@ -275,10 +243,7 @@ const SEED_TENANTS: Tenant[] = [
       email: "imran.qureshi@northstarbank.in",
       mobile: "+91 90045 31287",
       organization: "Northstar Bank",
-      branches: [
-        "Delhi — Connaught Place",
-        "Noida — Sector 62",
-      ],
+      branches: ["Delhi — Connaught Place", "Noida — Sector 62"],
       designation: "Credit Analyst",
       status: "Active",
     },
@@ -309,11 +274,7 @@ const SEED_TENANTS: Tenant[] = [
       email: "vikram.nair@keralagold.in",
       mobile: "+91 94470 87654",
       organization: "Kerala Gold Finance",
-      branches: [
-        "Kochi — MG Road",
-        "Thrissur — Round West",
-        "Kozhikode — Mavoor Road",
-      ],
+      branches: ["Kochi — MG Road", "Thrissur — Round West", "Kozhikode — Mavoor Road"],
       designation: "Branch Manager",
       status: "Active",
     },
@@ -328,10 +289,7 @@ const SEED_TENANTS: Tenant[] = [
       email: "ananya.bose@bengalcreditunion.in",
       mobile: "+91 98310 45560",
       organization: "Bengal Credit Union",
-      branches: [
-        "Kolkata — Salt Lake",
-        "Howrah — Shibpur",
-      ],
+      branches: ["Kolkata — Salt Lake", "Howrah — Shibpur"],
       designation: "Operations Head",
       status: "Active",
     },
@@ -362,10 +320,7 @@ const SEED_TENANTS: Tenant[] = [
       email: "meera.pillai@zenithhousing.com",
       mobile: "+91 99000 76432",
       organization: "Zenith Housing Finance",
-      branches: [
-        "Ahmedabad — Navrangpura",
-        "Surat — Adajan",
-      ],
+      branches: ["Ahmedabad — Navrangpura", "Surat — Adajan"],
       designation: "Credit Analyst",
       status: "Active",
     },
@@ -455,10 +410,7 @@ type AdminStore = {
   activity: ActivityItem[];
 
   createTenant: (input: BankInput) => Tenant;
-  updateTenant: (
-    id: string,
-    input: BankInput,
-  ) => void;
+  updateTenant: (id: string, input: BankInput) => void;
 
   toggleTenantStatus: (id: string) => void;
 
@@ -472,9 +424,7 @@ export function getAccessToken() {
     return null;
   }
 
-  return window.localStorage.getItem(
-    "accessToken",
-  );
+  return window.localStorage.getItem("accessToken");
 }
 
 /*
@@ -537,61 +487,29 @@ type OrganizationApiResponse = {
  * ============================================================
  */
 
-function mapOrganizationToTenant(
-  organization: OrganizationApiResponse,
-): Tenant {
-  const instituteName =
-    organization.institution_name ??
-    organization.name ??
-    "";
+function mapOrganizationToTenant(organization: OrganizationApiResponse): Tenant {
+  const instituteName = organization.institution_name ?? organization.name ?? "";
 
-  const instituteTypeRaw =
-    organization.institution_type ??
-    organization.type ??
-    "";
+  const instituteTypeRaw = organization.institution_type ?? organization.type ?? "";
 
   /*
    * IMPORTANT:
    * Only BANK and NBFC are allowed.
    */
-  const instituteType: InstituteType =
-    instituteTypeRaw.toUpperCase() === "NBFC"
-      ? "NBFC"
-      : "BANK";
+  const instituteType: InstituteType = instituteTypeRaw.toUpperCase() === "NBFC" ? "NBFC" : "BANK";
 
-  const registrationNumber =
-    organization.registration_number ??
-    organization.registration_id ??
-    "";
+  const registrationNumber = organization.registration_number ?? organization.registration_id ?? "";
 
-  const regulatoryAuthorityId =
-    organization.regulatory_authority_id ??
-    organization.regulatory_authority ??
-    "";
+  const regulatoryAuthorityId = organization.regulatory_authority_id ?? organization.regulatory_authority ?? "";
 
-  const cin =
-    organization.cin_no ??
-    organization.cin_number ??
-    organization.cin ??
-    "";
+  const cin = organization.cin_no ?? organization.cin_number ?? organization.cin ?? "";
 
-  const backendStatus =
-    organization.status ??
-    organization.regulatory_status ??
-    "ACTIVE";
+  const backendStatus = organization.status ?? organization.regulatory_status ?? "ACTIVE";
 
-  const frontendStatus: TenantStatus =
-    backendStatus.toUpperCase() === "ACTIVE"
-      ? "Active"
-      : "Inactive";
+  const frontendStatus: TenantStatus = backendStatus.toUpperCase() === "ACTIVE" ? "Active" : "Inactive";
 
   return {
-    id:
-      organization.id ??
-      String(
-        organization.pkid ??
-          nextId("tnt"),
-      ),
+    id: organization.id ?? String(organization.pkid ?? nextId("tnt")),
 
     /*
      * Existing Tenant fields
@@ -600,31 +518,21 @@ function mapOrganizationToTenant(
     middleName: "",
     lastName: "",
 
-    employeeId:
-      registrationNumber,
+    employeeId: registrationNumber,
 
-    email:
-      organization.contact_email ??
-      "",
+    email: organization.contact_email ?? "",
 
-    mobile:
-      organization.contact_phone ??
-      "",
+    mobile: organization.contact_phone ?? "",
 
-    organization:
-      instituteName,
+    organization: instituteName,
 
     branches: [],
 
-    designation:
-      "Relationship Manager",
+    designation: "Relationship Manager",
 
-    status:
-      frontendStatus,
+    status: frontendStatus,
 
-    createdAt:
-      organization.created_at ??
-      new Date().toISOString(),
+    createdAt: organization.created_at ?? new Date().toISOString(),
 
     activity: [],
 
@@ -637,13 +545,9 @@ function mapOrganizationToTenant(
 
     registrationNumber,
 
-    contactEmail:
-      organization.contact_email ??
-      "",
+    contactEmail: organization.contact_email ?? "",
 
-    contactPhone:
-      organization.contact_phone ??
-      "",
+    contactPhone: organization.contact_phone ?? "",
 
     cin,
 
@@ -657,9 +561,7 @@ function mapOrganizationToTenant(
  * ============================================================
  */
 
-async function fetchOrganizations(): Promise<
-  Tenant[] | null
-> {
+async function fetchOrganizations(): Promise<Tenant[] | null> {
   const token = getAccessToken();
 
   if (!token) {
@@ -667,29 +569,22 @@ async function fetchOrganizations(): Promise<
   }
 
   try {
-    const response = await fetch(
-      "https://los-backend-355v.onrender.com/api/v1/administration/organizations",
-      {
-        method: "GET",
+    const response = await fetch("https://los-backend-355v.onrender.com/api/v1/administration/organizations", {
+      method: "GET",
 
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
-    );
+    });
 
     if (!response.ok) {
-      console.error(
-        "Organizations GET failed:",
-        response.status,
-      );
+      console.error("Organizations GET failed:", response.status);
 
       return null;
     }
 
-    const responseText =
-      await response.text();
+    const responseText = await response.text();
 
     if (!responseText) {
       return [];
@@ -698,95 +593,59 @@ async function fetchOrganizations(): Promise<
     let responseData: unknown;
 
     try {
-      responseData =
-        JSON.parse(responseText);
+      responseData = JSON.parse(responseText);
     } catch (error) {
-      console.error(
-        "Invalid organizations API response:",
-        error,
-      );
+      console.error("Invalid organizations API response:", error);
 
       return null;
     }
 
-    let organizations: OrganizationApiResponse[] =
-      [];
+    let organizations: OrganizationApiResponse[] = [];
 
     /*
      * Direct array response
      */
     if (Array.isArray(responseData)) {
-      organizations =
-        responseData as OrganizationApiResponse[];
+      organizations = responseData as OrganizationApiResponse[];
     }
 
     /*
      * { data: [...] } response
      */
-    else if (
-      responseData &&
-      typeof responseData === "object"
-    ) {
-      const body =
-        responseData as {
-          data?: unknown;
-        };
+    else if (responseData && typeof responseData === "object") {
+      const body = responseData as {
+        data?: unknown;
+      };
 
       if (Array.isArray(body.data)) {
-        organizations =
-          body.data as OrganizationApiResponse[];
+        organizations = body.data as OrganizationApiResponse[];
       }
     }
 
-    console.log(
-      "Organizations received:",
-      organizations,
-    );
+    console.log("Organizations received:", organizations);
 
-    const mappedTenants =
-      organizations.map(
-        mapOrganizationToTenant,
-      );
+    const mappedTenants = organizations.map(mapOrganizationToTenant);
 
-    console.log(
-      "Organizations mapped to tenants:",
-      mappedTenants,
-    );
+    console.log("Organizations mapped to tenants:", mappedTenants);
 
     return mappedTenants;
   } catch (error) {
-    console.error(
-      "Failed to fetch organizations:",
-      error,
-    );
+    console.error("Failed to fetch organizations:", error);
 
     return null;
   }
 }
 
-export function AdminStoreProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const [authed, setAuthed] =
-    useState(() =>
-      Boolean(getAccessToken()),
-    );
+export function AdminStoreProvider({ children }: { children: ReactNode }) {
+  const [authed, setAuthed] = useState(() => Boolean(getAccessToken()));
 
-  const [theme, setTheme] =
-    useState<"light" | "dark">("light");
+  const [theme, setTheme] = useState<"light" | "dark">("light");
 
-  const [tenants, setTenants] =
-    useState<Tenant[]>(SEED_TENANTS);
+  const [tenants, setTenants] = useState<Tenant[]>(SEED_TENANTS);
 
-  const [users, setUsers] =
-    useState<User[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
 
-  const [activity, setActivity] =
-    useState<ActivityItem[]>(
-      SEED_ACTIVITY,
-    );
+  const [activity, setActivity] = useState<ActivityItem[]>(SEED_ACTIVITY);
 
   /*
    * ==========================================================
@@ -794,17 +653,11 @@ export function AdminStoreProvider({
    * ==========================================================
    */
 
-  const login = useCallback(
-    (accessToken: string) => {
-      window.localStorage.setItem(
-        "accessToken",
-        accessToken,
-      );
+  const login = useCallback((accessToken: string) => {
+    window.localStorage.setItem("accessToken", accessToken);
 
-      setAuthed(true);
-    },
-    [],
-  );
+    setAuthed(true);
+  }, []);
 
   /*
    * ==========================================================
@@ -813,9 +666,7 @@ export function AdminStoreProvider({
    */
 
   const logout = useCallback(() => {
-    window.localStorage.removeItem(
-      "accessToken",
-    );
+    window.localStorage.removeItem("accessToken");
 
     setAuthed(false);
 
@@ -840,27 +691,25 @@ export function AdminStoreProvider({
   useEffect(() => {
     let cancelled = false;
 
-    const loadOrganizations =
-      async () => {
-        if (!getAccessToken()) {
-          return;
-        }
+    const loadOrganizations = async () => {
+      if (!getAccessToken()) {
+        return;
+      }
 
-        const apiTenants =
-          await fetchOrganizations();
+      const apiTenants = await fetchOrganizations();
 
-        if (cancelled) {
-          return;
-        }
+      if (cancelled) {
+        return;
+      }
 
-        /*
-         * Do not replace existing data if
-         * the API request failed.
-         */
-        if (apiTenants !== null) {
-          setTenants(apiTenants);
-        }
-      };
+      /*
+       * Do not replace existing data if
+       * the API request failed.
+       */
+      if (apiTenants !== null) {
+        setTenants(apiTenants);
+      }
+    };
 
     loadOrganizations();
 
@@ -876,29 +725,17 @@ export function AdminStoreProvider({
    */
 
   useEffect(() => {
-    const stored =
-      window.localStorage.getItem(
-        "los-theme",
-      );
+    const stored = window.localStorage.getItem("los-theme");
 
-    if (
-      stored === "dark" ||
-      stored === "light"
-    ) {
+    if (stored === "dark" || stored === "light") {
       setTheme(stored);
     }
   }, []);
 
   useEffect(() => {
-    document.documentElement.classList.toggle(
-      "dark",
-      theme === "dark",
-    );
+    document.documentElement.classList.toggle("dark", theme === "dark");
 
-    window.localStorage.setItem(
-      "los-theme",
-      theme,
-    );
+    window.localStorage.setItem("los-theme", theme);
   }, [theme]);
 
   /*
@@ -907,23 +744,17 @@ export function AdminStoreProvider({
    * ==========================================================
    */
 
-  const pushActivity = useCallback(
-    (
-      text: string,
-      kind: ActivityItem["kind"],
-    ) => {
-      setActivity((prev) => [
-        {
-          id: nextId("f"),
-          text,
-          at: new Date().toISOString(),
-          kind,
-        },
-        ...prev,
-      ]);
-    },
-    [],
-  );
+  const pushActivity = useCallback((text: string, kind: ActivityItem["kind"]) => {
+    setActivity((prev) => [
+      {
+        id: nextId("f"),
+        text,
+        at: new Date().toISOString(),
+        kind,
+      },
+      ...prev,
+    ]);
+  }, []);
 
   /*
    * ==========================================================
@@ -933,66 +764,47 @@ export function AdminStoreProvider({
 
   const createTenant = useCallback(
     (input: BankInput) => {
-      const now =
-        new Date().toISOString();
+      const now = new Date().toISOString();
 
       const tenant: Tenant = {
-        firstName:
-          input.instituteName,
+        firstName: input.instituteName,
 
         middleName: "",
 
         lastName: "",
 
-        employeeId:
-          input.registrationNumber,
+        employeeId: input.registrationNumber,
 
-        email:
-          input.contactEmail,
+        email: input.contactEmail,
 
-        mobile:
-          input.contactPhone,
+        mobile: input.contactPhone,
 
-        organization:
-          input.instituteName,
+        organization: input.instituteName,
 
-        designation:
-          input.designation ?? "",
+        designation: input.designation ?? "",
 
-        status:
-          input.status ?? "Active",
+        status: input.status ?? "Active",
 
-        instituteName:
-          input.instituteName,
+        instituteName: input.instituteName,
 
-        instituteType:
-          input.instituteType as InstituteType,
+        instituteType: input.instituteType as InstituteType,
 
-        registrationNumber:
-          input.registrationNumber,
+        registrationNumber: input.registrationNumber,
 
-        contactEmail:
-          input.contactEmail,
+        contactEmail: input.contactEmail,
 
-        contactPhone:
-          input.contactPhone,
+        contactPhone: input.contactPhone,
 
-        cin:
-          input.cin ?? "",
+        cin: input.cin ?? "",
 
-        regulatoryAuthorityId:
-          input.regulatoryAuthorityId ??
-          "",
+        regulatoryAuthorityId: input.regulatoryAuthorityId ?? "",
 
         id: nextId("tnt"),
 
-        branches:
-          input.branches.map(
-            (location) => ({
-              id: nextId("br"),
-              location,
-            }),
-          ),
+        branches: input.branches.map((location) => ({
+          id: nextId("br"),
+          location,
+        })),
 
         createdAt: now,
 
@@ -1005,15 +817,9 @@ export function AdminStoreProvider({
         ],
       };
 
-      setTenants((prev) => [
-        tenant,
-        ...prev,
-      ]);
+      setTenants((prev) => [tenant, ...prev]);
 
-      pushActivity(
-        `Tenant '${input.instituteName}' created`,
-        "created",
-      );
+      pushActivity(`Tenant '${input.instituteName}' created`, "created");
 
       return tenant;
     },
@@ -1027,12 +833,8 @@ export function AdminStoreProvider({
    */
 
   const updateTenant = useCallback(
-    (
-      id: string,
-      input: BankInput,
-    ) => {
-      const now =
-        new Date().toISOString();
+    (id: string, input: BankInput) => {
+      const now = new Date().toISOString();
 
       setTenants((prev) =>
         prev.map((tenant) =>
@@ -1040,53 +842,34 @@ export function AdminStoreProvider({
             ? {
                 ...tenant,
 
-                instituteName:
-                  input.instituteName,
+                instituteName: input.instituteName,
 
-                instituteType:
-                  input.instituteType as InstituteType,
+                instituteType: input.instituteType as InstituteType,
 
-                registrationNumber:
-                  input.registrationNumber,
+                registrationNumber: input.registrationNumber,
 
-                contactEmail:
-                  input.contactEmail,
+                contactEmail: input.contactEmail,
 
-                contactPhone:
-                  input.contactPhone,
+                contactPhone: input.contactPhone,
 
-                cin:
-                  input.cin ??
-                  tenant.cin,
+                cin: input.cin ?? tenant.cin,
 
-                regulatoryAuthorityId:
-                  input.regulatoryAuthorityId ??
-                  tenant.regulatoryAuthorityId,
+                regulatoryAuthorityId: input.regulatoryAuthorityId ?? tenant.regulatoryAuthorityId,
 
-                organization:
-                  input.instituteName,
+                organization: input.instituteName,
 
-                email:
-                  input.contactEmail,
+                email: input.contactEmail,
 
-                mobile:
-                  input.contactPhone,
+                mobile: input.contactPhone,
 
-                designation:
-                  input.designation ??
-                  tenant.designation,
+                designation: input.designation ?? tenant.designation,
 
-                status:
-                  input.status ??
-                  tenant.status,
+                status: input.status ?? tenant.status,
 
-                branches:
-                  input.branches.map(
-                    (location) => ({
-                      id: nextId("br"),
-                      location,
-                    }),
-                  ),
+                branches: input.branches.map((location) => ({
+                  id: nextId("br"),
+                  location,
+                })),
 
                 activity: [
                   {
@@ -1101,10 +884,7 @@ export function AdminStoreProvider({
         ),
       );
 
-      pushActivity(
-        `Tenant '${input.instituteName}' updated`,
-        "updated",
-      );
+      pushActivity(`Tenant '${input.instituteName}' updated`, "updated");
     },
     [pushActivity],
   );
@@ -1122,25 +902,12 @@ export function AdminStoreProvider({
 
         id: nextId("usr"),
 
-        createdAt:
-          new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       };
 
-      setUsers((prev) => [
-        user,
-        ...prev,
-      ]);
+      setUsers((prev) => [user, ...prev]);
 
-      pushActivity(
-        `User '${[
-          input.firstName,
-          input.middleName,
-          input.lastName,
-        ]
-          .filter(Boolean)
-          .join(" ")}' created`,
-        "created",
-      );
+      pushActivity(`User '${[input.firstName, input.middleName, input.lastName].filter(Boolean).join(" ")}' created`, "created");
 
       return user;
     },
@@ -1153,58 +920,43 @@ export function AdminStoreProvider({
    * ==========================================================
    */
 
-  const toggleTenantStatus =
-    useCallback(
-      (id: string) => {
-        const now =
-          new Date().toISOString();
+  const toggleTenantStatus = useCallback(
+    (id: string) => {
+      const now = new Date().toISOString();
 
-        setTenants((prev) =>
-          prev.map((tenant) => {
-            if (tenant.id !== id) {
-              return tenant;
-            }
+      setTenants((prev) =>
+        prev.map((tenant) => {
+          if (tenant.id !== id) {
+            return tenant;
+          }
 
-            const status: TenantStatus =
-              tenant.status === "Active"
-                ? "Inactive"
-                : "Active";
+          const status: TenantStatus = tenant.status === "Active" ? "Inactive" : "Active";
 
-            return {
-              ...tenant,
+          return {
+            ...tenant,
 
-              status,
+            status,
 
-              activity: [
-                {
-                  id: nextId("act"),
-                  text: `Status changed to ${status}`,
-                  at: now,
-                },
-                ...tenant.activity,
-              ],
-            };
-          }),
-        );
+            activity: [
+              {
+                id: nextId("act"),
+                text: `Status changed to ${status}`,
+                at: now,
+              },
+              ...tenant.activity,
+            ],
+          };
+        }),
+      );
 
-        const tenant =
-          tenants.find(
-            (item) => item.id === id,
-          );
+      const tenant = tenants.find((item) => item.id === id);
 
-        if (tenant) {
-          pushActivity(
-            `Tenant '${tenant.organization}' status changed to ${
-              tenant.status === "Active"
-                ? "Inactive"
-                : "Active"
-            }`,
-            "status",
-          );
-        }
-      },
-      [pushActivity, tenants],
-    );
+      if (tenant) {
+        pushActivity(`Tenant '${tenant.organization}' status changed to ${tenant.status === "Active" ? "Inactive" : "Active"}`, "status");
+      }
+    },
+    [pushActivity, tenants],
+  );
 
   /*
    * ==========================================================
@@ -1216,8 +968,7 @@ export function AdminStoreProvider({
     () => ({
       authed,
 
-      adminName:
-        "Pranav Jangam",
+      adminName: "Pranav Jangam",
 
       login,
 
@@ -1225,12 +976,7 @@ export function AdminStoreProvider({
 
       theme,
 
-      toggleTheme: () =>
-        setTheme((current) =>
-          current === "dark"
-            ? "light"
-            : "dark",
-        ),
+      toggleTheme: () => setTheme((current) => (current === "dark" ? "light" : "dark")),
 
       tenants,
 
@@ -1246,26 +992,10 @@ export function AdminStoreProvider({
 
       createUser,
     }),
-    [
-      authed,
-      theme,
-      tenants,
-      users,
-      activity,
-      createTenant,
-      updateTenant,
-      toggleTenantStatus,
-      createUser,
-      login,
-      logout,
-    ],
+    [authed, theme, tenants, users, activity, createTenant, updateTenant, toggleTenantStatus, createUser, login, logout],
   );
 
-  return (
-    <Ctx.Provider value={value}>
-      {children}
-    </Ctx.Provider>
-  );
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 /*
@@ -1278,9 +1008,7 @@ export function useAdminStore() {
   const ctx = useContext(Ctx);
 
   if (!ctx) {
-    throw new Error(
-      "useAdminStore must be used inside AdminStoreProvider",
-    );
+    throw new Error("useAdminStore must be used inside AdminStoreProvider");
   }
 
   return ctx;
@@ -1292,16 +1020,10 @@ export function useAdminStore() {
  * ============================================================
  */
 
-export function formatRelative(
-  iso: string,
-) {
-  const diff =
-    Date.now() -
-    new Date(iso).getTime();
+export function formatRelative(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
 
-  const mins = Math.round(
-    diff / 60000,
-  );
+  const mins = Math.round(diff / 60000);
 
   if (mins < 1) {
     return "just now";
@@ -1311,39 +1033,28 @@ export function formatRelative(
     return `${mins}m ago`;
   }
 
-  const hours = Math.round(
-    mins / 60,
-  );
+  const hours = Math.round(mins / 60);
 
   if (hours < 24) {
     return `${hours}h ago`;
   }
 
-  const days = Math.round(
-    hours / 24,
-  );
+  const days = Math.round(hours / 24);
 
   if (days < 30) {
     return `${days}d ago`;
   }
 
-  return new Date(
-    iso,
-  ).toLocaleDateString(undefined, {
+  return new Date(iso).toLocaleDateString(undefined, {
     day: "numeric",
     month: "short",
   });
 }
 
-export function formatDate(
-  iso: string,
-) {
-  return new Date(
-    iso,
-  ).toLocaleDateString(undefined, {
+export function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, {
     day: "numeric",
     month: "short",
     year: "numeric",
   });
 }
-

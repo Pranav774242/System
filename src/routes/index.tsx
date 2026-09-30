@@ -1,14 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import {
-  Eye,
-  EyeOff,
-  ShieldCheck,
-  Loader2,
-  ArrowRight,
-  Mail,
-  Lock,
-} from "lucide-react";
+import { Eye, EyeOff, ShieldCheck, Loader2, ArrowRight, Mail, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAdminStore } from "@/lib/admin-store";
@@ -22,8 +14,7 @@ export const Route = createFileRoute("/")({
       { title: "Sign in — System Administrator Panel" },
       {
         name: "description",
-        content:
-          "Secure two-factor sign in to the Banking LOS System Administrator Panel: email, password and one-time passcode.",
+        content: "Secure two-factor sign in to the Banking LOS System Administrator Panel: email, password and one-time passcode.",
       },
       {
         property: "og:title",
@@ -31,8 +22,7 @@ export const Route = createFileRoute("/")({
       },
       {
         property: "og:description",
-        content:
-          "Secure two-factor sign in to the Banking LOS System Administrator Panel.",
+        content: "Secure two-factor sign in to the Banking LOS System Administrator Panel.",
       },
     ],
   }),
@@ -55,13 +45,11 @@ function BrandPanel() {
 
       <div className="max-w-md">
         <h2 className="text-4xl font-bold leading-tight text-white">
-          The control room for your{" "}
-          <span className="text-gradient-accent">lending network</span>.
+          The control room for your <span className="text-gradient-accent">lending network</span>.
         </h2>
 
         <p className="mt-4 text-sm leading-relaxed text-white/70">
-          Onboard NBFCs and banks, administer branches and keep every tenant of
-          your origination platform in view — from one panel.
+          Onboard NBFCs and banks, administer branches and keep every tenant of your origination platform in view — from one panel.
         </p>
 
         <div className="mt-10 grid grid-cols-3 gap-4">
@@ -70,10 +58,7 @@ function BrandPanel() {
             ["18", "Branches"],
             ["99.9%", "Uptime"],
           ].map(([v, l]) => (
-            <div
-              key={l}
-              className="rounded-xl border border-white/10 bg-white/5 p-4"
-            >
+            <div key={l} className="rounded-xl border border-white/10 bg-white/5 p-4">
               <p className="text-xl font-bold text-white">{v}</p>
               <p className="text-xs text-white/60">{l}</p>
             </div>
@@ -81,9 +66,7 @@ function BrandPanel() {
         </div>
       </div>
 
-      <p className="text-xs text-white/40">
-        Demo environment — no real credentials are stored or verified.
-      </p>
+      <p className="text-xs text-white/40">Demo environment — no real credentials are stored or verified.</p>
     </div>
   );
 }
@@ -140,19 +123,16 @@ function LoginPage() {
     setAccessToken(null);
 
     try {
-      const response = await fetch(
-        "https://los-backend-355v.onrender.com/api/v1/auth/login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email,
-            password,
-          }),
+      const response = await fetch("https://los-backend-355v.onrender.com/api/v1/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
 
       const data: unknown = await response.json();
 
@@ -161,9 +141,7 @@ function LoginPage() {
       if (!response.ok) {
         const message = responseData?.["message"];
 
-        throw new Error(
-          typeof message === "string" ? message : "Login failed",
-        );
+        throw new Error(typeof message === "string" ? message : "Login failed");
       }
 
       /*
@@ -186,19 +164,12 @@ function LoginPage() {
        * }
        */
 
-      const loginData = isRecord(responseData?.["data"])
-        ? responseData["data"]
-        : null;
+      const loginData = isRecord(responseData?.["data"]) ? responseData["data"] : null;
 
       const receivedToken = loginData?.["accessToken"];
 
-      if (
-        typeof receivedToken !== "string" ||
-        !receivedToken.trim()
-      ) {
-        throw new Error(
-          "Login response did not include an access token",
-        );
+      if (typeof receivedToken !== "string" || !receivedToken.trim()) {
+        throw new Error("Login response did not include an access token");
       }
 
       /*
@@ -212,19 +183,14 @@ function LoginPage() {
        */
       const refreshToken = loginData?.["refreshToken"];
 
-      if (
-        typeof refreshToken === "string" &&
-        refreshToken.trim()
-      ) {
+      if (typeof refreshToken === "string" && refreshToken.trim()) {
         localStorage.setItem("refreshToken", refreshToken);
       }
 
       /*
        * Get logged-in user information.
        */
-      const user = isRecord(loginData?.["user"])
-        ? loginData["user"]
-        : null;
+      const user = isRecord(loginData?.["user"]) ? loginData["user"] : null;
 
       /*
        * Backend currently returns:
@@ -245,9 +211,7 @@ function LoginPage() {
         setStep(2);
         setSeconds(30);
 
-        toast.success(
-          "OTP sent to your registered email and mobile",
-        );
+        toast.success("OTP sent to your registered email and mobile");
 
         setTimeout(() => {
           inputs.current[0]?.focus();
@@ -269,11 +233,7 @@ function LoginPage() {
     } catch (error) {
       console.error("Login API error:", error);
 
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Unable to connect to server",
-      );
+      toast.error(error instanceof Error ? error.message : "Unable to connect to server");
     } finally {
       setBusy(false);
     }
@@ -287,9 +247,7 @@ function LoginPage() {
     }
 
     if (!accessToken) {
-      toast.error(
-        "Your sign-in session expired. Please sign in again.",
-      );
+      toast.error("Your sign-in session expired. Please sign in again.");
 
       setStep(1);
 
@@ -316,9 +274,7 @@ function LoginPage() {
     const digits = raw.replace(/\D/g, "");
 
     if (!digits) {
-      setOtp((prev) =>
-        prev.map((d, idx) => (idx === i ? "" : d)),
-      );
+      setOtp((prev) => prev.map((d, idx) => (idx === i ? "" : d)));
 
       return;
     }
@@ -358,28 +314,17 @@ function LoginPage() {
             {[1, 2].map((s) => (
               <span
                 key={s}
-                className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
-                  step >= s ? "bg-accent" : "bg-border"
-                }`}
+                className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${step >= s ? "bg-accent" : "bg-border"}`}
               />
             ))}
           </div>
 
           {step === 1 ? (
-            <form
-              onSubmit={submitCredentials}
-              className="animate-rise space-y-5"
-              key="step1"
-            >
+            <form onSubmit={submitCredentials} className="animate-rise space-y-5" key="step1">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">
-                  System Administrator Panel
-                </h1>
+                <h1 className="text-2xl font-bold tracking-tight">System Administrator Panel</h1>
 
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Sign in to manage tenants across your origination
-                  platform.
-                </p>
+                <p className="mt-2 text-sm text-muted-foreground">Sign in to manage tenants across your origination platform.</p>
               </div>
 
               <div className="space-y-2">
@@ -398,11 +343,7 @@ function LoginPage() {
                   />
                 </div>
 
-                {email.length > 0 && !emailValid && (
-                  <p className="text-xs text-destructive">
-                    Enter a valid email address.
-                  </p>
-                )}
+                {email.length > 0 && !emailValid && <p className="text-xs text-destructive">Enter a valid email address.</p>}
               </div>
 
               <div className="space-y-2">
@@ -415,68 +356,34 @@ function LoginPage() {
                     id="password"
                     type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={(e) =>
-                      setPassword(e.target.value)
-                    }
+                    onChange={(e) => setPassword(e.target.value)}
                     className="px-9"
                     placeholder="••••••••"
                   />
 
                   <button
                     type="button"
-                    onClick={() =>
-                      setShowPassword((v) => !v)
-                    }
+                    onClick={() => setShowPassword((v) => !v)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
-                    aria-label={
-                      showPassword
-                        ? "Hide password"
-                        : "Show password"
-                    }
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
-                    {showPassword ? (
-                      <EyeOff className="size-4" />
-                    ) : (
-                      <Eye className="size-4" />
-                    )}
+                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </button>
                 </div>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={
-                  busy ||
-                  !emailValid ||
-                  password.length < 6
-                }
-              >
-                {busy ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  "Login"
-                )}
+              <Button type="submit" className="w-full" disabled={busy || !emailValid || password.length < 6}>
+                {busy ? <Loader2 className="size-4 animate-spin" /> : "Login"}
 
-                {!busy && (
-                  <ArrowRight className="size-4" />
-                )}
+                {!busy && <ArrowRight className="size-4" />}
               </Button>
             </form>
           ) : (
-            <form
-              onSubmit={verify}
-              className="animate-rise space-y-6"
-              key="step2"
-            >
+            <form onSubmit={verify} className="animate-rise space-y-6" key="step2">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">
-                  Verify it's you
-                </h1>
+                <h1 className="text-2xl font-bold tracking-tight">Verify it's you</h1>
 
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Enter the OTP sent to your registered email/mobile.
-                </p>
+                <p className="mt-2 text-sm text-muted-foreground">Enter the OTP sent to your registered email/mobile.</p>
               </div>
 
               <div className="flex gap-2">
@@ -489,15 +396,9 @@ function LoginPage() {
                     inputMode="numeric"
                     maxLength={6}
                     value={digit}
-                    onChange={(e) =>
-                      setDigit(i, e.target.value)
-                    }
+                    onChange={(e) => setDigit(i, e.target.value)}
                     onKeyDown={(e) => {
-                      if (
-                        e.key === "Backspace" &&
-                        !otp[i] &&
-                        i > 0
-                      ) {
+                      if (e.key === "Backspace" && !otp[i] && i > 0) {
                         inputs.current[i - 1]?.focus();
                       }
                     }}
@@ -508,17 +409,13 @@ function LoginPage() {
 
               <div className="flex items-center justify-between text-sm">
                 {seconds > 0 ? (
-                  <span className="text-muted-foreground">
-                    Resend OTP in {seconds}s
-                  </span>
+                  <span className="text-muted-foreground">Resend OTP in {seconds}s</span>
                 ) : (
                   <button
                     type="button"
                     onClick={() => {
                       setSeconds(30);
-                      toast.success(
-                        "A new OTP has been sent",
-                      );
+                      toast.success("A new OTP has been sent");
                     }}
                     className="font-medium text-accent hover:underline"
                   >
@@ -526,27 +423,13 @@ function LoginPage() {
                   </button>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="text-muted-foreground hover:text-foreground"
-                >
+                <button type="button" onClick={() => setStep(1)} className="text-muted-foreground hover:text-foreground">
                   Change email
                 </button>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={
-                  busy || otpValue.length !== 6
-                }
-              >
-                {busy ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  "Verify"
-                )}
+              <Button type="submit" className="w-full" disabled={busy || otpValue.length !== 6}>
+                {busy ? <Loader2 className="size-4 animate-spin" /> : "Verify"}
               </Button>
             </form>
           )}

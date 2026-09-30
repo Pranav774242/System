@@ -1,14 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import {
-  ArrowUpDown,
-  MoreHorizontal,
-  Plus,
-  Search,
-  Eye,
-  Pencil,
-  Building2,
-} from "lucide-react";
+import { ArrowUpDown, MoreHorizontal, Plus, Search, Eye, Pencil, Building2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/AppShell";
@@ -16,30 +8,15 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { TenantFormDrawer } from "@/components/TenantFormDrawer";
 import { mapOrganizationToTenant } from "@/lib/organization-mapper";
 
-import {
-  useAdminStore,
-  getAccessToken,
-  type Tenant,
-} from "@/lib/admin-store";
+import { useAdminStore, getAccessToken, type Tenant } from "@/lib/admin-store";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/tenants/")({
   head: () => ({
@@ -49,8 +26,7 @@ export const Route = createFileRoute("/tenants/")({
       },
       {
         name: "description",
-        content:
-          "Create, search, sort and administer every bank and NBFC tenant on the Banking LOS platform.",
+        content: "Create, search, sort and administer every bank and NBFC tenant on the Banking LOS platform.",
       },
       {
         property: "og:title",
@@ -58,21 +34,14 @@ export const Route = createFileRoute("/tenants/")({
       },
       {
         property: "og:description",
-        content:
-          "Create, search and administer every bank and NBFC tenant on the platform.",
+        content: "Create, search and administer every bank and NBFC tenant on the platform.",
       },
     ],
   }),
   component: TenantsPage,
 });
 
-type SortKey =
-  | "instituteName"
-  | "instituteType"
-  | "registrationNumber"
-  | "regulatoryAuthorityId"
-  | "cin"
-  | "status";
+type SortKey = "instituteName" | "instituteType" | "registrationNumber" | "regulatoryAuthorityId" | "cin" | "status";
 
 const PAGE_SIZE = 10;
 
@@ -150,8 +119,7 @@ function TenantsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const [loaded, setLoaded] = useState(false);
-  const [loadingOrganizations, setLoadingOrganizations] =
-    useState(false);
+  const [loadingOrganizations, setLoadingOrganizations] = useState(false);
 
   /*
    * ============================================================
@@ -173,45 +141,34 @@ function TenantsPage() {
       try {
         setLoadingOrganizations(true);
 
-        const response = await fetch(
-          "https://los-backend-355v.onrender.com/api/v1/administration/organizations",
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
+        const response = await fetch("https://los-backend-355v.onrender.com/api/v1/administration/organizations", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
           },
-        );
+        });
 
         const responseText = await response.text();
 
         let responseData: unknown = null;
 
         try {
-          responseData = responseText
-            ? JSON.parse(responseText)
-            : null;
+          responseData = responseText ? JSON.parse(responseText) : null;
         } catch {
           responseData = null;
         }
 
         if (!response.ok) {
           if (response.status === 401) {
-            throw new Error(
-              "Unauthorized / session expired",
-            );
+            throw new Error("Unauthorized / session expired");
           }
 
           if (response.status === 403) {
-            throw new Error(
-              "You do not have permission to view organizations",
-            );
+            throw new Error("You do not have permission to view organizations");
           }
 
-          throw new Error(
-            `Failed to load organizations (${response.status})`,
-          );
+          throw new Error(`Failed to load organizations (${response.status})`);
         }
 
         if (cancelled) return;
@@ -233,27 +190,18 @@ function TenantsPage() {
           data?: unknown;
         };
 
-        const organizations: OrganizationApiResponse[] =
-          Array.isArray(body?.data)
-            ? (body.data as OrganizationApiResponse[])
-            : [];
+        const organizations: OrganizationApiResponse[] = Array.isArray(body?.data) ? (body.data as OrganizationApiResponse[]) : [];
 
-        console.log(
-          "Organizations received from API:",
-          organizations,
-        );
+        console.log("Organizations received from API:", organizations);
 
         /*
          * ========================================================
          * MAP BACKEND RESPONSE -> FRONTEND TENANT
          * ========================================================
          */
-const mappedTenants: Tenant[] = organizations.map(mapOrganizationToTenant);
+        const mappedTenants: Tenant[] = organizations.map(mapOrganizationToTenant);
 
-        console.log(
-          "Mapped tenants for table:",
-          mappedTenants,
-        );
+        console.log("Mapped tenants for table:", mappedTenants);
 
         /*
          * ========================================================
@@ -268,16 +216,9 @@ const mappedTenants: Tenant[] = organizations.map(mapOrganizationToTenant);
       } catch (error) {
         if (cancelled) return;
 
-        console.error(
-          "Failed to load organizations:",
-          error,
-        );
+        console.error("Failed to load organizations:", error);
 
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Failed to load organizations",
-        );
+        toast.error(error instanceof Error ? error.message : "Failed to load organizations");
 
         /*
          * If API fails, clear API list.
@@ -317,10 +258,7 @@ const mappedTenants: Tenant[] = organizations.map(mapOrganizationToTenant);
    *
    * Otherwise -> use existing store data.
    */
-  const displayTenants =
-    apiTenants.length > 0
-      ? apiTenants
-      : tenants;
+  const displayTenants = apiTenants.length > 0 ? apiTenants : tenants;
 
   /*
    * Reset pagination when search/filter changes
@@ -337,40 +275,25 @@ const mappedTenants: Tenant[] = organizations.map(mapOrganizationToTenant);
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
 
-    const value = (
-      tenant: Tenant,
-      key: SortKey,
-    ): string => {
+    const value = (tenant: Tenant, key: SortKey): string => {
       switch (key) {
         case "instituteName":
-          return (
-            tenant.instituteName ?? ""
-          ).toLowerCase();
+          return (tenant.instituteName ?? "").toLowerCase();
 
         case "instituteType":
-          return (
-            tenant.instituteType ?? ""
-          ).toLowerCase();
+          return (tenant.instituteType ?? "").toLowerCase();
 
         case "registrationNumber":
-          return (
-            tenant.registrationNumber ?? ""
-          ).toLowerCase();
+          return (tenant.registrationNumber ?? "").toLowerCase();
 
         case "regulatoryAuthorityId":
-          return (
-            tenant.regulatoryAuthorityId ?? ""
-          ).toLowerCase();
+          return (tenant.regulatoryAuthorityId ?? "").toLowerCase();
 
         case "cin":
-          return (
-            tenant.cin ?? ""
-          ).toLowerCase();
+          return (tenant.cin ?? "").toLowerCase();
 
         case "status":
-          return (
-            tenant.status ?? ""
-          ).toLowerCase();
+          return (tenant.status ?? "").toLowerCase();
 
         default:
           return "";
@@ -409,36 +332,18 @@ const mappedTenants: Tenant[] = organizations.map(mapOrganizationToTenant);
         const av = value(a, sort.key);
         const bv = value(b, sort.key);
 
-        const comparison =
-          av > bv
-            ? 1
-            : av < bv
-              ? -1
-              : 0;
+        const comparison = av > bv ? 1 : av < bv ? -1 : 0;
 
-        return sort.dir === "asc"
-          ? comparison
-          : -comparison;
+        return sort.dir === "asc" ? comparison : -comparison;
       });
-  }, [
-    displayTenants,
-    query,
-    status,
-    sort,
-  ]);
+  }, [displayTenants, query, status, sort]);
 
   /*
    * Pagination
    */
-  const totalPages = Math.max(
-    1,
-    Math.ceil(rows.length / PAGE_SIZE),
-  );
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
 
-  const pageRows = rows.slice(
-    (page - 1) * PAGE_SIZE,
-    page * PAGE_SIZE,
-  );
+  const pageRows = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   /*
    * Sort
@@ -446,11 +351,7 @@ const mappedTenants: Tenant[] = organizations.map(mapOrganizationToTenant);
   const toggleSort = (key: SortKey) => {
     setSort((previous) => ({
       key,
-      dir:
-        previous.key === key &&
-        previous.dir === "asc"
-          ? "desc"
-          : "asc",
+      dir: previous.key === key && previous.dir === "asc" ? "desc" : "asc",
     }));
   };
 
@@ -487,7 +388,7 @@ const mappedTenants: Tenant[] = organizations.map(mapOrganizationToTenant);
       key: "status",
       label: "Status",
     },
-    
+
     {
       key: null,
       label: "Action",
@@ -499,10 +400,7 @@ const mappedTenants: Tenant[] = organizations.map(mapOrganizationToTenant);
       title="Bank Management"
       subtitle={`${displayTenants.length} Banks onboarded on the platform`}
       actions={
-        <Button
-          onClick={() => setDrawerOpen(true)}
-          className="bg-accent text-accent-foreground hover:bg-accent/90"
-        >
+        <Button onClick={() => setDrawerOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90">
           <Plus className="size-4" />
           Create Bank
         </Button>
@@ -516,34 +414,23 @@ const mappedTenants: Tenant[] = organizations.map(mapOrganizationToTenant);
 
             <Input
               value={query}
-              onChange={(event) =>
-                setQuery(event.target.value)
-              }
+              onChange={(event) => setQuery(event.target.value)}
               placeholder="Search by name, registration number, email…"
               className="pl-9"
             />
           </div>
 
-          <Select
-            value={status}
-            onValueChange={setStatus}
-          >
+          <Select value={status} onValueChange={setStatus}>
             <SelectTrigger className="sm:w-44">
               <SelectValue />
             </SelectTrigger>
 
             <SelectContent>
-              <SelectItem value="All">
-                All statuses
-              </SelectItem>
+              <SelectItem value="All">All statuses</SelectItem>
 
-              <SelectItem value="Active">
-                Active
-              </SelectItem>
+              <SelectItem value="Active">Active</SelectItem>
 
-              <SelectItem value="Inactive">
-                Inactive
-              </SelectItem>
+              <SelectItem value="Inactive">Inactive</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -552,14 +439,9 @@ const mappedTenants: Tenant[] = organizations.map(mapOrganizationToTenant);
         <div className="surface-card animate-rise overflow-hidden">
           {!loaded || loadingOrganizations ? (
             <div className="space-y-3 p-5">
-              {Array.from({ length: 8 }).map(
-                (_, index) => (
-                  <Skeleton
-                    key={index}
-                    className="h-11 w-full"
-                  />
-                ),
-              )}
+              {Array.from({ length: 8 }).map((_, index) => (
+                <Skeleton key={index} className="h-11 w-full" />
+              ))}
             </div>
           ) : pageRows.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
@@ -567,22 +449,13 @@ const mappedTenants: Tenant[] = organizations.map(mapOrganizationToTenant);
                 <Building2 className="size-6" />
               </span>
 
-              <p className="font-medium">
-                No tenants match your filters
-              </p>
+              <p className="font-medium">No tenants match your filters</p>
 
               <p className="max-w-sm text-sm text-muted-foreground">
-                Try a different search term or status
-                filter, or onboard a new bank / NBFC
-                tenant.
+                Try a different search term or status filter, or onboard a new bank / NBFC tenant.
               </p>
 
-              <Button
-                variant="outline"
-                onClick={() =>
-                  setDrawerOpen(true)
-                }
-              >
+              <Button variant="outline" onClick={() => setDrawerOpen(true)}>
                 <Plus className="size-4" />
                 Create Bank
               </Button>
@@ -592,205 +465,128 @@ const mappedTenants: Tenant[] = organizations.map(mapOrganizationToTenant);
               <table className="w-full text-sm">
                 <thead className="bg-secondary/50">
                   <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
-                    {columns.map(
-                      (column, index) => (
-                        <th
-                          key={index}
-                          className="whitespace-nowrap px-4 py-3 font-medium"
-                        >
-                          {column.key ? (
-                            <button
-                              onClick={() =>
-                                toggleSort(
-                                  column.key!,
-                                )
-                              }
-                              className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
-                            >
-                              {column.label}
+                    {columns.map((column, index) => (
+                      <th key={index} className="whitespace-nowrap px-4 py-3 font-medium">
+                        {column.key ? (
+                          <button
+                            onClick={() => toggleSort(column.key!)}
+                            className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
+                          >
+                            {column.label}
 
-                              <ArrowUpDown className="size-3" />
-                            </button>
-                          ) : (
-                            column.label
-                          )}
-                        </th>
-                      ),
-                    )}
+                            <ArrowUpDown className="size-3" />
+                          </button>
+                        ) : (
+                          column.label
+                        )}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
 
                 <tbody>
-                  {pageRows.map(
-                    (tenant: Tenant) => (
-                      <tr
-                        key={tenant.id}
-                        onClick={() =>
-                          navigate({
-                            to: "/tenants/$tenantId",
-                            params: {
-                              tenantId:
-                                tenant.id,
-                            },
-                          })
-                        }
-                        className="cursor-pointer border-t border-border transition-colors hover:bg-secondary/60"
-                      >
-                        {/* Institute Name */}
-                        <td className="whitespace-nowrap px-4 py-3 font-medium">
-                          {tenant.instituteName ||
-                            "-"}
-                        </td>
+                  {pageRows.map((tenant: Tenant) => (
+                    <tr
+                      key={tenant.id}
+                      onClick={() =>
+                        navigate({
+                          to: "/tenants/$tenantId",
+                          params: {
+                            tenantId: tenant.id,
+                          },
+                        })
+                      }
+                      className="cursor-pointer border-t border-border transition-colors hover:bg-secondary/60"
+                    >
+                      {/* Institute Name */}
+                      <td className="whitespace-nowrap px-4 py-3 font-medium">{tenant.instituteName || "-"}</td>
 
-                        {/* Institute Type */}
-                        <td className="whitespace-nowrap px-4 py-3">
-                          {tenant.instituteType ||
-                            "-"}
-                        </td>
+                      {/* Institute Type */}
+                      <td className="whitespace-nowrap px-4 py-3">{tenant.instituteType || "-"}</td>
 
-                        {/* Registration Number */}
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                          {tenant.registrationNumber ||
-                            "-"}
-                        </td>
+                      {/* Registration Number */}
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{tenant.registrationNumber || "-"}</td>
 
-                        {/* Regulatory Authority ID */}
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                          {tenant.regulatoryAuthorityId ||
-                            "-"}
-                        </td>
+                      {/* Regulatory Authority ID */}
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{tenant.regulatoryAuthorityId || "-"}</td>
 
-                        {/* CIN */}
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                          {tenant.cin || "-"}
-                        </td>
+                      {/* CIN */}
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{tenant.cin || "-"}</td>
 
-                        {/* Status */}
-                        <td className="whitespace-nowrap px-4 py-3">
-                          <StatusBadge
-                            status={
-                              tenant.status
-                            }
-                          />
-                        </td>
+                      {/* Status */}
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <StatusBadge status={tenant.status} />
+                      </td>
 
-                        {/* Actions */}
-                        <td
-                          className="px-4 py-3 text-right"
-                          onClick={(event) =>
-                            event.stopPropagation()
-                          }
-                        >
-                          <DropdownMenu>
-                            <DropdownMenuTrigger
-                              asChild
+                      {/* Actions */}
+                      <td className="px-4 py-3 text-right" onClick={(event) => event.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" aria-label="Row actions">
+                              <MoreHorizontal className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() =>
+                                navigate({
+                                  to: "/tenants/$tenantId",
+                                  params: {
+                                    tenantId: tenant.id,
+                                  },
+                                })
+                              }
                             >
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                aria-label="Row actions"
-                              >
-                                <MoreHorizontal className="size-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
+                              <Eye className="mr-2 size-4" />
+                              View
+                            </DropdownMenuItem>
 
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  navigate({
-                                    to: "/tenants/$tenantId",
-                                    params: {
-                                      tenantId:
-                                        tenant.id,
-                                    },
-                                  })
-                                }
-                              >
-                                <Eye className="mr-2 size-4" />
-                                View
-                              </DropdownMenuItem>
-
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  navigate({
-                                    to: "/tenants/$tenantId",
-                                    params: {
-                                      tenantId:
-                                        tenant.id,
-                                    },
-                                  })
-                                }
-                              >
-                                <Pencil className="mr-2 size-4" />
-                                Edit
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </td>
-                      </tr>
-                    ),
-                  )}
+                            <DropdownMenuItem
+                              onClick={() =>
+                                navigate({
+                                  to: "/tenants/$tenantId",
+                                  params: {
+                                    tenantId: tenant.id,
+                                  },
+                                })
+                              }
+                            >
+                              <Pencil className="mr-2 size-4" />
+                              Edit
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           )}
 
           {/* Pagination */}
-          {loaded &&
-            !loadingOrganizations &&
-            pageRows.length > 0 && (
-              <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
-                <p className="text-muted-foreground">
-                  Showing{" "}
-                  {(page - 1) *
-                    PAGE_SIZE +
-                    1}
-                  –
-                  {Math.min(
-                    page * PAGE_SIZE,
-                    rows.length,
-                  )}{" "}
-                  of {rows.length}
-                </p>
+          {loaded && !loadingOrganizations && pageRows.length > 0 && (
+            <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
+              <p className="text-muted-foreground">
+                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, rows.length)} of {rows.length}
+              </p>
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={page === 1}
-                    onClick={() =>
-                      setPage(
-                        (previous) =>
-                          previous - 1,
-                      )
-                    }
-                  >
-                    Previous
-                  </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((previous) => previous - 1)}>
+                  Previous
+                </Button>
 
-                  <span className="text-muted-foreground">
-                    Page {page} of{" "}
-                    {totalPages}
-                  </span>
+                <span className="text-muted-foreground">
+                  Page {page} of {totalPages}
+                </span>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={
-                      page >= totalPages
-                    }
-                    onClick={() =>
-                      setPage(
-                        (previous) =>
-                          previous + 1,
-                      )
-                    }
-                  >
-                    Next
-                  </Button>
-                </div>
+                <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((previous) => previous + 1)}>
+                  Next
+                </Button>
               </div>
-            )}
+            </div>
+          )}
         </div>
       </div>
 

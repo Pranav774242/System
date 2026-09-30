@@ -16,7 +16,7 @@ type AddUserForm = {
   email: string;
   password: string;
   twoFactorEnabled: boolean;
-  status: "ACTIVE" | "INACTIVE"| "OPERATIVE";
+  status: "ACTIVE" | "INACTIVE" | "OPERATIVE";
   name: string;
   dateOfBirth: string;
   mobile: string;
@@ -34,7 +34,7 @@ type AddUserPayload = {
   email: string;
   password: string;
   "2fA": boolean;
-  Status: "ACTIVE" | "INACTIVE"| "OPERATIVE";
+  Status: "ACTIVE" | "INACTIVE" | "OPERATIVE";
   Name: string;
   DOB: string;
   Mobile: string;
@@ -130,8 +130,7 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
     setBusy(false);
   }, [open, bank]);
 
-  const set = <K extends keyof AddUserForm>(key: K, value: AddUserForm[K]) =>
-    setForm((previous) => ({ ...previous, [key]: value }));
+  const set = <K extends keyof AddUserForm>(key: K, value: AddUserForm[K]) => setForm((previous) => ({ ...previous, [key]: value }));
 
   const errors = validateForm(form);
   const fieldError = (key: keyof AddUserForm) => (submitted ? errors[key] : "");
@@ -160,10 +159,7 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
 
     setBusy(true);
     try {
-      await postAdminJson(
-        "https://los-backend-355v.onrender.com/api/v1/administration/user-management/users",
-        payload,
-      );
+      await postAdminJson("https://los-backend-355v.onrender.com/api/v1/administration/user-management/users", payload);
 
       const localUser: UserInput = {
         bankId: String(payload.bank_id),
@@ -250,7 +246,9 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
               </Field>
               <Field label="Gender" required error={fieldError("gender")}>
                 <Select value={form.gender} onValueChange={(value) => set("gender", value as AddUserForm["gender"])}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="MALE">Male</SelectItem>
                     <SelectItem value="FEMALE">Female</SelectItem>
@@ -269,13 +267,19 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
               </Field>
               <Field label="Role" required error={fieldError("role")}>
                 <Select value={form.role} onValueChange={(value) => set("role", value as AddUserForm["role"])}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="SUPER_ADMIN">Super Admin</SelectItem></SelectContent>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                  </SelectContent>
                 </Select>
               </Field>
               <Field label="Status" required error={fieldError("status")}>
                 <Select value={form.status} onValueChange={(value) => set("status", value as AddUserForm["status"])}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="OPERATIVE">OPERATIVE</SelectItem>
                     <SelectItem value="ACTIVE">Active</SelectItem>
@@ -293,7 +297,11 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
             <SectionHeading>Access Settings</SectionHeading>
             <div className="grid gap-4 sm:grid-cols-2">
               <BooleanField label="2FA" checked={form.twoFactorEnabled} onCheckedChange={(checked) => set("twoFactorEnabled", checked)} />
-              <BooleanField label="Main Branch Access" checked={form.mainBranchAccess} onCheckedChange={(checked) => set("mainBranchAccess", checked)} />
+              <BooleanField
+                label="Main Branch Access"
+                checked={form.mainBranchAccess}
+                onCheckedChange={(checked) => set("mainBranchAccess", checked)}
+              />
               <BooleanField label="Holiday Login" checked={form.holidayLogin} onCheckedChange={(checked) => set("holidayLogin", checked)} />
             </div>
           </section>
@@ -329,7 +337,10 @@ function Field({
 }) {
   return (
     <div className="min-w-0 space-y-1.5">
-      <Label>{label}{required && <span className="ml-1 text-destructive">*</span>}</Label>
+      <Label>
+        {label}
+        {required && <span className="ml-1 text-destructive">*</span>}
+      </Label>
       {children}
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>

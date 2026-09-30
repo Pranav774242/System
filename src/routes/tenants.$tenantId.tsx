@@ -1,36 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import {
-  ArrowLeft,
-  Building2,
-  Calendar,
-  Clock,
-  MapPin,
-  Pencil,
-  Power,
-  PowerOff,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowLeft, Building2, Calendar, Clock, MapPin, Pencil, Power, PowerOff, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/AppShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TenantFormDrawer } from "@/components/TenantFormDrawer";
 import { UserFormDrawer } from "@/components/UserFormDrawer";
-import {
-  UserActivityItem,
-  UserDetailCard,
-  UserDetailRow,
-} from "@/components/UserDetailSections";
-import {
-  useAdminStore,
-  getAccessToken,
-  type Tenant,
-} from "@/lib/admin-store";
-import {
-  mapOrganizationToTenant,
-  type OrganizationApiResponse,
-} from "@/lib/organization-mapper";
+import { UserActivityItem, UserDetailCard, UserDetailRow } from "@/components/UserDetailSections";
+import { useAdminStore, getAccessToken, type Tenant } from "@/lib/admin-store";
+import { mapOrganizationToTenant, type OrganizationApiResponse } from "@/lib/organization-mapper";
 import { formatUserDate, formatUserDateTime } from "@/lib/users-api";
 import { Button } from "@/components/ui/button";
 
@@ -40,8 +19,7 @@ export const Route = createFileRoute("/tenants/$tenantId")({
       { title: "Bank Detail — System Administrator Panel" },
       {
         name: "description",
-        content:
-          "Complete bank / NBFC profile: institution details, contact and address, system details, status and activity.",
+        content: "Complete bank / NBFC profile: institution details, contact and address, system details, status and activity.",
       },
       { property: "og:title", content: "Bank Detail — System Administrator Panel" },
       {
@@ -89,22 +67,17 @@ function TenantDetailPage() {
 
     (async () => {
       try {
-        const response = await fetch(
-          "https://los-backend-355v.onrender.com/api/v1/administration/organizations",
-          {
-            headers: {
-              Authorization: `Bearer ${getAccessToken()}`,
-              "Content-Type": "application/json",
-            },
+        const response = await fetch("https://los-backend-355v.onrender.com/api/v1/administration/organizations", {
+          headers: {
+            Authorization: `Bearer ${getAccessToken()}`,
+            "Content-Type": "application/json",
           },
-        );
+        });
         if (!response.ok) throw new Error(`Failed (${response.status})`);
 
         const body = await response.json();
         const list: OrganizationDetail[] = Array.isArray(body?.data) ? body.data : [];
-        const match = list.find(
-          (o) => o.id === tenantId || String(o.pkid) === tenantId,
-        );
+        const match = list.find((o) => o.id === tenantId || String(o.pkid) === tenantId);
 
         if (!cancelled && match) {
           setRaw(match);
@@ -133,9 +106,7 @@ function TenantDetailPage() {
           <div className="text-center">
             <div className="mx-auto mb-3 size-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
             <p className="font-medium">Loading bank...</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Fetching bank information.
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Fetching bank information.</p>
           </div>
         </div>
       </AppShell>
@@ -170,10 +141,7 @@ function TenantDetailPage() {
   const branches = tenant.branches ?? [];
 
   return (
-    <AppShell
-      title={tenant.instituteName}
-      subtitle={tenant.instituteType || "Bank Details"}
-    >
+    <AppShell title={tenant.instituteName} subtitle={tenant.instituteType || "Bank Details"}>
       <div className="space-y-6">
         {/* Back */}
         <Link
@@ -191,9 +159,7 @@ function TenantDetailPage() {
             </span>
             <div>
               <div className="flex flex-wrap items-center gap-3">
-                <h2 className="text-xl font-bold tracking-tight">
-                  {tenant.instituteName}
-                </h2>
+                <h2 className="text-xl font-bold tracking-tight">{tenant.instituteName}</h2>
                 <StatusBadge status={tenant.status} />
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -210,9 +176,7 @@ function TenantDetailPage() {
               variant="outline"
               onClick={() => {
                 toggleTenantStatus(tenant.id);
-                toast.success(
-                  `Tenant ${tenant.status === "Active" ? "deactivated" : "activated"} successfully`,
-                );
+                toast.success(`Tenant ${tenant.status === "Active" ? "deactivated" : "activated"} successfully`);
               }}
             >
               {tenant.status === "Active" ? (
@@ -238,19 +202,10 @@ function TenantDetailPage() {
             <UserDetailRow label="Legal Name" value={raw?.legal_name ?? null} />
             {/* <UserDetailRow label="Short Name" value={raw?.short_name ?? null} /> */}
             <UserDetailRow label="Institute Type" value={tenant.instituteType || null} />
-            <UserDetailRow
-              label="Registration Number"
-              value={tenant.registrationNumber || null}
-            />
-            <UserDetailRow
-              label="Regulatory Authority ID"
-              value={tenant.regulatoryAuthorityId || null}
-            />
+            <UserDetailRow label="Registration Number" value={tenant.registrationNumber || null} />
+            <UserDetailRow label="Regulatory Authority ID" value={tenant.regulatoryAuthorityId || null} />
             <UserDetailRow label="CIN No" value={tenant.cin || null} />
-            <UserDetailRow
-              label="Regulatory Status"
-              value={raw?.regulatory_status ?? null}
-            />
+            <UserDetailRow label="Regulatory Status" value={raw?.regulatory_status ?? null} />
             <UserDetailRow label="Status" value={tenant.status} />
           </UserDetailCard>
 
@@ -272,8 +227,6 @@ function TenantDetailPage() {
             /> */}
           </UserDetailCard>
 
-          
-
           {/* <UserDetailCard title="System Details">
             <UserDetailRow label="Database Name" value={raw?.db_name ?? null} />
             <UserDetailRow label="Database Host" value={raw?.db_host ?? null} />
@@ -283,29 +236,18 @@ function TenantDetailPage() {
           <UserDetailCard title="Record Information">
             <UserDetailRow label="Bank ID (pkid)" value={tenant.pkid ?? null} />
             <UserDetailRow label="Bank ID" value={tenant.id} />
-            <UserDetailRow
-              label="Created Date"
-              value={formatUserDateTime(createdAt)}
-            />
-            <UserDetailRow
-              label="Modified Date"
-              value={formatUserDateTime(updatedAt)}
-            />
+            <UserDetailRow label="Created Date" value={formatUserDateTime(createdAt)} />
+            <UserDetailRow label="Modified Date" value={formatUserDateTime(updatedAt)} />
           </UserDetailCard>
         </div>
 
         {/* Branches (only when available) */}
         {branches.length > 0 && (
           <div className="surface-card animate-rise p-6">
-            <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Branches ({branches.length})
-            </h3>
+            <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Branches ({branches.length})</h3>
             <div className="grid gap-2 sm:grid-cols-2">
               {branches.map((b) => (
-                <div
-                  key={b.id}
-                  className="flex items-center gap-2 rounded-xl border border-border bg-secondary/40 px-3 py-2 text-sm"
-                >
+                <div key={b.id} className="flex items-center gap-2 rounded-xl border border-border bg-secondary/40 px-3 py-2 text-sm">
                   <MapPin className="size-4 shrink-0 text-accent" />
                   {b.location}
                 </div>
@@ -327,23 +269,14 @@ function TenantDetailPage() {
           </div>
 
           <ul className="space-y-4">
-            <UserActivityItem
-              title="Bank onboarded"
-              date={createdAt || ""}
-              icon={<Calendar className="size-4" />}
-            />
+            <UserActivityItem title="Bank onboarded" date={createdAt || ""} icon={<Calendar className="size-4" />} />
             <UserActivityItem
               title={`Status is ${tenant.status}`}
               date={updatedAt || createdAt || ""}
               icon={<ShieldCheck className="size-4" />}
             />
             {tenant.activity?.map((a) => (
-              <UserActivityItem
-                key={a.id}
-                title={a.text}
-                date={a.at}
-                icon={<Clock className="size-4" />}
-              />
+              <UserActivityItem key={a.id} title={a.text} date={a.at} icon={<Clock className="size-4" />} />
             ))}
           </ul>
         </div>
@@ -358,11 +291,7 @@ function TenantDetailPage() {
           toast.success("Tenant updated successfully");
         }}
       />
-      <UserFormDrawer
-        open={userDrawerOpen}
-        onOpenChange={setUserDrawerOpen}
-        bank={tenant}
-      />
+      <UserFormDrawer open={userDrawerOpen} onOpenChange={setUserDrawerOpen} bank={tenant} />
     </AppShell>
   );
 }
