@@ -79,17 +79,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "System Administrator Panel — Banking LOS" },
+      { title: "System Administrator Panel — Allianza LOS" },
       {
         name: "description",
         content:
-          "Control panel for a multi-tenant Banking Loan Origination System: tenant onboarding, administration and oversight.",
+          "Control panel for a multi-tenant Allianza LOS Loan Origination System: tenant onboarding, administration and oversight.",
       },
-      { name: "author", content: "Banking LOS" },
-      { property: "og:title", content: "System Administrator Panel — Banking LOS" },
+      { name: "author", content: "Allianza LOS" },
+      { property: "og:title", content: "System Administrator Panel — Allianza LOS" },
       {
         property: "og:description",
-        content: "Administer tenants across a multi-tenant Banking Loan Origination System.",
+        content: "Administer tenants across a multi-tenant Allianza LOS Loan Origination System.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

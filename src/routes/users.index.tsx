@@ -36,7 +36,7 @@ export const Route = createFileRoute("/users/")({
       {
         name: "description",
         content:
-          "View and manage users on the Banking LOS platform.",
+          "View and manage users on the Allianza LOS platform.",
       },
     ],
   }),
@@ -188,9 +188,9 @@ function UsersPage() {
                       Employee Number
                     </th>
 
-                    <th className="whitespace-nowrap px-4 py-3 font-medium">
+                    {/* <th className="whitespace-nowrap px-4 py-3 font-medium">
                       Bank ID
-                    </th>
+                    </th> */}
 
                     <th className="whitespace-nowrap px-4 py-3 font-medium">
                       Email
@@ -261,10 +261,10 @@ function UsersPage() {
                         {user.emp_no || "—"}
                       </td>
 
-                      <td className="whitespace-nowrap px-4 py-3">
+                      {/* <td className="whitespace-nowrap px-4 py-3">
                         {user.organization_id ||
                           "—"}
-                      </td>
+                      </td> */}
 
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {user.email || "—"}

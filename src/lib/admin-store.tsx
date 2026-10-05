@@ -1,75 +1,184 @@
-
 import {
   createContext,
   useCallback,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 
+/* -------------------------------------------------------------------------- */
+/* BASIC TYPES                                                                */
+/* -------------------------------------------------------------------------- */
+
 export type TenantStatus = "Active" | "Inactive";
 
-export type InstituteType =
-  | "BANK"
-  | "NBFC";
+export type InstituteType = "BANK" | "NBFC";
 
 export type Branch = {
   id: string;
   location: string;
 };
 
+/* -------------------------------------------------------------------------- */
+/* REGULATORY DETAILS                                                         */
+/* -------------------------------------------------------------------------- */
+
+export type RegulatoryDetails = {
+  directClgMember: string;
+  directMemberIftas: string;
+
+  micrCode: string;
+  micrCityCode: string;
+  micrBranchCode: string;
+
+  ifscCode: string;
+
+  numberOfBranches: string;
+
+  sponsorBankForClg: string;
+  sponsorBankForIftas: string;
+
+  /*
+   * Optional because Regulatory Authority ID is not part
+   * of the Create Bank frontend form.
+   */
+  regulatoryAuthorityId?: string;
+};
+
+/* -------------------------------------------------------------------------- */
+/* ADDRESS DETAILS                                                            */
+/* -------------------------------------------------------------------------- */
+
+export type AddressDetails = {
+  addressType: string;
+  unitGalaNameNo: string;
+  streetRoad: string;
+  landMark: string;
+  city: string;
+  state: string;
+  pinCode: string;
+};
+
+/* -------------------------------------------------------------------------- */
+/* TENANT                                                                     */
+/* -------------------------------------------------------------------------- */
+
 export type Tenant = {
   id: string;
+
   firstName: string;
   middleName?: string;
   lastName: string;
+
   employeeId: string;
+
   email: string;
   mobile: string;
+
   organization: string;
+
   branches: Branch[];
+
   designation: string;
+
   status: TenantStatus;
+
   createdAt: string;
+
   pkid?: number;
+
   activity: {
     id: string;
     text: string;
     at: string;
   }[];
 
+  bankCode: string;
+  bankName: string;
+  bankType: InstituteType;
+
+  legalName: string;
+
+  panNo: string;
+  gstNo: string;
+  licenseNo: string;
+
+  website: string;
+  logoUrl: string;
+
+  regulatoryDetails: RegulatoryDetails;
+
+  addressDetails: AddressDetails;
+
+  contactEmail: string;
+  contactPhone: string;
+
   instituteName: string;
   instituteType: InstituteType;
+
   registrationNumber: string;
-  contactEmail: string;
-  contactPhone: string;
 
   cin: string;
-  regulatoryAuthorityId: string;
+
+  /*
+   * IMPORTANT:
+   * Regulatory Authority ID is optional.
+   *
+   * The Create Bank form does not contain this field,
+   * so Tenant must not require it.
+   */
+  regulatoryAuthorityId?: string;
 };
 
+/* -------------------------------------------------------------------------- */
+/* BANK INPUT                                                                 */
+/* -------------------------------------------------------------------------- */
+
 export type BankInput = {
-  instituteName: string;
-  instituteType: InstituteType | "";
-  registrationNumber: string;
+  bankCode: string;
+  bankName: string;
+  bankType: InstituteType;
+
+  legalName: string;
+
+  panNo: string;
+  gstNo: string;
+  cin: string;
+  licenseNo: string;
+
+  website: string;
+  logoUrl: string;
+
+  regulatoryDetails: RegulatoryDetails;
+
+  addressDetails: AddressDetails;
+
   contactEmail: string;
   contactPhone: string;
-  branches: string[];
 
-  legalName?: string;
-  shortName?: string;
+  branches: Branch[];
 
-  cin?: string;
-  regulatoryAuthority?: string;
+  instituteName: string;
+  instituteType: InstituteType;
+
+  registrationNumber: string;
+
+  /*
+   * Optional.
+   * Do not force Create Bank to provide this value.
+   */
   regulatoryAuthorityId?: string;
 
-  website?: string;
+  regulatoryAuthority?: string;
+
   country?: string;
   state?: string;
   city?: string;
   pinCode?: string;
+
   registeredAddress?: string;
   corporateAddress?: string;
 
@@ -77,30 +186,56 @@ export type BankInput = {
   status?: TenantStatus;
 };
 
+/* -------------------------------------------------------------------------- */
+/* USER                                                                       */
+/* -------------------------------------------------------------------------- */
+
 export type User = {
   id: string;
+
   bankId: string;
   bankName: string;
+
   firstName: string;
   middleName?: string;
   lastName: string;
+
   employeeId: string;
   designation: string;
+
   officialEmail: string;
   mobileNumber: string;
+
   branch: string;
+
   organization: "Head Quarter" | "Branch";
+
   createdAt: string;
 };
 
-export type UserInput = Omit<User, "id" | "createdAt">;
+export type UserInput = Omit<
+  User,
+  "id" | "createdAt"
+>;
+
+/* -------------------------------------------------------------------------- */
+/* ACTIVITY                                                                   */
+/* -------------------------------------------------------------------------- */
 
 export type ActivityItem = {
   id: string;
   text: string;
   at: string;
-  kind: "created" | "updated" | "status" | "info";
+  kind:
+    | "created"
+    | "updated"
+    | "status"
+    | "info";
 };
+
+/* -------------------------------------------------------------------------- */
+/* DESIGNATIONS                                                               */
+/* -------------------------------------------------------------------------- */
 
 export const DESIGNATIONS = [
   "Relationship Manager",
@@ -111,25 +246,73 @@ export const DESIGNATIONS = [
   "Compliance Officer",
 ];
 
-export function tenantFullName(t: Tenant) {
-  return [t.firstName, t.middleName, t.lastName]
+/* -------------------------------------------------------------------------- */
+/* HELPERS                                                                    */
+/* -------------------------------------------------------------------------- */
+
+export function tenantFullName(
+  tenant: Tenant,
+) {
+  return [
+    tenant.firstName,
+    tenant.middleName,
+    tenant.lastName,
+  ]
     .filter(Boolean)
     .join(" ");
 }
 
-export function initials(t: Tenant) {
-  return `${t.firstName[0] ?? ""}${t.lastName[0] ?? ""}`.toUpperCase();
+export function initials(
+  tenant: Tenant,
+) {
+  return `${tenant.firstName?.[0] ?? ""}${tenant.lastName?.[0] ?? ""}`.toUpperCase();
 }
 
 let idSeq = 1000;
 
-export const nextId = (prefix = "id") =>
-  `${prefix}-${++idSeq}`;
+export const nextId = (
+  prefix = "id",
+) => `${prefix}-${++idSeq}`;
 
-const daysAgo = (n: number) =>
+const daysAgo = (
+  days: number,
+) =>
   new Date(
-    Date.now() - n * 86_400_000,
+    Date.now() -
+      days * 86_400_000,
   ).toISOString();
+
+/* -------------------------------------------------------------------------- */
+/* EMPTY VALUES                                                               */
+/* -------------------------------------------------------------------------- */
+
+const emptyRegulatoryDetails =
+  (): RegulatoryDetails => ({
+    directClgMember: "",
+    directMemberIftas: "",
+    micrCode: "",
+    micrCityCode: "",
+    micrBranchCode: "",
+    ifscCode: "",
+    numberOfBranches: "",
+    sponsorBankForClg: "",
+    sponsorBankForIftas: "",
+  });
+
+const emptyAddressDetails =
+  (): AddressDetails => ({
+    addressType: "",
+    unitGalaNameNo: "",
+    streetRoad: "",
+    landMark: "",
+    city: "",
+    state: "",
+    pinCode: "",
+  });
+
+/* -------------------------------------------------------------------------- */
+/* CREATE SEED TENANT                                                         */
+/* -------------------------------------------------------------------------- */
 
 function makeTenant(
   partial: Omit<
@@ -138,6 +321,17 @@ function makeTenant(
     | "createdAt"
     | "activity"
     | "branches"
+    | "bankCode"
+    | "bankName"
+    | "bankType"
+    | "legalName"
+    | "panNo"
+    | "gstNo"
+    | "licenseNo"
+    | "website"
+    | "logoUrl"
+    | "regulatoryDetails"
+    | "addressDetails"
     | "instituteName"
     | "instituteType"
     | "registrationNumber"
@@ -147,50 +341,137 @@ function makeTenant(
     | "regulatoryAuthorityId"
   > & {
     branches: string[];
+
+    bankCode?: string;
+    bankName?: string;
+    bankType?: InstituteType;
+
+    legalName?: string;
+
+    panNo?: string;
+    gstNo?: string;
+    cin?: string;
+    licenseNo?: string;
+
+    website?: string;
+    logoUrl?: string;
+
+    regulatoryDetails?: RegulatoryDetails;
+    addressDetails?: AddressDetails;
   },
   createdDaysAgo: number,
 ): Tenant {
-  const createdAt = daysAgo(createdDaysAgo);
+  const createdAt =
+    daysAgo(createdDaysAgo);
+
+  const bankName =
+    partial.bankName ??
+    partial.organization;
+
+  const bankType =
+    partial.bankType ?? "NBFC";
+
+  const licenseNo =
+    partial.licenseNo ??
+    partial.employeeId;
+
+  const contactEmail =
+    partial.email;
+
+  const contactPhone =
+    partial.mobile;
+
+  const regulatoryDetails =
+    partial.regulatoryDetails ??
+    emptyRegulatoryDetails();
+
+  const addressDetails =
+    partial.addressDetails ??
+    emptyAddressDetails();
 
   return {
     ...partial,
 
-    instituteName: partial.organization,
-    instituteType: "NBFC",
-    registrationNumber: partial.employeeId,
-    contactEmail: partial.email,
-    contactPhone: partial.mobile,
+    bankCode:
+      partial.bankCode ?? "",
 
-    cin: "",
-    regulatoryAuthorityId: "",
+    bankName,
+
+    bankType,
+
+    legalName:
+      partial.legalName ??
+      bankName,
+
+    panNo:
+      partial.panNo ?? "",
+
+    gstNo:
+      partial.gstNo ?? "",
+
+    licenseNo,
+
+    website:
+      partial.website ?? "",
+
+    logoUrl:
+      partial.logoUrl ?? "",
+
+    regulatoryDetails,
+
+    addressDetails,
+
+    contactEmail,
+
+    contactPhone,
+
+    instituteName:
+      bankName,
+
+    instituteType:
+      bankType,
+
+    registrationNumber:
+      licenseNo,
+
+    cin:
+      partial.cin ?? "",
 
     id: nextId("tnt"),
 
-    branches: partial.branches.map(
-      (location) => ({
-        id: nextId("br"),
-        location,
-      }),
-    ),
+    branches:
+      partial.branches.map(
+        (location) => ({
+          id: nextId("br"),
+          location,
+        }),
+      ),
 
     createdAt,
 
     activity: [
       {
         id: nextId("act"),
-        text: "Tenant account created",
+        text: "Bank account created",
         at: createdAt,
       },
       {
         id: nextId("act"),
         text: `Status set to ${partial.status}`,
         at: daysAgo(
-          Math.max(createdDaysAgo - 1, 0),
+          Math.max(
+            createdDaysAgo - 1,
+            0,
+          ),
         ),
       },
     ],
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* SEED TENANTS                                                               */
+/* -------------------------------------------------------------------------- */
 
 const SEED_TENANTS: Tenant[] = [
   makeTenant(
@@ -199,16 +480,28 @@ const SEED_TENANTS: Tenant[] = [
       middleName: "K",
       lastName: "Mehta",
       employeeId: "EMP-10241",
-      email: "aarav.mehta@abcfinance.in",
-      mobile: "+91 98200 41253",
-      organization: "ABC Finance Ltd",
+      email:
+        "aarav.mehta@abcfinance.in",
+      mobile:
+        "+91 98200 41253",
+      organization:
+        "ABC Finance Ltd",
       branches: [
         "Mumbai — Andheri East",
         "Mumbai — Lower Parel",
         "Pune — Kothrud",
       ],
-      designation: "Regional Director",
+      designation:
+        "Regional Director",
       status: "Active",
+      bankCode: "ABC001",
+      bankName:
+        "ABC Finance Ltd",
+      bankType: "NBFC",
+      legalName:
+        "ABC Finance Ltd",
+      licenseNo:
+        "EMP-10241",
     },
     62,
   ),
@@ -218,15 +511,27 @@ const SEED_TENANTS: Tenant[] = [
       firstName: "Priya",
       lastName: "Raghavan",
       employeeId: "EMP-10388",
-      email: "priya.raghavan@sundarbancorp.com",
-      mobile: "+91 99401 77812",
-      organization: "Sundar Bank Corp",
+      email:
+        "priya.raghavan@sundarbancorp.com",
+      mobile:
+        "+91 99401 77812",
+      organization:
+        "Sundar Bank Corp",
       branches: [
         "Chennai — T Nagar",
         "Coimbatore — RS Puram",
       ],
-      designation: "Branch Manager",
+      designation:
+        "Branch Manager",
       status: "Active",
+      bankCode: "SBC001",
+      bankName:
+        "Sundar Bank Corp",
+      bankType: "BANK",
+      legalName:
+        "Sundar Bank Corp",
+      licenseNo:
+        "EMP-10388",
     },
     54,
   ),
@@ -237,12 +542,26 @@ const SEED_TENANTS: Tenant[] = [
       middleName: "S",
       lastName: "Deshpande",
       employeeId: "EMP-10412",
-      email: "rohit.deshpande@vistaracredit.in",
-      mobile: "+91 98670 22110",
-      organization: "Vistara Credit NBFC",
-      branches: ["Nagpur — Sitabuldi"],
-      designation: "Operations Head",
+      email:
+        "rohit.deshpande@vistaracredit.in",
+      mobile:
+        "+91 98670 22110",
+      organization:
+        "Vistara Credit NBFC",
+      branches: [
+        "Nagpur — Sitabuldi",
+      ],
+      designation:
+        "Operations Head",
       status: "Inactive",
+      bankCode: "VCN001",
+      bankName:
+        "Vistara Credit NBFC",
+      bankType: "NBFC",
+      legalName:
+        "Vistara Credit NBFC",
+      licenseNo:
+        "EMP-10412",
     },
     47,
   ),
@@ -252,16 +571,28 @@ const SEED_TENANTS: Tenant[] = [
       firstName: "Neha",
       lastName: "Kulkarni",
       employeeId: "EMP-10503",
-      email: "neha.kulkarni@grihafinserv.com",
-      mobile: "+91 93726 55401",
-      organization: "Griha Finserv",
+      email:
+        "neha.kulkarni@grihafinserv.com",
+      mobile:
+        "+91 93726 55401",
+      organization:
+        "Griha Finserv",
       branches: [
         "Bengaluru — Indiranagar",
         "Bengaluru — Whitefield",
         "Mysuru — Saraswathipuram",
       ],
-      designation: "Relationship Manager",
+      designation:
+        "Relationship Manager",
       status: "Active",
+      bankCode: "GF001",
+      bankName:
+        "Griha Finserv",
+      bankType: "NBFC",
+      legalName:
+        "Griha Finserv",
+      licenseNo:
+        "EMP-10503",
     },
     38,
   ),
@@ -272,15 +603,27 @@ const SEED_TENANTS: Tenant[] = [
       middleName: "A",
       lastName: "Qureshi",
       employeeId: "EMP-10577",
-      email: "imran.qureshi@northstarbank.in",
-      mobile: "+91 90045 31287",
-      organization: "Northstar Bank",
+      email:
+        "imran.qureshi@northstarbank.in",
+      mobile:
+        "+91 90045 31287",
+      organization:
+        "Northstar Bank",
       branches: [
         "Delhi — Connaught Place",
         "Noida — Sector 62",
       ],
-      designation: "Credit Analyst",
+      designation:
+        "Credit Analyst",
       status: "Active",
+      bankCode: "NSB001",
+      bankName:
+        "Northstar Bank",
+      bankType: "BANK",
+      legalName:
+        "Northstar Bank",
+      licenseNo:
+        "EMP-10577",
     },
     30,
   ),
@@ -290,12 +633,26 @@ const SEED_TENANTS: Tenant[] = [
       firstName: "Sneha",
       lastName: "Iyer",
       employeeId: "EMP-10644",
-      email: "sneha.iyer@auricapital.com",
-      mobile: "+91 98450 11239",
-      organization: "Auri Capital",
-      branches: ["Hyderabad — Banjara Hills"],
-      designation: "Compliance Officer",
+      email:
+        "sneha.iyer@auricapital.com",
+      mobile:
+        "+91 98450 11239",
+      organization:
+        "Auri Capital",
+      branches: [
+        "Hyderabad — Banjara Hills",
+      ],
+      designation:
+        "Compliance Officer",
       status: "Inactive",
+      bankCode: "AC001",
+      bankName:
+        "Auri Capital",
+      bankType: "NBFC",
+      legalName:
+        "Auri Capital",
+      licenseNo:
+        "EMP-10644",
     },
     24,
   ),
@@ -306,16 +663,28 @@ const SEED_TENANTS: Tenant[] = [
       middleName: "R",
       lastName: "Nair",
       employeeId: "EMP-10702",
-      email: "vikram.nair@keralagold.in",
-      mobile: "+91 94470 87654",
-      organization: "Kerala Gold Finance",
+      email:
+        "vikram.nair@keralagold.in",
+      mobile:
+        "+91 94470 87654",
+      organization:
+        "Kerala Gold Finance",
       branches: [
         "Kochi — MG Road",
         "Thrissur — Round West",
         "Kozhikode — Mavoor Road",
       ],
-      designation: "Branch Manager",
+      designation:
+        "Branch Manager",
       status: "Active",
+      bankCode: "KGF001",
+      bankName:
+        "Kerala Gold Finance",
+      bankType: "NBFC",
+      legalName:
+        "Kerala Gold Finance",
+      licenseNo:
+        "EMP-10702",
     },
     17,
   ),
@@ -325,15 +694,27 @@ const SEED_TENANTS: Tenant[] = [
       firstName: "Ananya",
       lastName: "Bose",
       employeeId: "EMP-10788",
-      email: "ananya.bose@bengalcreditunion.in",
-      mobile: "+91 98310 45560",
-      organization: "Bengal Credit Union",
+      email:
+        "ananya.bose@bengalcreditunion.in",
+      mobile:
+        "+91 98310 45560",
+      organization:
+        "Bengal Credit Union",
       branches: [
         "Kolkata — Salt Lake",
         "Howrah — Shibpur",
       ],
-      designation: "Operations Head",
+      designation:
+        "Operations Head",
       status: "Active",
+      bankCode: "BCU001",
+      bankName:
+        "Bengal Credit Union",
+      bankType: "BANK",
+      legalName:
+        "Bengal Credit Union",
+      licenseNo:
+        "EMP-10788",
     },
     11,
   ),
@@ -343,12 +724,26 @@ const SEED_TENANTS: Tenant[] = [
       firstName: "Karan",
       lastName: "Sethi",
       employeeId: "EMP-10841",
-      email: "karan.sethi@punjabagrifin.in",
-      mobile: "+91 98140 99021",
-      organization: "Punjab Agri Finance",
-      branches: ["Ludhiana — Model Town"],
-      designation: "Relationship Manager",
+      email:
+        "karan.sethi@punjabagrifin.in",
+      mobile:
+        "+91 98140 99021",
+      organization:
+        "Punjab Agri Finance",
+      branches: [
+        "Ludhiana — Model Town",
+      ],
+      designation:
+        "Relationship Manager",
       status: "Active",
+      bankCode: "PAF001",
+      bankName:
+        "Punjab Agri Finance",
+      bankType: "NBFC",
+      legalName:
+        "Punjab Agri Finance",
+      licenseNo:
+        "EMP-10841",
     },
     5,
   ),
@@ -359,64 +754,92 @@ const SEED_TENANTS: Tenant[] = [
       middleName: "J",
       lastName: "Pillai",
       employeeId: "EMP-10902",
-      email: "meera.pillai@zenithhousing.com",
-      mobile: "+91 99000 76432",
-      organization: "Zenith Housing Finance",
+      email:
+        "meera.pillai@zenithhousing.com",
+      mobile:
+        "+91 99000 76432",
+      organization:
+        "Zenith Housing Finance",
       branches: [
         "Ahmedabad — Navrangpura",
         "Surat — Adajan",
       ],
-      designation: "Credit Analyst",
+      designation:
+        "Credit Analyst",
       status: "Active",
+      bankCode: "ZHF001",
+      bankName:
+        "Zenith Housing Finance",
+      bankType: "NBFC",
+      legalName:
+        "Zenith Housing Finance",
+      licenseNo:
+        "EMP-10902",
     },
     2,
   ),
 ];
 
-const SEED_ACTIVITY: ActivityItem[] = [
-  {
-    id: nextId("f"),
-    text: "Tenant 'Zenith Housing Finance' created",
-    at: daysAgo(2),
-    kind: "created",
-  },
-  {
-    id: nextId("f"),
-    text: "Product 'Gold Loan' updated",
-    at: daysAgo(3),
-    kind: "updated",
-  },
-  {
-    id: nextId("f"),
-    text: "Rule 'Max LTV 75%' assigned to Gold Loan",
-    at: daysAgo(4),
-    kind: "info",
-  },
-  {
-    id: nextId("f"),
-    text: "Tenant 'Auri Capital' status changed to Inactive",
-    at: daysAgo(6),
-    kind: "status",
-  },
-  {
-    id: nextId("f"),
-    text: "Tenant 'Punjab Agri Finance' created",
-    at: daysAgo(5),
-    kind: "created",
-  },
-  {
-    id: nextId("f"),
-    text: "Product 'Vehicle Loan' created",
-    at: daysAgo(8),
-    kind: "created",
-  },
-  {
-    id: nextId("f"),
-    text: "Rule 'Min CIBIL 700' assigned to Personal Loan",
-    at: daysAgo(9),
-    kind: "info",
-  },
-];
+/* -------------------------------------------------------------------------- */
+/* ACTIVITY                                                                   */
+/* -------------------------------------------------------------------------- */
+
+const SEED_ACTIVITY: ActivityItem[] =
+  [
+    {
+      id: nextId("f"),
+      text:
+        "Bank 'Zenith Housing Finance' created",
+      at: daysAgo(2),
+      kind: "created",
+    },
+    {
+      id: nextId("f"),
+      text:
+        "Product 'Gold Loan' updated",
+      at: daysAgo(3),
+      kind: "updated",
+    },
+    {
+      id: nextId("f"),
+      text:
+        "Rule 'Max LTV 75%' assigned to Gold Loan",
+      at: daysAgo(4),
+      kind: "info",
+    },
+    {
+      id: nextId("f"),
+      text:
+        "Bank 'Auri Capital' status changed to Inactive",
+      at: daysAgo(6),
+      kind: "status",
+    },
+    {
+      id: nextId("f"),
+      text:
+        "Bank 'Punjab Agri Finance' created",
+      at: daysAgo(5),
+      kind: "created",
+    },
+    {
+      id: nextId("f"),
+      text:
+        "Product 'Vehicle Loan' created",
+      at: daysAgo(8),
+      kind: "created",
+    },
+    {
+      id: nextId("f"),
+      text:
+        "Rule 'Min CIBIL 700' assigned to Personal Loan",
+      at: daysAgo(9),
+      kind: "info",
+    },
+  ];
+
+/* -------------------------------------------------------------------------- */
+/* DASHBOARD DATA                                                             */
+/* -------------------------------------------------------------------------- */
 
 export const ONBOARDING_TREND = [
   { month: "Jan", tenants: 2 },
@@ -431,57 +854,113 @@ export const ONBOARDING_TREND = [
 ];
 
 export const PRODUCT_USAGE = [
-  { product: "Gold Loan", tenants: 9 },
-  { product: "Personal Loan", tenants: 7 },
-  { product: "Business Loan", tenants: 5 },
-  { product: "Vehicle Loan", tenants: 4 },
-  { product: "Home Loan", tenants: 3 },
+  {
+    product: "Gold Loan",
+    tenants: 9,
+  },
+  {
+    product: "Personal Loan",
+    tenants: 7,
+  },
+  {
+    product: "Business Loan",
+    tenants: 5,
+  },
+  {
+    product: "Vehicle Loan",
+    tenants: 4,
+  },
+  {
+    product: "Home Loan",
+    tenants: 3,
+  },
 ];
 
 export type TenantInput = BankInput;
 
+/* -------------------------------------------------------------------------- */
+/* ADMIN STORE TYPE                                                           */
+/* -------------------------------------------------------------------------- */
+
 type AdminStore = {
   authed: boolean;
+
   adminName: string;
 
-  login: (accessToken: string) => void;
+  login: (
+    accessToken: string,
+  ) => void;
+
   logout: () => void;
 
   theme: "light" | "dark";
+
   toggleTheme: () => void;
 
   tenants: Tenant[];
+
   users: User[];
+
   activity: ActivityItem[];
 
-  createTenant: (input: BankInput) => Tenant;
+  createTenant: (
+    input: BankInput,
+  ) => Tenant;
+
   updateTenant: (
     id: string,
     input: BankInput,
   ) => void;
 
-  toggleTenantStatus: (id: string) => void;
+  toggleTenantStatus: (
+    id: string,
+  ) => void;
 
-  createUser: (input: UserInput) => User;
+  createUser: (
+    input: UserInput,
+  ) => User;
 };
 
-const Ctx = createContext<AdminStore | null>(null);
+const Ctx =
+  createContext<AdminStore | null>(
+    null,
+  );
 
-export function getAccessToken() {
-  if (typeof window === "undefined") {
+/* -------------------------------------------------------------------------- */
+/* ACCESS TOKEN                                                               */
+/* -------------------------------------------------------------------------- */
+
+export function getAccessToken(): string | null {
+  if (
+    typeof window === "undefined"
+  ) {
     return null;
   }
 
-  return window.localStorage.getItem(
-    "accessToken",
-  );
+  const storedToken =
+    window.localStorage.getItem(
+      "accessToken",
+    );
+
+  if (!storedToken) {
+    return null;
+  }
+
+  const token =
+    storedToken
+      .trim()
+      .replace(
+        /^Bearer\s+/i,
+        "",
+      )
+      .trim();
+
+  return token || null;
 }
 
-/*
- * ============================================================
- * BACKEND ORGANIZATION RESPONSE
- * ============================================================
- */
+/* -------------------------------------------------------------------------- */
+/* ORGANIZATION API TYPE                                                      */
+/* -------------------------------------------------------------------------- */
 
 type OrganizationApiResponse = {
   id?: string;
@@ -490,15 +969,54 @@ type OrganizationApiResponse = {
   name?: string;
   type?: string;
 
+  bank_code?: string;
+  bankCode?: string;
+
+  bank_name?: string;
+  bankName?: string;
+
+  bank_type?: string;
+  bankType?: string;
+
   institution_name?: string;
   institution_type?: string;
+
+  legal_name?: string;
+  legalName?: string;
+
+  pan_no?: string;
+  pan_number?: string;
+  pan?: string;
+  panNo?: string;
+
+  gst_no?: string;
+  gst_number?: string;
+  gst?: string;
+  gstNo?: string;
+
+  license_no?: string;
+  license_number?: string;
+  licenseNo?: string;
 
   registration_number?: string;
   registration_id?: string;
 
-  regulatory_authority?: string;
-  regulatory_authority_id?: string;
+  website?: string;
 
+  logo_url?: string;
+  logoUrl?: string;
+
+  regulatory_authority?: string;
+
+  /*
+   * Optional.
+   * It can still be received from GET API,
+   * but it is not required by the frontend model.
+   */
+  regulatory_authority_id?: string;
+  regulatoryAuthorityId?: string;
+
+  CIN?: string;
   cin?: string;
   cin_no?: string;
   cin_number?: string;
@@ -510,6 +1028,7 @@ type OrganizationApiResponse = {
   state?: string;
   city?: string;
   pin_code?: string;
+  pincode?: string;
 
   registered_address?: string;
   corporate_address?: string;
@@ -517,62 +1036,109 @@ type OrganizationApiResponse = {
   contact_email?: string;
   contact_phone?: string;
 
-  website?: string;
-  legal_name?: string;
-  short_name?: string;
-
   created_at?: string;
   updated_at?: string;
 
-  db_name?: string;
-  db_host?: string;
-  db_port?: number;
+  direct_clg_member?: string;
+  direct_member_iftas?: string;
+
+  micr_code?: string;
+  micr_city_code?: string;
+  micr_branch_code?: string;
+
+  ifsc_code?: string;
+
+  number_of_branches?:
+    | string
+    | number;
+
+  sponsor_bank_for_clg?: string;
+  sponsor_bank_for_iftas?: string;
+
+  address_type?: string;
+
+  unit_gala_name_no?: string;
+  unit_gala_name_and_number?: string;
+
+  street_road?: string;
+
+  land_mark?: string;
+  landmark?: string;
 
   branches?: unknown[];
 };
 
-/*
- * ============================================================
- * MAP BACKEND ORGANIZATION TO TENANT
- * ============================================================
- */
+/* -------------------------------------------------------------------------- */
+/* NORMALIZE BANK TYPE                                                        */
+/* -------------------------------------------------------------------------- */
+
+function normalizeBankType(
+  value?: string,
+): InstituteType {
+  const normalized =
+    value
+      ?.trim()
+      .toUpperCase() ?? "";
+
+  return normalized === "NBFC"
+    ? "NBFC"
+    : "BANK";
+}
+
+/* -------------------------------------------------------------------------- */
+/* MAP ORGANIZATION                                                           */
+/* -------------------------------------------------------------------------- */
 
 function mapOrganizationToTenant(
   organization: OrganizationApiResponse,
 ): Tenant {
-  const instituteName =
+  const bankName =
+    organization.bank_name ??
+    organization.bankName ??
     organization.institution_name ??
     organization.name ??
     "";
 
-  const instituteTypeRaw =
-    organization.institution_type ??
-    organization.type ??
+  const bankType =
+    normalizeBankType(
+      organization.bank_type ??
+        organization.bankType ??
+        organization.institution_type ??
+        organization.type,
+    );
+
+  const bankCode =
+    organization.bank_code ??
+    organization.bankCode ??
     "";
 
-  /*
-   * IMPORTANT:
-   * Only BANK and NBFC are allowed.
-   */
-  const instituteType: InstituteType =
-    instituteTypeRaw.toUpperCase() === "NBFC"
-      ? "NBFC"
-      : "BANK";
-
-  const registrationNumber =
+  const licenseNo =
+    organization.license_no ??
+    organization.licenseNo ??
+    organization.license_number ??
     organization.registration_number ??
     organization.registration_id ??
     "";
 
-  const regulatoryAuthorityId =
-    organization.regulatory_authority_id ??
-    organization.regulatory_authority ??
+  const gstNo =
+    organization.gst_no ??
+    organization.gstNo ??
+    organization.gst_number ??
+    organization.gst ??
     "";
 
   const cin =
+    organization.CIN ??
     organization.cin_no ??
     organization.cin_number ??
     organization.cin ??
+    "";
+
+  const panNo =
+    organization.pan_no ??
+    organization.panNo ??
+    organization.pan_number ??
+    organization.pan ??
     "";
 
   const backendStatus =
@@ -580,10 +1146,101 @@ function mapOrganizationToTenant(
     organization.regulatory_status ??
     "ACTIVE";
 
-  const frontendStatus: TenantStatus =
-    backendStatus.toUpperCase() === "ACTIVE"
+  const status: TenantStatus =
+    backendStatus
+      .trim()
+      .toUpperCase() ===
+    "ACTIVE"
       ? "Active"
       : "Inactive";
+
+  const regulatoryDetails: RegulatoryDetails =
+    {
+      directClgMember:
+        organization.direct_clg_member ??
+        "",
+
+      directMemberIftas:
+        organization.direct_member_iftas ??
+        "",
+
+      micrCode:
+        organization.micr_code ??
+        "",
+
+      micrCityCode:
+        organization.micr_city_code ??
+        "",
+
+      micrBranchCode:
+        organization.micr_branch_code ??
+        "",
+
+      ifscCode:
+        organization.ifsc_code ??
+        "",
+
+      numberOfBranches:
+        organization.number_of_branches !=
+        null
+          ? String(
+              organization.number_of_branches,
+            )
+          : "",
+
+      sponsorBankForClg:
+        organization.sponsor_bank_for_clg ??
+        "",
+
+      sponsorBankForIftas:
+        organization.sponsor_bank_for_iftas ??
+        "",
+    };
+
+  const addressDetails: AddressDetails =
+    {
+      addressType:
+        organization.address_type ??
+        "",
+
+      unitGalaNameNo:
+        organization.unit_gala_name_no ??
+        organization.unit_gala_name_and_number ??
+        "",
+
+      streetRoad:
+        organization.street_road ??
+        "",
+
+      landMark:
+        organization.land_mark ??
+        organization.landmark ??
+        "",
+
+      city:
+        organization.city ??
+        "",
+
+      state:
+        organization.state ??
+        "",
+
+      pinCode:
+        organization.pin_code ??
+        organization.pincode ??
+        "",
+    };
+
+  /*
+   * Build the Tenant object without requiring
+   * regulatoryAuthorityId.
+   *
+   * If the backend sends the value, we preserve it.
+   * If it does not send it, nothing is added.
+   */
+  const regulatoryAuthorityId =
+    organization.regulatory_authority_id ??
+    organization.regulatoryAuthorityId;
 
   return {
     id:
@@ -593,15 +1250,13 @@ function mapOrganizationToTenant(
           nextId("tnt"),
       ),
 
-    /*
-     * Existing Tenant fields
-     */
-    firstName: instituteName,
+    firstName: bankName,
+
     middleName: "",
+
     lastName: "",
 
-    employeeId:
-      registrationNumber,
+    employeeId: licenseNo,
 
     email:
       organization.contact_email ??
@@ -611,31 +1266,58 @@ function mapOrganizationToTenant(
       organization.contact_phone ??
       "",
 
-    organization:
-      instituteName,
+    organization: bankName,
 
     branches: [],
 
     designation:
       "Relationship Manager",
 
-    status:
-      frontendStatus,
+    status,
 
     createdAt:
       organization.created_at ??
       new Date().toISOString(),
 
+    ...(organization.pkid !=
+    null
+      ? {
+          pkid:
+            organization.pkid,
+        }
+      : {}),
+
     activity: [],
 
-    /*
-     * Bank fields
-     */
-    instituteName,
+    bankCode,
 
-    instituteType,
+    bankName,
 
-    registrationNumber,
+    bankType,
+
+    legalName:
+      organization.legal_name ??
+      organization.legalName ??
+      bankName,
+
+    panNo,
+
+    gstNo,
+
+    licenseNo,
+
+    website:
+      organization.website ??
+      "",
+
+    logoUrl:
+      organization.logo_url ??
+      organization.logoUrl ??
+      "",
+
+    regulatoryDetails,
+
+    addressDetails,
 
     contactEmail:
       organization.contact_email ??
@@ -645,53 +1327,129 @@ function mapOrganizationToTenant(
       organization.contact_phone ??
       "",
 
+    instituteName:
+      bankName,
+
+    instituteType:
+      bankType,
+
+    registrationNumber:
+      organization.registration_id ??
+      organization.registration_number ??
+      licenseNo,
+
     cin,
 
-    regulatoryAuthorityId,
+    /*
+     * Only add regulatoryAuthorityId
+     * when the backend actually provides it.
+     *
+     * No hardcoded value is used.
+     */
+    ...(regulatoryAuthorityId
+      ? {
+          regulatoryAuthorityId,
+        }
+      : {}),
   };
 }
 
-/*
- * ============================================================
- * GET ORGANIZATIONS API
- * ============================================================
- */
+/* -------------------------------------------------------------------------- */
+/* GET ORGANIZATIONS                                                          */
+/* -------------------------------------------------------------------------- */
 
-async function fetchOrganizations(): Promise<
-  Tenant[] | null
-> {
-  const token = getAccessToken();
-
+async function fetchOrganizations(
+  token: string,
+): Promise<Tenant[] | null> {
   if (!token) {
     return null;
   }
 
   try {
-    const response = await fetch(
-      "https://los-backend-355v.onrender.com/api/v1/administration/organizations",
+    console.log(
+      "Loading organizations with token:",
       {
-        method: "GET",
-
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        length: token.length,
+        start: `${token.substring(
+          0,
+          12,
+        )}...`,
       },
     );
+
+    const response =
+      await fetch(
+        "https://los-backend-355v.onrender.com/api/v1/administration/organizations",
+        {
+          method: "GET",
+
+          headers: {
+            Accept:
+              "application/json",
+
+            Authorization:
+              `Bearer ${token}`,
+          },
+        },
+      );
+
+    const responseText =
+      await response.text();
+
+    console.log(
+      "Organizations API response:",
+      {
+        status:
+          response.status,
+
+        statusText:
+          response.statusText,
+      },
+    );
+
+    if (
+      response.status === 401
+    ) {
+      console.error(
+        "401 Unauthorized from organizations API.",
+        {
+          response:
+            responseText,
+        },
+      );
+
+      /*
+       * Remove the token only if it is
+       * still the currently stored token.
+       */
+      if (
+        getAccessToken() ===
+        token
+      ) {
+        window.localStorage.removeItem(
+          "accessToken",
+        );
+      }
+
+      return null;
+    }
 
     if (!response.ok) {
       console.error(
         "Organizations GET failed:",
-        response.status,
+        {
+          status:
+            response.status,
+
+          response:
+            responseText,
+        },
       );
 
       return null;
     }
 
-    const responseText =
-      await response.text();
-
-    if (!responseText) {
+    if (!responseText.trim()) {
       return [];
     }
 
@@ -699,10 +1457,12 @@ async function fetchOrganizations(): Promise<
 
     try {
       responseData =
-        JSON.parse(responseText);
+        JSON.parse(
+          responseText,
+        );
     } catch (error) {
       console.error(
-        "Invalid organizations API response:",
+        "Invalid organizations JSON:",
         error,
       );
 
@@ -712,48 +1472,49 @@ async function fetchOrganizations(): Promise<
     let organizations: OrganizationApiResponse[] =
       [];
 
-    /*
-     * Direct array response
-     */
-    if (Array.isArray(responseData)) {
+    if (
+      Array.isArray(
+        responseData,
+      )
+    ) {
       organizations =
         responseData as OrganizationApiResponse[];
-    }
-
-    /*
-     * { data: [...] } response
-     */
-    else if (
+    } else if (
       responseData &&
-      typeof responseData === "object"
+      typeof responseData ===
+        "object"
     ) {
       const body =
         responseData as {
           data?: unknown;
+          organizations?: unknown;
         };
 
-      if (Array.isArray(body.data)) {
+      if (
+        Array.isArray(
+          body.data,
+        )
+      ) {
         organizations =
           body.data as OrganizationApiResponse[];
+      } else if (
+        Array.isArray(
+          body.organizations,
+        )
+      ) {
+        organizations =
+          body.organizations as OrganizationApiResponse[];
       }
     }
 
     console.log(
       "Organizations received:",
-      organizations,
+      organizations.length,
     );
 
-    const mappedTenants =
-      organizations.map(
-        mapOrganizationToTenant,
-      );
-
-    console.log(
-      "Organizations mapped to tenants:",
-      mappedTenants,
+    return organizations.map(
+      mapOrganizationToTenant,
     );
-
-    return mappedTenants;
   } catch (error) {
     console.error(
       "Failed to fetch organizations:",
@@ -764,116 +1525,212 @@ async function fetchOrganizations(): Promise<
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* ADMIN STORE PROVIDER                                                       */
+/* -------------------------------------------------------------------------- */
+
 export function AdminStoreProvider({
   children,
 }: {
   children: ReactNode;
 }) {
-  const [authed, setAuthed] =
-    useState(() =>
-      Boolean(getAccessToken()),
+  /*
+   * Authentication is driven by the
+   * actual access token.
+   */
+  const [
+    accessToken,
+    setAccessToken,
+  ] = useState<string | null>(
+    () => getAccessToken(),
+  );
+
+  const authed =
+    Boolean(accessToken);
+
+  const [
+    theme,
+    setTheme,
+  ] =
+    useState<"light" | "dark">(
+      "light",
     );
 
-  const [theme, setTheme] =
-    useState<"light" | "dark">("light");
+  const [
+    tenants,
+    setTenants,
+  ] =
+    useState<Tenant[]>(
+      SEED_TENANTS,
+    );
 
-  const [tenants, setTenants] =
-    useState<Tenant[]>(SEED_TENANTS);
-
-  const [users, setUsers] =
+  const [
+    users,
+    setUsers,
+  ] =
     useState<User[]>([]);
 
-  const [activity, setActivity] =
+  const [
+    activity,
+    setActivity,
+  ] =
     useState<ActivityItem[]>(
       SEED_ACTIVITY,
     );
 
-  /*
-   * ==========================================================
-   * LOGIN
-   * ==========================================================
-   */
+  const loadingTokenRef =
+    useRef<string | null>(
+      null,
+    );
+
+  /* ------------------------------------------------------------------------ */
+  /* LOGIN                                                                    */
+  /* ------------------------------------------------------------------------ */
 
   const login = useCallback(
-    (accessToken: string) => {
-      window.localStorage.setItem(
-        "accessToken",
-        accessToken,
+    (
+      receivedAccessToken: string,
+    ) => {
+      const cleanedToken =
+        receivedAccessToken
+          .trim()
+          .replace(
+            /^Bearer\s+/i,
+            "",
+          )
+          .trim();
+
+      if (!cleanedToken) {
+        console.error(
+          "Login failed: access token is empty.",
+        );
+
+        return;
+      }
+
+      console.log(
+        "LOGIN TOKEN STORED:",
+        {
+          exists: true,
+
+          length:
+            cleanedToken.length,
+
+          start:
+            `${cleanedToken.substring(
+              0,
+              12,
+            )}...`,
+        },
       );
 
-      setAuthed(true);
+      window.localStorage.setItem(
+        "accessToken",
+        cleanedToken,
+      );
+
+      /*
+       * Force the organization GET
+       * to run for the new token.
+       */
+      loadingTokenRef.current =
+        null;
+
+      setAccessToken(
+        cleanedToken,
+      );
     },
     [],
   );
 
-  /*
-   * ==========================================================
-   * LOGOUT
-   * ==========================================================
-   */
+  /* ------------------------------------------------------------------------ */
+  /* LOGOUT                                                                   */
+  /* ------------------------------------------------------------------------ */
 
-  const logout = useCallback(() => {
-    window.localStorage.removeItem(
-      "accessToken",
-    );
+  const logout =
+    useCallback(() => {
+      window.localStorage.removeItem(
+        "accessToken",
+      );
 
-    setAuthed(false);
+      window.localStorage.removeItem(
+        "refreshToken",
+      );
 
-    setTenants(SEED_TENANTS);
-  }, []);
+      loadingTokenRef.current =
+        null;
 
-  /*
-   * ==========================================================
-   * LOAD API TENANTS INTO STORE
-   * ==========================================================
-   *
-   * IMPORTANT:
-   *
-   * tenants.index.tsx remains unchanged.
-   *
-   * The list page already has its own GET call.
-   *
-   * This store also gets the same API data because
-   * the detail page reads tenants from useAdminStore().
-   */
+      setAccessToken(null);
+
+      setTenants(
+        SEED_TENANTS,
+      );
+    }, []);
+
+  /* ------------------------------------------------------------------------ */
+  /* LOAD ORGANIZATIONS                                                       */
+  /* ------------------------------------------------------------------------ */
 
   useEffect(() => {
     let cancelled = false;
 
-    const loadOrganizations =
-      async () => {
-        if (!getAccessToken()) {
-          return;
-        }
-
-        const apiTenants =
-          await fetchOrganizations();
-
-        if (cancelled) {
-          return;
-        }
-
-        /*
-         * Do not replace existing data if
-         * the API request failed.
-         */
-        if (apiTenants !== null) {
-          setTenants(apiTenants);
-        }
+    if (!accessToken) {
+      return () => {
+        cancelled = true;
       };
+    }
 
-    loadOrganizations();
+    /*
+     * Do not call the API twice with
+     * the exact same token.
+     */
+    if (
+      loadingTokenRef.current ===
+      accessToken
+    ) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    loadingTokenRef.current =
+      accessToken;
+
+    const load = async () => {
+      const apiTenants =
+        await fetchOrganizations(
+          accessToken,
+        );
+
+      if (cancelled) {
+        return;
+      }
+
+      if (apiTenants === null) {
+        loadingTokenRef.current =
+          null;
+
+        return;
+      }
+
+      /*
+       * Backend data replaces seed data.
+       */
+      setTenants(
+        apiTenants,
+      );
+    };
+
+    void load();
 
     return () => {
       cancelled = true;
     };
-  }, [authed]);
+  }, [accessToken]);
 
-  /*
-   * ==========================================================
-   * THEME
-   * ==========================================================
-   */
+  /* ------------------------------------------------------------------------ */
+  /* THEME                                                                    */
+  /* ------------------------------------------------------------------------ */
 
   useEffect(() => {
     const stored =
@@ -901,257 +1758,389 @@ export function AdminStoreProvider({
     );
   }, [theme]);
 
-  /*
-   * ==========================================================
-   * ACTIVITY
-   * ==========================================================
-   */
+  /* ------------------------------------------------------------------------ */
+  /* ACTIVITY                                                                 */
+  /* ------------------------------------------------------------------------ */
 
-  const pushActivity = useCallback(
-    (
-      text: string,
-      kind: ActivityItem["kind"],
-    ) => {
-      setActivity((prev) => [
-        {
-          id: nextId("f"),
-          text,
-          at: new Date().toISOString(),
-          kind,
-        },
-        ...prev,
-      ]);
-    },
-    [],
-  );
+  const pushActivity =
+    useCallback(
+      (
+        text: string,
+        kind: ActivityItem["kind"],
+      ) => {
+        setActivity(
+          (previous) => [
+            {
+              id: nextId("f"),
 
-  /*
-   * ==========================================================
-   * CREATE TENANT
-   * ==========================================================
-   */
+              text,
 
-  const createTenant = useCallback(
-    (input: BankInput) => {
-      const now =
-        new Date().toISOString();
+              at:
+                new Date().toISOString(),
 
-      const tenant: Tenant = {
-        firstName:
-          input.instituteName,
+              kind,
+            },
 
-        middleName: "",
+            ...previous,
+          ],
+        );
+      },
+      [],
+    );
 
-        lastName: "",
+  /* ------------------------------------------------------------------------ */
+  /* CREATE BANK                                                              */
+  /* ------------------------------------------------------------------------ */
 
-        employeeId:
-          input.registrationNumber,
+  const createTenant =
+    useCallback(
+      (input: BankInput) => {
+        const now =
+          new Date().toISOString();
 
-        email:
-          input.contactEmail,
+        const tenant: Tenant = {
+          id: nextId("tnt"),
 
-        mobile:
-          input.contactPhone,
+          firstName:
+            input.bankName,
 
-        organization:
-          input.instituteName,
+          middleName: "",
 
-        designation:
-          input.designation ?? "",
+          lastName: "",
 
-        status:
-          input.status ?? "Active",
+          employeeId:
+            input.licenseNo,
 
-        instituteName:
-          input.instituteName,
+          email:
+            input.contactEmail,
 
-        instituteType:
-          input.instituteType as InstituteType,
+          mobile:
+            input.contactPhone,
 
-        registrationNumber:
-          input.registrationNumber,
+          organization:
+            input.bankName,
 
-        contactEmail:
-          input.contactEmail,
+          branches:
+            input.branches.map(
+              (branch) => ({
+                id:
+                  branch.id ||
+                  nextId("br"),
 
-        contactPhone:
-          input.contactPhone,
+                location:
+                  branch.location,
+              }),
+            ),
 
-        cin:
-          input.cin ?? "",
+          designation:
+            input.designation ??
+            "Relationship Manager",
 
-        regulatoryAuthorityId:
-          input.regulatoryAuthorityId ??
-          "",
+          status:
+            input.status ??
+            "Active",
 
-        id: nextId("tnt"),
+          createdAt: now,
 
-        branches:
-          input.branches.map(
-            (location) => ({
-              id: nextId("br"),
-              location,
-            }),
-          ),
+          activity: [
+            {
+              id: nextId("act"),
 
-        createdAt: now,
+              text:
+                "Bank account created",
 
-        activity: [
-          {
-            id: nextId("act"),
-            text: "Tenant account created",
-            at: now,
-          },
-        ],
-      };
+              at: now,
+            },
+          ],
 
-      setTenants((prev) => [
-        tenant,
-        ...prev,
-      ]);
+          bankCode:
+            input.bankCode,
 
-      pushActivity(
-        `Tenant '${input.instituteName}' created`,
-        "created",
-      );
+          bankName:
+            input.bankName,
 
-      return tenant;
-    },
-    [pushActivity],
-  );
+          bankType:
+            input.bankType,
 
-  /*
-   * ==========================================================
-   * UPDATE TENANT
-   * ==========================================================
-   */
+          legalName:
+            input.legalName,
 
-  const updateTenant = useCallback(
-    (
-      id: string,
-      input: BankInput,
-    ) => {
-      const now =
-        new Date().toISOString();
+          panNo:
+            input.panNo,
 
-      setTenants((prev) =>
-        prev.map((tenant) =>
-          tenant.id === id
-            ? {
-                ...tenant,
+          gstNo:
+            input.gstNo,
 
-                instituteName:
-                  input.instituteName,
+          licenseNo:
+            input.licenseNo,
 
-                instituteType:
-                  input.instituteType as InstituteType,
+          website:
+            input.website,
 
-                registrationNumber:
-                  input.registrationNumber,
+          logoUrl:
+            input.logoUrl,
 
-                contactEmail:
-                  input.contactEmail,
+          regulatoryDetails:
+            input.regulatoryDetails,
 
-                contactPhone:
-                  input.contactPhone,
+          addressDetails:
+            input.addressDetails,
 
-                cin:
-                  input.cin ??
-                  tenant.cin,
+          contactEmail:
+            input.contactEmail,
 
-                regulatoryAuthorityId:
-                  input.regulatoryAuthorityId ??
-                  tenant.regulatoryAuthorityId,
+          contactPhone:
+            input.contactPhone,
 
-                organization:
-                  input.instituteName,
+          instituteName:
+            input.bankName,
 
-                email:
-                  input.contactEmail,
+          instituteType:
+            input.bankType,
 
-                mobile:
-                  input.contactPhone,
+          registrationNumber:
+            input.licenseNo,
 
-                designation:
-                  input.designation ??
-                  tenant.designation,
+          cin:
+            input.cin,
 
-                status:
-                  input.status ??
-                  tenant.status,
+          /*
+           * No regulatoryAuthorityId is required
+           * for creating a Tenant in the frontend.
+           *
+           * If the API later returns one,
+           * mapOrganizationToTenant() will preserve it.
+           */
+        };
 
-                branches:
-                  input.branches.map(
-                    (location) => ({
-                      id: nextId("br"),
-                      location,
-                    }),
-                  ),
+        /*
+         * If the caller happens to provide
+         * a regulatory authority ID, preserve it.
+         *
+         * Create Bank does not provide it,
+         * so normally this block does nothing.
+         */
+        if (
+          input.regulatoryAuthorityId
+        ) {
+          tenant.regulatoryAuthorityId =
+            input.regulatoryAuthorityId;
+        }
 
-                activity: [
+        setTenants(
+          (previous) => [
+            tenant,
+            ...previous,
+          ],
+        );
+
+        pushActivity(
+          `Bank '${input.bankName}' created`,
+          "created",
+        );
+
+        return tenant;
+      },
+      [pushActivity],
+    );
+
+  /* ------------------------------------------------------------------------ */
+  /* UPDATE BANK                                                              */
+  /* ------------------------------------------------------------------------ */
+
+  const updateTenant =
+    useCallback(
+      (
+        id: string,
+        input: BankInput,
+      ) => {
+        const now =
+          new Date().toISOString();
+
+        setTenants(
+          (previous) =>
+            previous.map(
+              (tenant) => {
+                if (
+                  tenant.id !== id
+                ) {
+                  return tenant;
+                }
+
+                const updatedTenant: Tenant =
                   {
-                    id: nextId("act"),
-                    text: "Tenant details updated",
-                    at: now,
-                  },
-                  ...tenant.activity,
-                ],
-              }
-            : tenant,
-        ),
-      );
+                    ...tenant,
 
-      pushActivity(
-        `Tenant '${input.instituteName}' updated`,
-        "updated",
-      );
-    },
-    [pushActivity],
-  );
+                    bankCode:
+                      input.bankCode,
 
-  /*
-   * ==========================================================
-   * CREATE USER
-   * ==========================================================
-   */
+                    bankName:
+                      input.bankName,
 
-  const createUser = useCallback(
-    (input: UserInput) => {
-      const user: User = {
-        ...input,
+                    bankType:
+                      input.bankType,
 
-        id: nextId("usr"),
+                    legalName:
+                      input.legalName,
 
-        createdAt:
-          new Date().toISOString(),
-      };
+                    panNo:
+                      input.panNo,
 
-      setUsers((prev) => [
-        user,
-        ...prev,
-      ]);
+                    gstNo:
+                      input.gstNo,
 
-      pushActivity(
-        `User '${[
-          input.firstName,
-          input.middleName,
-          input.lastName,
-        ]
-          .filter(Boolean)
-          .join(" ")}' created`,
-        "created",
-      );
+                    licenseNo:
+                      input.licenseNo,
 
-      return user;
-    },
-    [pushActivity],
-  );
+                    website:
+                      input.website,
 
-  /*
-   * ==========================================================
-   * TOGGLE TENANT STATUS
-   * ==========================================================
-   */
+                    logoUrl:
+                      input.logoUrl,
+
+                    regulatoryDetails:
+                      input.regulatoryDetails,
+
+                    addressDetails:
+                      input.addressDetails,
+
+                    contactEmail:
+                      input.contactEmail,
+
+                    contactPhone:
+                      input.contactPhone,
+
+                    instituteName:
+                      input.bankName,
+
+                    instituteType:
+                      input.bankType,
+
+                    registrationNumber:
+                      input.licenseNo,
+
+                    cin:
+                      input.cin,
+
+                    organization:
+                      input.bankName,
+
+                    firstName:
+                      input.bankName,
+
+                    email:
+                      input.contactEmail,
+
+                    mobile:
+                      input.contactPhone,
+
+                    employeeId:
+                      input.licenseNo,
+
+                    designation:
+                      input.designation ??
+                      tenant.designation,
+
+                    status:
+                      input.status ??
+                      tenant.status,
+
+                    branches:
+                      input.branches.map(
+                        (branch) => ({
+                          id:
+                            branch.id ||
+                            nextId("br"),
+
+                          location:
+                            branch.location,
+                        }),
+                      ),
+
+                    activity: [
+                      {
+                        id: nextId(
+                          "act",
+                        ),
+
+                        text:
+                          "Bank details updated",
+
+                        at: now,
+                      },
+
+                      ...tenant.activity,
+                    ],
+                  };
+
+                /*
+                 * Only update regulatoryAuthorityId
+                 * when the input actually contains one.
+                 *
+                 * Otherwise preserve the existing value.
+                 */
+                if (
+                  input.regulatoryAuthorityId
+                ) {
+                  updatedTenant.regulatoryAuthorityId =
+                    input.regulatoryAuthorityId;
+                }
+
+                return updatedTenant;
+              },
+            ),
+        );
+
+        pushActivity(
+          `Bank '${input.bankName}' updated`,
+          "updated",
+        );
+      },
+      [pushActivity],
+    );
+
+  /* ------------------------------------------------------------------------ */
+  /* CREATE USER                                                              */
+  /* ------------------------------------------------------------------------ */
+
+  const createUser =
+    useCallback(
+      (input: UserInput) => {
+        const user: User = {
+          ...input,
+
+          id: nextId("usr"),
+
+          createdAt:
+            new Date().toISOString(),
+        };
+
+        setUsers(
+          (previous) => [
+            user,
+            ...previous,
+          ],
+        );
+
+        pushActivity(
+          `User '${[
+            input.firstName,
+            input.middleName,
+            input.lastName,
+          ]
+            .filter(Boolean)
+            .join(" ")}' created`,
+          "created",
+        );
+
+        return user;
+      },
+      [pushActivity],
+    );
+
+  /* ------------------------------------------------------------------------ */
+  /* TOGGLE BANK STATUS                                                       */
+  /* ------------------------------------------------------------------------ */
 
   const toggleTenantStatus =
     useCallback(
@@ -1159,107 +2148,147 @@ export function AdminStoreProvider({
         const now =
           new Date().toISOString();
 
-        setTenants((prev) =>
-          prev.map((tenant) => {
-            if (tenant.id !== id) {
-              return tenant;
-            }
+        let changedBankName =
+          "";
 
-            const status: TenantStatus =
-              tenant.status === "Active"
-                ? "Inactive"
-                : "Active";
+        let changedStatus:
+          | TenantStatus
+          | null = null;
 
-            return {
-              ...tenant,
+        setTenants(
+          (previous) =>
+            previous.map(
+              (tenant) => {
+                if (
+                  tenant.id !== id
+                ) {
+                  return tenant;
+                }
 
-              status,
+                const newStatus: TenantStatus =
+                  tenant.status ===
+                  "Active"
+                    ? "Inactive"
+                    : "Active";
 
-              activity: [
-                {
-                  id: nextId("act"),
-                  text: `Status changed to ${status}`,
-                  at: now,
-                },
-                ...tenant.activity,
-              ],
-            };
-          }),
+                changedBankName =
+                  tenant.bankName;
+
+                changedStatus =
+                  newStatus;
+
+                return {
+                  ...tenant,
+
+                  status:
+                    newStatus,
+
+                  activity: [
+                    {
+                      id: nextId(
+                        "act",
+                      ),
+
+                      text:
+                        `Status changed to ${newStatus}`,
+
+                      at: now,
+                    },
+
+                    ...tenant.activity,
+                  ],
+                };
+              },
+            ),
         );
 
-        const tenant =
-          tenants.find(
-            (item) => item.id === id,
-          );
-
-        if (tenant) {
+        if (
+          changedBankName &&
+          changedStatus
+        ) {
           pushActivity(
-            `Tenant '${tenant.organization}' status changed to ${
-              tenant.status === "Active"
-                ? "Inactive"
-                : "Active"
-            }`,
+            `Bank '${changedBankName}' status changed to ${changedStatus}`,
             "status",
           );
         }
       },
-      [pushActivity, tenants],
+      [pushActivity],
     );
 
-  /*
-   * ==========================================================
-   * STORE VALUE
-   * ==========================================================
-   */
+  /* ------------------------------------------------------------------------ */
+  /* THEME                                                                    */
+  /* ------------------------------------------------------------------------ */
 
-  const value = useMemo<AdminStore>(
-    () => ({
-      authed,
-
-      adminName:
-        "Pranav Jangam",
-
-      login,
-
-      logout,
-
-      theme,
-
-      toggleTheme: () =>
-        setTheme((current) =>
+  const toggleTheme =
+    useCallback(() => {
+      setTheme(
+        (current) =>
           current === "dark"
             ? "light"
             : "dark",
-        ),
+      );
+    }, []);
 
-      tenants,
+  /* ------------------------------------------------------------------------ */
+  /* STORE VALUE                                                              */
+  /* ------------------------------------------------------------------------ */
 
-      users,
+  const value =
+    useMemo<AdminStore>(
+      () => ({
+        authed,
 
-      activity,
+        adminName:
+          "Pranav Jangam",
 
-      createTenant,
+        login,
 
-      updateTenant,
+        logout,
 
-      toggleTenantStatus,
+        theme,
 
-      createUser,
-    }),
-    [
-      authed,
-      theme,
-      tenants,
-      users,
-      activity,
-      createTenant,
-      updateTenant,
-      toggleTenantStatus,
-      createUser,
-      login,
-      logout,
-    ],
-  );
+        toggleTheme,
+
+        tenants,
+
+        users,
+
+        activity,
+
+        createTenant,
+
+        updateTenant,
+
+        toggleTenantStatus,
+
+        createUser,
+      }),
+      [
+        authed,
+
+        theme,
+
+        tenants,
+
+        users,
+
+        activity,
+
+        login,
+
+        logout,
+
+        toggleTheme,
+
+        createTenant,
+
+        updateTenant,
+
+        toggleTenantStatus,
+
+        createUser,
+      ],
+    );
 
   return (
     <Ctx.Provider value={value}>
@@ -1268,14 +2297,13 @@ export function AdminStoreProvider({
   );
 }
 
-/*
- * ============================================================
- * USE ADMIN STORE
- * ============================================================
- */
+/* -------------------------------------------------------------------------- */
+/* USE ADMIN STORE                                                            */
+/* -------------------------------------------------------------------------- */
 
 export function useAdminStore() {
-  const ctx = useContext(Ctx);
+  const ctx =
+    useContext(Ctx);
 
   if (!ctx) {
     throw new Error(
@@ -1286,11 +2314,9 @@ export function useAdminStore() {
   return ctx;
 }
 
-/*
- * ============================================================
- * DATE HELPERS
- * ============================================================
- */
+/* -------------------------------------------------------------------------- */
+/* DATE HELPERS                                                               */
+/* -------------------------------------------------------------------------- */
 
 export function formatRelative(
   iso: string,
@@ -1299,9 +2325,10 @@ export function formatRelative(
     Date.now() -
     new Date(iso).getTime();
 
-  const mins = Math.round(
-    diff / 60000,
-  );
+  const mins =
+    Math.round(
+      diff / 60000,
+    );
 
   if (mins < 1) {
     return "just now";
@@ -1311,17 +2338,15 @@ export function formatRelative(
     return `${mins}m ago`;
   }
 
-  const hours = Math.round(
-    mins / 60,
-  );
+  const hours =
+    Math.round(mins / 60);
 
   if (hours < 24) {
     return `${hours}h ago`;
   }
 
-  const days = Math.round(
-    hours / 24,
-  );
+  const days =
+    Math.round(hours / 24);
 
   if (days < 30) {
     return `${days}d ago`;
@@ -1329,10 +2354,13 @@ export function formatRelative(
 
   return new Date(
     iso,
-  ).toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-  });
+  ).toLocaleDateString(
+    undefined,
+    {
+      day: "numeric",
+      month: "short",
+    },
+  );
 }
 
 export function formatDate(
@@ -1340,10 +2368,12 @@ export function formatDate(
 ) {
   return new Date(
     iso,
-  ).toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  ).toLocaleDateString(
+    undefined,
+    {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    },
+  );
 }
-

@@ -1,5 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
+import { Activity } from "lucide-react";
 import {
   LayoutDashboard,
   Building2,
@@ -12,7 +13,7 @@ import {
   ShieldCheck,
   ArrowLeft,
   Menu,
-  X,
+          X,
 } from "lucide-react";
 
 import { useAdminStore } from "@/lib/admin-store";
@@ -31,6 +32,7 @@ const NAV = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
   { label: "Bank Management", to: "/tenants", icon: Building2 },
   { label: "User Management", to: "/users", icon: Users },
+  { label: "Activity Log", to: "/activity-log", icon: Activity },
 ] as const;
 
 export function AppShell({
@@ -51,24 +53,37 @@ export function AppShell({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const pathname = useRouterState({
-    select: (s) => s.location.pathname,
+    select: (state) => state.location.pathname,
   });
 
   useEffect(() => {
-    if (!authed) navigate({ to: "/", replace: true });
+    if (!authed) {
+      navigate({ to: "/", replace: true });
+    }
   }, [authed, navigate]);
 
-  if (!authed) return null;
+  if (!authed) {
+    return null;
+  }
 
   const adminInitials = adminName
     .split(" ")
-    .map((p) => p[0])
+    .map((part) => part[0])
     .join("")
     .slice(0, 2)
     .toUpperCase();
 
   const handleNavigation = () => {
     setMobileMenuOpen(false);
+    const navigation = [
+  // existing items...
+
+  {
+    label: "Activity Log",
+    href: "/activity-log",
+    icon: Activity,
+  },
+];
   };
 
   return (
@@ -88,8 +103,9 @@ export function AppShell({
           {!collapsed && (
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">
-                Banking LOS
+                Allianza LOS
               </p>
+
               <p className="truncate text-xs text-sidebar-foreground/60">
                 System Administrator
               </p>
@@ -133,7 +149,8 @@ export function AppShell({
 
         <div className="p-3">
           <button
-            onClick={() => setCollapsed((c) => !c)}
+            type="button"
+            onClick={() => setCollapsed((current) => !current)}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
           >
             {collapsed ? (
@@ -173,8 +190,9 @@ export function AppShell({
 
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">
-                Banking LOS
+                Allianza LOS
               </p>
+
               <p className="truncate text-xs text-sidebar-foreground/60">
                 System Administrator
               </p>
@@ -284,7 +302,10 @@ export function AppShell({
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 rounded-full border border-border p-1 pr-2 transition-colors hover:bg-secondary sm:pr-3">
+                <button
+                  type="button"
+                  className="flex items-center gap-2 rounded-full border border-border p-1 pr-2 transition-colors hover:bg-secondary sm:pr-3"
+                >
                   <span className="grid size-8 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
                     {adminInitials}
                   </span>
@@ -314,7 +335,10 @@ export function AppShell({
                 <DropdownMenuItem
                   onClick={() => {
                     logout();
-                    navigate({ to: "/", replace: true });
+                    navigate({
+                      to: "/",
+                      replace: true,
+                    });
                   }}
                 >
                   <LogOut className="mr-2 size-4" />

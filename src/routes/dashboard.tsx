@@ -43,7 +43,7 @@ export const Route = createFileRoute("/dashboard")({
       {
         name: "description",
         content:
-          "Platform overview for the Banking LOS admin: tenant counts, onboarding trends, product usage and recent activity.",
+          "Platform overview for the Allianza LOS admin: tenant counts, onboarding trends, product usage and recent activity.",
       },
       { property: "og:title", content: "Dashboard — System Administrator Panel" },
       {
@@ -88,8 +88,8 @@ function DashboardPage() {
     .slice(0, 5);
 
   const stats = [
-    { label: "Total Tenants", value: tenants.length, trend: "+12.5%", icon: Building2 },
-    { label: "Active Tenants", value: active, trend: "+8.1%", icon: CheckCircle2 },
+    { label: "Total Banks", value: tenants.length, trend: "+12.5%", icon: Building2 },
+    { label: "Active Banks", value: active, trend: "+8.1%", icon: CheckCircle2 },
     { label: "Total Products", value: 5, trend: "+2 this quarter", icon: Package },
     { label: "Total Rules Configured", value: 8, trend: "+3 this month", icon: Sparkles },
   ];
@@ -126,7 +126,7 @@ function DashboardPage() {
           <div className="surface-card animate-rise p-5 lg:col-span-3">
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="text-base font-semibold">Tenants onboarded over time</h2>
+                <h2 className="text-base font-semibold">Banks onboarded over time</h2>
                 <p className="text-xs text-muted-foreground">Monthly onboarding, current year</p>
               </div>
             </div>
@@ -178,8 +178,8 @@ function DashboardPage() {
 
           <div className="surface-card animate-rise p-5 lg:col-span-2">
             <div className="mb-4">
-              <h2 className="text-base font-semibold">Products by tenant usage</h2>
-              <p className="text-xs text-muted-foreground">Tenants offering each loan product</p>
+              <h2 className="text-base font-semibold">Products by Banks usage</h2>
+              <p className="text-xs text-muted-foreground">Banks offering each loan product</p>
             </div>
             {loaded ? (
               <div className="h-[260px]">
@@ -222,7 +222,7 @@ function DashboardPage() {
         <div className="grid gap-6 lg:grid-cols-5">
           <div className="surface-card animate-rise p-5 lg:col-span-3">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold">Recently Added Tenants</h2>
+              <h2 className="text-base font-semibold">Recently Added Banks</h2>
               <Link
                 to="/tenants"
                 className="inline-flex items-center gap-1 text-sm font-medium text-accent hover:underline"

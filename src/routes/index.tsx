@@ -23,7 +23,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Secure two-factor sign in to the Banking LOS System Administrator Panel: email, password and one-time passcode.",
+          "Secure two-factor sign in to the Allianza LOS System Administrator Panel: email, password and one-time passcode.",
       },
       {
         property: "og:title",
@@ -32,7 +32,7 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "Secure two-factor sign in to the Banking LOS System Administrator Panel.",
+          "Secure two-factor sign in to the Allianza LOS System Administrator Panel.",
       },
     ],
   }),
@@ -48,7 +48,7 @@ function BrandPanel() {
         </div>
 
         <div>
-          <p className="text-base font-semibold text-white">Banking LOS</p>
+          <p className="text-base font-semibold text-white">Allianza LOS</p>
           <p className="text-xs text-white/60">Loan Origination Platform</p>
         </div>
       </div>
@@ -129,155 +129,114 @@ function LoginPage() {
 
   const otpValue = otp.join("");
 
-  const submitCredentials = async (e: React.FormEvent) => {
-    e.preventDefault();
+ const submitCredentials = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    if (!emailValid || password.length < 6) {
+  if (!emailValid || password.length < 6) {
+    return;
+  }
+
+  setBusy(true);
+  setAccessToken(null);
+
+  try {
+    const response = await fetch(
+      "https://los-backend-355v.onrender.com/api/v1/auth/login",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+        }),
+      },
+    );
+
+    const data: unknown = await response.json();
+    const responseData = isRecord(data) ? data : null;
+
+    if (!response.ok) {
+      const message = responseData?.["message"];
+
+      throw new Error(
+        typeof message === "string" ? message : "Login failed",
+      );
+    }
+
+    const loginData = isRecord(responseData?.["data"])
+      ? responseData["data"]
+      : null;
+
+    const rawAccessToken = loginData?.["accessToken"];
+
+    if (
+      typeof rawAccessToken !== "string" ||
+      !rawAccessToken.trim()
+    ) {
+      throw new Error(
+        "Login response did not include an access token",
+      );
+    }
+
+    // Always store the cleaned access token.
+    const receivedToken = rawAccessToken.trim();
+
+    localStorage.setItem("accessToken", receivedToken);
+
+    const refreshToken = loginData?.["refreshToken"];
+
+    if (
+      typeof refreshToken === "string" &&
+      refreshToken.trim()
+    ) {
+      localStorage.setItem(
+        "refreshToken",
+        refreshToken.trim(),
+      );
+    }
+
+    const user = isRecord(loginData?.["user"])
+      ? loginData["user"]
+      : null;
+
+    const twoFaEnabled =
+      user?.["twoFaEnabled"] === true;
+
+    setAccessToken(receivedToken);
+
+    if (twoFaEnabled) {
+      setStep(2);
+      setSeconds(30);
+
+      toast.success(
+        "OTP sent to your registered email and mobile",
+      );
+
+      setTimeout(() => {
+        inputs.current[0]?.focus();
+      }, 150);
+
       return;
     }
 
-    setBusy(true);
-    setAccessToken(null);
+    // 2FA is disabled, so authenticate immediately.
+    login(receivedToken);
 
-    try {
-      const response = await fetch(
-        "https://los-backend-355v.onrender.com/api/v1/auth/login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email,
-            password,
-          }),
-        },
-      );
+    toast.success("Welcome back, Administrator");
+  } catch (error) {
+    console.error("Login API error:", error);
 
-      const data: unknown = await response.json();
-
-      const responseData = isRecord(data) ? data : null;
-
-      if (!response.ok) {
-        const message = responseData?.["message"];
-
-        throw new Error(
-          typeof message === "string" ? message : "Login failed",
-        );
-      }
-
-      /*
-       * Backend response structure:
-       *
-       * {
-       *   success: true,
-       *   message: "Login successful",
-       *   data: {
-       *     accessToken: "...",
-       *     refreshToken: "...",
-       *     tokenType: "Bearer",
-       *     expiresIn: 86400000,
-       *     permissions: [...],
-       *     user: {
-       *       ...
-       *       twoFaEnabled: false
-       *     }
-       *   }
-       * }
-       */
-
-      const loginData = isRecord(responseData?.["data"])
-        ? responseData["data"]
-        : null;
-
-      const receivedToken = loginData?.["accessToken"];
-
-      if (
-        typeof receivedToken !== "string" ||
-        !receivedToken.trim()
-      ) {
-        throw new Error(
-          "Login response did not include an access token",
-        );
-      }
-
-      /*
-       * Store access token so that Bank Management
-       * and User Management API calls can use it.
-       */
-      localStorage.setItem("accessToken", receivedToken);
-
-      /*
-       * Store refresh token if backend provides it.
-       */
-      const refreshToken = loginData?.["refreshToken"];
-
-      if (
-        typeof refreshToken === "string" &&
-        refreshToken.trim()
-      ) {
-        localStorage.setItem("refreshToken", refreshToken);
-      }
-
-      /*
-       * Get logged-in user information.
-       */
-      const user = isRecord(loginData?.["user"])
-        ? loginData["user"]
-        : null;
-
-      /*
-       * Backend currently returns:
-       *
-       * "twoFaEnabled": false
-       *
-       * Therefore, do NOT show OTP screen.
-       */
-      const twoFaEnabled = user?.["twoFaEnabled"] === true;
-
-      setAccessToken(receivedToken);
-
-      if (twoFaEnabled) {
-        /*
-         * 2FA enabled:
-         * Move to OTP verification.
-         */
-        setStep(2);
-        setSeconds(30);
-
-        toast.success(
-          "OTP sent to your registered email and mobile",
-        );
-
-        setTimeout(() => {
-          inputs.current[0]?.focus();
-        }, 150);
-      } else {
-        /*
-         * 2FA disabled:
-         * Login directly.
-         */
-        login(receivedToken);
-
-        toast.success("Welcome back, Administrator");
-
-        navigate({
-          to: "/dashboard",
-          replace: true,
-        });
-      }
-    } catch (error) {
-      console.error("Login API error:", error);
-
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Unable to connect to server",
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
+    toast.error(
+      error instanceof Error
+        ? error.message
+        : "Unable to connect to server",
+    );
+  } finally {
+    setBusy(false);
+  }
+};
 
   const verify = (e: React.FormEvent) => {
     e.preventDefault();
@@ -351,7 +310,7 @@ function LoginPage() {
               <ShieldCheck className="size-5" />
             </div>
 
-            <p className="font-semibold">Banking LOS</p>
+            <p className="font-semibold">Allianza LOS</p>
           </div>
 
           <div className="mb-8 flex items-center gap-2">

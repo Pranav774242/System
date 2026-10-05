@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeft,
   Building2,
@@ -10,6 +10,7 @@ import {
   Power,
   PowerOff,
   ShieldCheck,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,6 +22,7 @@ import {
   UserActivityItem,
   UserDetailCard,
   UserDetailRow,
+  UserStatusBadge,
 } from "@/components/UserDetailSections";
 import {
   useAdminStore,
@@ -31,7 +33,13 @@ import {
   mapOrganizationToTenant,
   type OrganizationApiResponse,
 } from "@/lib/organization-mapper";
-import { formatUserDate, formatUserDateTime } from "@/lib/users-api";
+import {
+  formatUserDateTime,
+  getUserName,
+  getUserRole,
+  getUserStatus,
+  type ApiUser,
+} from "@/lib/users-api";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/tenants/$tenantId")({
@@ -58,20 +66,38 @@ export const Route = createFileRoute("/tenants/$tenantId")({
  * shared mapper type does not include.
  */
 type OrganizationDetail = OrganizationApiResponse & {
-  legal_name?: string;
   short_name?: string;
-  country?: string;
-  state?: string;
-  city?: string;
-  pin_code?: string;
   registered_address?: string;
   corporate_address?: string;
-  website?: string;
-  updated_at?: string;
   db_name?: string;
   db_host?: string;
   db_port?: number;
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+async function getResponseError(response: Response): Promise<string> {
+  const text = await response.text();
+  if (!text) return "";
+
+  try {
+    const body: unknown = JSON.parse(text);
+    if (isRecord(body)) {
+      for (const key of ["message", "detail", "error"]) {
+        const value = body[key];
+        if (typeof value === "string" && value.trim()) {
+          return value;
+        }
+      }
+    }
+  } catch {
+    return text.trim();
+  }
+
+  return "";
+}
 
 function TenantDetailPage() {
   const { tenantId } = Route.useParams();
@@ -81,16 +107,45 @@ function TenantDetailPage() {
   const [apiTenant, setApiTenant] = useState<Tenant | undefined>();
   const [raw, setRaw] = useState<OrganizationDetail | undefined>();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string>();
+  const [retryCount, setRetryCount] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
   const [userDrawerOpen, setUserDrawerOpen] = useState(false);
+  const cachedTenant = tenants.find(
+    (item) => item.id === tenantId || String(item.pkid) === tenantId,
+  );
+  const routePkid = Number(tenantId);
+  const pkid =
+    cachedTenant?.pkid ??
+    (Number.isSafeInteger(routePkid) && routePkid > 0
+      ? routePkid
+      : undefined);
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
+      setLoading(true);
+      setLoadError(undefined);
+
+      if (pkid === undefined) {
+        setLoadError("A valid bank ID is required to load bank details.");
+        setLoading(false);
+        return;
+      }
+
+      const token = getAccessToken();
+      if (!token) {
+        const message = "Your session has expired. Please log in again.";
+        setLoadError(message);
+        setLoading(false);
+        toast.error(message);
+        return;
+      }
+
       try {
         const response = await fetch(
-          "https://los-backend-355v.onrender.com/api/v1/administration/organizations",
+          `https://los-backend-355v.onrender.com/api/v1/administration/organizations/${encodeURIComponent(String(pkid))}`,
           {
             headers: {
               Authorization: `Bearer ${getAccessToken()}`,
@@ -98,21 +153,37 @@ function TenantDetailPage() {
             },
           },
         );
-        if (!response.ok) throw new Error(`Failed (${response.status})`);
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error("Your session has expired. Please log in again.");
+          }
+          const message = await getResponseError(response);
+          throw new Error(
+            message || `Failed to load bank details (${response.status}).`,
+          );
+        }
 
-        const body = await response.json();
-        const list: OrganizationDetail[] = Array.isArray(body?.data) ? body.data : [];
-        const match = list.find(
-          (o) => o.id === tenantId || String(o.pkid) === tenantId,
-        );
+        const body: unknown = await response.json();
+        const match =
+          isRecord(body) && isRecord(body["data"])
+            ? body["data"] as OrganizationDetail
+            : undefined;
 
         if (!cancelled && match) {
-          setRaw(match);
-          setApiTenant(mapOrganizationToTenant(match));
+          const detail = { ...match, pkid: match.pkid ?? pkid };
+          setRaw(detail);
+          setApiTenant(mapOrganizationToTenant(detail));
+        } else if (!cancelled) {
+          throw new Error("The bank details response did not include bank data.");
         }
       } catch (error) {
         if (!cancelled) {
-          toast.error(error instanceof Error ? error.message : "Failed to load bank");
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Failed to load bank details.";
+          setLoadError(message);
+          toast.error(message);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -122,11 +193,55 @@ function TenantDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [tenantId]);
+  }, [pkid, retryCount]);
 
-  const tenant = apiTenant ?? tenants.find((t) => t.id === tenantId);
+  const [users, setUsers] = useState<ApiUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
 
-  if (loading && !tenant) {
+  const bankPkid = apiTenant?.pkid;
+
+  const loadUsers = useCallback(async () => {
+    if (bankPkid == null) return;
+
+    try {
+      setUsersLoading(true);
+
+      const response = await fetch(
+        "https://los-backend-355v.onrender.com/api/v1/administration/user-management/users",
+        {
+          headers: {
+            Authorization: `Bearer ${getAccessToken()}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+      if (!response.ok) throw new Error(`Failed to load users (${response.status})`);
+
+      const body = await response.json();
+      const list: ApiUser[] = Array.isArray(body?.data)
+        ? body.data
+        : Array.isArray(body?.data?.items)
+          ? body.data.items
+          : [];
+
+      setUsers(
+        list.filter((u) => String(u.organization_id) === String(bankPkid)),
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to load users");
+      setUsers([]);
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [bankPkid]);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
+
+  const tenant = apiTenant ?? cachedTenant;
+
+  if (loading) {
     return (
       <AppShell title="Bank Details" subtitle="Loading bank information...">
         <div className="surface-card flex min-h-[400px] items-center justify-center">
@@ -136,6 +251,27 @@ function TenantDetailPage() {
             <p className="mt-1 text-sm text-muted-foreground">
               Fetching bank information.
             </p>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <AppShell title="Unable to load bank details">
+        <div className="surface-card flex flex-col items-center gap-3 p-16 text-center">
+          <Building2 className="size-10 text-muted-foreground" />
+          <p className="font-medium">Bank details could not be loaded</p>
+          <p className="max-w-xl text-sm text-muted-foreground">{loadError}</p>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate({ to: "/tenants" })}>
+              <ArrowLeft className="size-4" />
+              Back to Bank Management
+            </Button>
+            <Button onClick={() => setRetryCount((count) => count + 1)}>
+              Try again
+            </Button>
           </div>
         </div>
       </AppShell>
@@ -166,7 +302,7 @@ function TenantDetailPage() {
       .join("") || "B";
 
   const createdAt = raw?.created_at ?? tenant.createdAt;
-  const updatedAt = raw?.updated_at;
+  const updatedAt = raw?.updated_at ?? undefined;
   const branches = tenant.branches ?? [];
 
   return (
@@ -235,50 +371,68 @@ function TenantDetailPage() {
         <div className="grid gap-6 lg:grid-cols-2">
           <UserDetailCard title="Institution Details">
             <UserDetailRow label="Institute Name" value={tenant.instituteName || null} />
-            <UserDetailRow label="Legal Name" value={raw?.legal_name ?? null} />
+            <UserDetailRow label="Bank Code" value={tenant.bankCode || null} />
+            <UserDetailRow label="Legal Name" value={tenant.legalName || null} />
             {/* <UserDetailRow label="Short Name" value={raw?.short_name ?? null} /> */}
             <UserDetailRow label="Institute Type" value={tenant.instituteType || null} />
             <UserDetailRow
-              label="Registration Number"
-              value={tenant.registrationNumber || null}
+              label="License No."
+              value={tenant.licenseNo  || null}
             />
-            <UserDetailRow
+            {/* <UserDetailRow
               label="Regulatory Authority ID"
               value={tenant.regulatoryAuthorityId || null}
-            />
-            <UserDetailRow label="CIN No" value={tenant.cin || null} />
+            /> */}
+            <UserDetailRow label="PAN No." value={tenant.panNo || null} />
+            <UserDetailRow label="GST No." value={tenant.gstNo || null} />
+            <UserDetailRow label="CIN No." value={tenant.cin || null} />
+            <UserDetailRow label="Logo URL" value={tenant.logoUrl || null} />
             <UserDetailRow
               label="Regulatory Status"
-              value={raw?.regulatory_status ?? null}
+              value={raw?.regulatory_status ?? raw?.status ?? null}
             />
             <UserDetailRow label="Status" value={tenant.status} />
           </UserDetailCard>
 
           <UserDetailCard title="Contact & Address">
-            {/* <UserDetailRow label="Official Email" value={tenant.contactEmail || null} /> */}
-            {/* <UserDetailRow label="Official Mobile Number" value={tenant.contactPhone || null} /> */}
-            <UserDetailRow label="Website" value={raw?.website ?? null} />
-            <UserDetailRow label="Country" value={raw?.country ?? null} />
-            {/* <UserDetailRow label="State" value={raw?.state ?? null} />
-            <UserDetailRow label="City" value={raw?.city ?? null} />
-            <UserDetailRow label="PIN Code" value={raw?.pin_code ?? null} />
+            <UserDetailRow label="Email" value={tenant.contactEmail || null} />
+            <UserDetailRow label="Phone" value={tenant.contactPhone || null} />
+            <UserDetailRow label="Website" value={tenant.website || null} />
+            <UserDetailRow label="Address Type" value={tenant.addressDetails.addressType || null} />
             <UserDetailRow
-              label="Registered Address"
-              value={raw?.registered_address ?? null}
+              label="Unit / Gala Name & No."
+              value={tenant.addressDetails.unitGalaNameNo || null}
             />
-            <UserDetailRow
-              label="Corporate Address"
-              value={raw?.corporate_address ?? null}
-            /> */}
+            <UserDetailRow label="Street / Road" value={tenant.addressDetails.streetRoad || null} />
+            <UserDetailRow label="Landmark" value={tenant.addressDetails.landMark || null} />
+            <UserDetailRow label="City" value={tenant.addressDetails.city || null} />
+            <UserDetailRow label="State" value={tenant.addressDetails.state || null} />
+            <UserDetailRow label="PIN Code" value={tenant.addressDetails.pinCode || null} />
+            <UserDetailRow label="Country" value={raw?.country ?? null} />
           </UserDetailCard>
 
-          
-
-          {/* <UserDetailCard title="System Details">
-            <UserDetailRow label="Database Name" value={raw?.db_name ?? null} />
-            <UserDetailRow label="Database Host" value={raw?.db_host ?? null} />
-            <UserDetailRow label="Database Port" value={raw?.db_port ?? null} />
-          </UserDetailCard> */}
+          <UserDetailCard title="Banking Details">
+            <UserDetailRow
+              label="Number of Branches"
+              value={tenant.regulatoryDetails.numberOfBranches || null}
+            />
+            <UserDetailRow
+              label="IFSC Code"
+              value={tenant.regulatoryDetails.ifscCode || null}
+            />
+            <UserDetailRow
+              label="MICR Code"
+              value={tenant.regulatoryDetails.micrCode || null}
+            />
+            <UserDetailRow
+              label="MICR City Code"
+              value={tenant.regulatoryDetails.micrCityCode || null}
+            />
+            <UserDetailRow
+              label="MICR Branch Code"
+              value={tenant.regulatoryDetails.micrBranchCode || null}
+            />
+          </UserDetailCard>
 
           <UserDetailCard title="Record Information">
             <UserDetailRow label="Bank ID (pkid)" value={tenant.pkid ?? null} />
@@ -314,8 +468,96 @@ function TenantDetailPage() {
           </div>
         )}
 
+                {/* Users */}
+        <div className="surface-card animate-rise overflow-hidden">
+          <div className="flex items-center gap-2 border-b border-border px-6 py-4">
+            <div className="grid size-8 place-items-center rounded-lg bg-accent/15 text-accent">
+              <Users className="size-4" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Users</h3>
+              <p className="text-xs text-muted-foreground">
+                {usersLoading ? "Loading users…" : `${users.length} user(s) in this bank`}
+              </p>
+            </div>
+          </div>
+
+          {usersLoading ? (
+            <div className="p-10 text-center text-sm text-muted-foreground">
+              Loading users…
+            </div>
+          ) : users.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+              <p className="text-sm text-muted-foreground">
+                No users have been added to this bank yet.
+              </p>
+              <Button variant="outline" onClick={() => setUserDrawerOpen(true)}>
+                Add User
+              </Button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-secondary/50">
+                  <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
+                    {["Name", "Emp No", "Email", "Mobile", "Designation", "Role", "Status"].map(
+                      (label) => (
+                        <th key={label} className="whitespace-nowrap px-4 py-3 font-medium">
+                          {label}
+                        </th>
+                      ),
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((u) => {
+                    const status = getUserStatus(u);
+                    const active =
+                      u.is_active === true || status === "ACTIVE" || status === "OPERATIVE";
+
+                    return (
+                      <tr
+                        key={u.id ?? u.pkid}
+                        onClick={() =>
+                          navigate({
+                            to: "/users/$userId",
+                            params: { userId: String(u.id ?? u.pkid) },
+                          })
+                        }
+                        className="cursor-pointer border-t border-border transition-colors hover:bg-secondary/60"
+                      >
+                        <td className="whitespace-nowrap px-4 py-3 font-medium">
+                          {getUserName(u) || "-"}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                          {u.emp_no || "-"}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                          {u.email || "-"}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                          {u.mobile || "-"}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3">
+                          {u.designation || "-"}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3">
+                          {getUserRole(u) || "-"}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3">
+                          <UserStatusBadge status={status} active={active} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
         {/* Activity log */}
-        <div className="surface-card animate-rise p-6">
+        {/* <div className="surface-card animate-rise p-6">
           <div className="mb-5 flex items-center gap-2">
             <div className="grid size-8 place-items-center rounded-lg bg-accent/15 text-accent">
               <Clock className="size-4" />
@@ -346,7 +588,7 @@ function TenantDetailPage() {
               />
             ))}
           </ul>
-        </div>
+        </div> */}
       </div>
 
       <TenantFormDrawer
@@ -360,7 +602,10 @@ function TenantDetailPage() {
       />
       <UserFormDrawer
         open={userDrawerOpen}
-        onOpenChange={setUserDrawerOpen}
+        onOpenChange={(open) => {
+          setUserDrawerOpen(open);
+          if (!open) loadUsers();
+        }}
         bank={tenant}
       />
     </AppShell>
