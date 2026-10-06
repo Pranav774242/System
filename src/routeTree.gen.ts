@@ -12,10 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ActivityLogRouteImport } from './routes/activity-log'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as LookupManagementRouteImport } from './routes/lookup-management'
 import { Route as TenantsIndexRouteImport } from './routes/tenants.index'
 import { Route as TenantsTenantIdRouteImport } from './routes/tenants.$tenantId'
 import { Route as UsersIndexRouteImport } from './routes/users.index'
 import { Route as UsersUserIdRouteImport } from './routes/users.$userId'
+import { Route as UsersDetailRouteImport } from './routes/users/detail'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -30,6 +32,11 @@ const ActivityLogRoute = ActivityLogRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LookupManagementRoute = LookupManagementRouteImport.update({
+  id: '/lookup-management',
+  path: '/lookup-management',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TenantsIndexRoute = TenantsIndexRouteImport.update({
@@ -52,13 +59,20 @@ const UsersUserIdRoute = UsersUserIdRouteImport.update({
   path: '/users/$userId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UsersDetailRoute = UsersDetailRouteImport.update({
+  id: '/users/detail',
+  path: '/users/detail',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/activity-log': typeof ActivityLogRoute
   '/dashboard': typeof DashboardRoute
+  '/lookup-management': typeof LookupManagementRoute
   '/tenants/$tenantId': typeof TenantsTenantIdRoute
   '/users/$userId': typeof UsersUserIdRoute
+  '/users/detail': typeof UsersDetailRoute
   '/tenants/': typeof TenantsIndexRoute
   '/users/': typeof UsersIndexRoute
 }
@@ -66,8 +80,10 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/activity-log': typeof ActivityLogRoute
   '/dashboard': typeof DashboardRoute
+  '/lookup-management': typeof LookupManagementRoute
   '/tenants/$tenantId': typeof TenantsTenantIdRoute
   '/users/$userId': typeof UsersUserIdRoute
+  '/users/detail': typeof UsersDetailRoute
   '/tenants': typeof TenantsIndexRoute
   '/users': typeof UsersIndexRoute
 }
@@ -76,8 +92,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/activity-log': typeof ActivityLogRoute
   '/dashboard': typeof DashboardRoute
+  '/lookup-management': typeof LookupManagementRoute
   '/tenants/$tenantId': typeof TenantsTenantIdRoute
   '/users/$userId': typeof UsersUserIdRoute
+  '/users/detail': typeof UsersDetailRoute
   '/tenants/': typeof TenantsIndexRoute
   '/users/': typeof UsersIndexRoute
 }
@@ -87,8 +105,10 @@ export interface FileRouteTypes {
     | '/'
     | '/activity-log'
     | '/dashboard'
+    | '/lookup-management'
     | '/tenants/$tenantId'
     | '/users/$userId'
+    | '/users/detail'
     | '/tenants/'
     | '/users/'
   fileRoutesByTo: FileRoutesByTo
@@ -96,8 +116,10 @@ export interface FileRouteTypes {
     | '/'
     | '/activity-log'
     | '/dashboard'
+    | '/lookup-management'
     | '/tenants/$tenantId'
     | '/users/$userId'
+    | '/users/detail'
     | '/tenants'
     | '/users'
   id:
@@ -105,8 +127,10 @@ export interface FileRouteTypes {
     | '/'
     | '/activity-log'
     | '/dashboard'
+    | '/lookup-management'
     | '/tenants/$tenantId'
     | '/users/$userId'
+    | '/users/detail'
     | '/tenants/'
     | '/users/'
   fileRoutesById: FileRoutesById
@@ -115,8 +139,10 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActivityLogRoute: typeof ActivityLogRoute
   DashboardRoute: typeof DashboardRoute
+  LookupManagementRoute: typeof LookupManagementRoute
   TenantsTenantIdRoute: typeof TenantsTenantIdRoute
   UsersUserIdRoute: typeof UsersUserIdRoute
+  UsersDetailRoute: typeof UsersDetailRoute
   TenantsIndexRoute: typeof TenantsIndexRoute
   UsersIndexRoute: typeof UsersIndexRoute
 }
@@ -142,6 +168,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lookup-management': {
+      id: '/lookup-management'
+      path: '/lookup-management'
+      fullPath: '/lookup-management'
+      preLoaderRoute: typeof LookupManagementRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tenants/': {
@@ -172,6 +205,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsersUserIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/users/detail': {
+      id: '/users/detail'
+      path: '/users/detail'
+      fullPath: '/users/detail'
+      preLoaderRoute: typeof UsersDetailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -179,8 +219,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityLogRoute: ActivityLogRoute,
   DashboardRoute: DashboardRoute,
+  LookupManagementRoute: LookupManagementRoute,
   TenantsTenantIdRoute: TenantsTenantIdRoute,
   UsersUserIdRoute: UsersUserIdRoute,
+  UsersDetailRoute: UsersDetailRoute,
   TenantsIndexRoute: TenantsIndexRoute,
   UsersIndexRoute: UsersIndexRoute,
 }
