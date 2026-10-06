@@ -1,613 +1,1854 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import {
+  createFileRoute,
+  useNavigate,
+} from "@tanstack/react-router";
+
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
+
 import {
   ArrowLeft,
   Building2,
-  Calendar,
-  Clock,
-  MapPin,
-  Pencil,
-  Power,
-  PowerOff,
-  ShieldCheck,
-  Users,
+  Edit,
+  Mail,
+  Phone,
+  Plus,
+  User,
 } from "lucide-react";
+
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/AppShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TenantFormDrawer } from "@/components/TenantFormDrawer";
 import { UserFormDrawer } from "@/components/UserFormDrawer";
+
 import {
-  UserActivityItem,
-  UserDetailCard,
-  UserDetailRow,
-  UserStatusBadge,
-} from "@/components/UserDetailSections";
-import {
-  useAdminStore,
   getAccessToken,
+  useAdminStore,
   type Tenant,
 } from "@/lib/admin-store";
+
 import {
   mapOrganizationToTenant,
   type OrganizationApiResponse,
 } from "@/lib/organization-mapper";
-import {
-  formatUserDateTime,
-  getUserName,
-  getUserRole,
-  getUserStatus,
-  type ApiUser,
-} from "@/lib/users-api";
+
 import { Button } from "@/components/ui/button";
 
-export const Route = createFileRoute("/tenants/$tenantId")({
-  head: () => ({
-    meta: [
-      { title: "Bank Detail — System Administrator Panel" },
-      {
-        name: "description",
-        content:
-          "Complete bank / NBFC profile: institution details, contact and address, system details, status and activity.",
-      },
-      { property: "og:title", content: "Bank Detail — System Administrator Panel" },
-      {
-        property: "og:description",
-        content: "Institution details, contact, address, status and activity.",
-      },
-    ],
-  }),
-  component: TenantDetailPage,
+/* -------------------------------------------------------------------------- */
+/* ROUTE                                                                      */
+/* -------------------------------------------------------------------------- */
+
+export const Route = createFileRoute(
+  "/tenants/$tenantId",
+)({
+  component: TenantDetailsPage,
 });
 
-/*
- * Extra fields returned by the organizations API that the
- * shared mapper type does not include.
- */
-type OrganizationDetail = OrganizationApiResponse & {
-  short_name?: string;
-  registered_address?: string;
-  corporate_address?: string;
-  db_name?: string;
-  db_host?: string;
-  db_port?: number;
+/* -------------------------------------------------------------------------- */
+/* TYPES                                                                      */
+/* -------------------------------------------------------------------------- */
+
+type TenantFormSubmit =
+  Parameters<
+    NonNullable<
+      ComponentProps<
+        typeof TenantFormDrawer
+      >["onSubmit"]
+    >
+  >[0];
+
+type UserRecord = {
+  id?: string | number;
+  pkid?: string | number;
+
+  first_name?: string;
+  middle_name?: string;
+  last_name?: string;
+
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+
+  name?: string;
+
+  email?: string;
+  mobile?: string;
+  phone?: string;
+
+  employee_id?: string;
+  employeeId?: string;
+
+  designation?: string;
+  status?: string;
+
+  organization_id?: string | number;
+  organizationId?: string | number;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
+type RawOrganization =
+  OrganizationApiResponse & {
+    registration_id?: string | null;
 
-async function getResponseError(response: Response): Promise<string> {
-  const text = await response.text();
-  if (!text) return "";
+    country?: string | null;
 
-  try {
-    const body: unknown = JSON.parse(text);
-    if (isRecord(body)) {
-      for (const key of ["message", "detail", "error"]) {
-        const value = body[key];
-        if (typeof value === "string" && value.trim()) {
-          return value;
-        }
-      }
-    }
-  } catch {
-    return text.trim();
+    registered_address?: string | null;
+    corporate_address?: string | null;
+
+    direct_clg_member?: string | null;
+    direct_member_iftas?: string | null;
+
+    micr_code?: string | null;
+    micr_number?: string | null;
+
+    micr_city_code?: string | null;
+    micr_branch_code?: string | null;
+
+    ifsc_code?: string | null;
+
+    number_of_branches?:
+      | string
+      | number
+      | null;
+
+    no_of_branches?:
+      | string
+      | number
+      | null;
+
+    sponsor_bank_for_clg?: string | null;
+    sponsor_bank_for_iftas?: string | null;
+  };
+
+/* -------------------------------------------------------------------------- */
+/* CONSTANTS                                                                  */
+/* -------------------------------------------------------------------------- */
+
+const API_BASE_URL =
+  "https://los-backend-355v.onrender.com";
+
+const ORGANIZATION_GET_URL =
+  `${API_BASE_URL}/api/v1/administration/organizations`;
+
+const BANK_UPDATE_URL =
+  `${API_BASE_URL}/api/v1/administration/banks`;
+
+const USERS_URL =
+  `${API_BASE_URL}/api/v1/administration/user-management/users`;
+
+/* -------------------------------------------------------------------------- */
+/* HELPERS                                                                    */
+/* -------------------------------------------------------------------------- */
+
+function getValue(
+  source:
+    | Record<string, unknown>
+    | null
+    | undefined,
+  ...keys: string[]
+): unknown {
+  if (!source) {
+    return undefined;
   }
 
-  return "";
+  for (const key of keys) {
+    const value = source[key];
+
+    if (
+      value !== null &&
+      value !== undefined &&
+      String(value).trim() !== ""
+    ) {
+      return value;
+    }
+  }
+
+  return undefined;
 }
 
-function TenantDetailPage() {
-  const { tenantId } = Route.useParams();
-  const navigate = useNavigate();
-  const { tenants, updateTenant, toggleTenantStatus } = useAdminStore();
+function asString(
+  value: unknown,
+): string {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return "";
+  }
 
-  const [apiTenant, setApiTenant] = useState<Tenant | undefined>();
-  const [raw, setRaw] = useState<OrganizationDetail | undefined>();
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string>();
-  const [retryCount, setRetryCount] = useState(0);
-  const [editOpen, setEditOpen] = useState(false);
-  const [userDrawerOpen, setUserDrawerOpen] = useState(false);
-  const cachedTenant = tenants.find(
-    (item) => item.id === tenantId || String(item.pkid) === tenantId,
+  return String(value);
+}
+
+function isRecord(
+  value: unknown,
+): value is Record<string, unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null
   );
-  const routePkid = Number(tenantId);
-  const pkid =
-    cachedTenant?.pkid ??
-    (Number.isSafeInteger(routePkid) && routePkid > 0
-      ? routePkid
-      : undefined);
+}
 
-  useEffect(() => {
-    let cancelled = false;
+function getNestedRecord(
+  source:
+    | Record<string, unknown>
+    | undefined,
+  key: string,
+): Record<string, unknown> | undefined {
+  const value = source?.[key];
 
-    (async () => {
-      setLoading(true);
-      setLoadError(undefined);
+  return isRecord(value)
+    ? value
+    : undefined;
+}
 
-      if (pkid === undefined) {
-        setLoadError("A valid bank ID is required to load bank details.");
+/* -------------------------------------------------------------------------- */
+/* RESPONSE UNWRAPPER                                                         */
+/* -------------------------------------------------------------------------- */
+
+function unwrapOrganization(
+  body: unknown,
+  pkid: number,
+): RawOrganization {
+  if (!isRecord(body)) {
+    throw new Error(
+      "Invalid bank details response.",
+    );
+  }
+
+  const data = body["data"];
+
+  if (isRecord(data)) {
+    const organization =
+      data["organization"];
+
+    if (isRecord(organization)) {
+      return {
+        ...(organization as RawOrganization),
+        pkid: Number(
+          organization["pkid"] ??
+            organization["id"] ??
+            pkid,
+        ),
+      };
+    }
+
+    const bank = data["bank"];
+
+    if (isRecord(bank)) {
+      return {
+        ...(bank as RawOrganization),
+        pkid: Number(
+          bank["pkid"] ??
+            bank["id"] ??
+            pkid,
+        ),
+      };
+    }
+
+    return {
+      ...(data as RawOrganization),
+      pkid: Number(
+        data["pkid"] ??
+          data["id"] ??
+          pkid,
+      ),
+    };
+  }
+
+  const organization =
+    body["organization"];
+
+  if (isRecord(organization)) {
+    return {
+      ...(organization as RawOrganization),
+      pkid: Number(
+        organization["pkid"] ??
+          organization["id"] ??
+          pkid,
+      ),
+    };
+  }
+
+  const bank = body["bank"];
+
+  if (isRecord(bank)) {
+    return {
+      ...(bank as RawOrganization),
+      pkid: Number(
+        bank["pkid"] ??
+          bank["id"] ??
+          pkid,
+      ),
+    };
+  }
+
+  return {
+    ...(body as RawOrganization),
+    pkid,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* BUILD UPDATE PAYLOAD                                                       */
+/* -------------------------------------------------------------------------- */
+
+function buildBankUpdatePayload(
+  input: TenantFormSubmit,
+  currentTenant: Tenant,
+  currentRaw?: RawOrganization,
+) {
+  const source =
+    input as unknown as Record<
+      string,
+      unknown
+    >;
+
+  const regulatory =
+    currentTenant.regulatoryDetails;
+
+  const raw =
+    currentRaw as
+      | Record<string, unknown>
+      | undefined;
+
+  const nested =
+    getNestedRecord(
+      raw,
+      "regulatory_details",
+    );
+
+  const statusValue =
+    getValue(
+      source,
+      "status",
+    ) ??
+    currentTenant.status ??
+    "Active";
+
+  const normalizedStatus =
+    asString(
+      statusValue,
+    ).toUpperCase() ===
+    "INACTIVE"
+      ? "INACTIVE"
+      : "ACTIVE";
+
+  return {
+    /* -------------------------------------------------------------------- */
+    /* BANK DETAILS                                                         */
+    /* -------------------------------------------------------------------- */
+
+    bank_code:
+      getValue(
+        source,
+        "bankCode",
+      ) ??
+      currentTenant.bankCode ??
+      "",
+
+    bank_name:
+      getValue(
+        source,
+        "bankName",
+        "instituteName",
+      ) ??
+      currentTenant.bankName ??
+      currentTenant.instituteName ??
+      "",
+
+    bank_type:
+      getValue(
+        source,
+        "bankType",
+        "instituteType",
+      ) ??
+      currentTenant.bankType ??
+      "BANK",
+
+    legal_name:
+      getValue(
+        source,
+        "legalName",
+      ) ??
+      currentTenant.legalName ??
+      "",
+
+    pan_no:
+      getValue(
+        source,
+        "panNo",
+        "PAN",
+      ) ??
+      currentTenant.panNo ??
+      "",
+
+    gst_no:
+      getValue(
+        source,
+        "gstNo",
+        "GST",
+      ) ??
+      currentTenant.gstNo ??
+      "",
+
+    license_no:
+      getValue(
+        source,
+        "licenseNo",
+        "registrationNumber",
+      ) ??
+      currentTenant.licenseNo ??
+      currentTenant.registrationNumber ??
+      "",
+
+    registration_number:
+      currentTenant.registrationNumber ??
+      "",
+
+    cin:
+      getValue(
+        source,
+        "cin",
+        "CIN",
+      ) ??
+      currentTenant.cin ??
+      "",
+
+    website:
+      getValue(
+        source,
+        "website",
+      ) ??
+      currentTenant.website ??
+      "",
+
+    logo_url:
+      getValue(
+        source,
+        "logoUrl",
+        "logo",
+      ) ??
+      currentTenant.logoUrl ??
+      "",
+
+    status:
+      normalizedStatus,
+
+    contact_email:
+      getValue(
+        source,
+        "contactEmail",
+      ) ??
+      currentTenant.contactEmail ??
+      "",
+
+    contact_phone:
+      getValue(
+        source,
+        "contactPhone",
+      ) ??
+      currentTenant.contactPhone ??
+      "",
+
+    /* -------------------------------------------------------------------- */
+    /* REGULATORY DETAILS                                                   */
+    /* -------------------------------------------------------------------- */
+
+    direct_clg_member:
+      regulatory?.directClgMember ??
+      asString(
+        raw?.["direct_clg_member"] ??
+          nested?.["direct_clg_member"],
+      ),
+
+    direct_member_iftas:
+      regulatory?.directMemberIftas ??
+      asString(
+        raw?.["direct_member_iftas"] ??
+          nested?.["direct_member_iftas"],
+      ),
+
+    micr_code:
+      regulatory?.micrCode ??
+      asString(
+        raw?.["micr_code"] ??
+          nested?.["micr_code"],
+      ),
+
+    micr_number:
+      regulatory?.micrNumber ??
+      asString(
+        raw?.["micr_number"] ??
+          nested?.["micr_number"],
+      ),
+
+    micr_city_code:
+      regulatory?.micrCityCode ??
+      asString(
+        raw?.["micr_city_code"] ??
+          nested?.["micr_city_code"],
+      ),
+
+    micr_branch_code:
+      regulatory?.micrBranchCode ??
+      asString(
+        raw?.["micr_branch_code"] ??
+          nested?.["micr_branch_code"],
+      ),
+
+    ifsc_code:
+      regulatory?.ifscCode ??
+      asString(
+        raw?.["ifsc_code"] ??
+          nested?.["ifsc_code"],
+      ),
+
+    number_of_branches:
+      regulatory?.numberOfBranches ??
+      asString(
+        raw?.["number_of_branches"] ??
+          raw?.["no_of_branches"] ??
+          nested?.["number_of_branches"] ??
+          nested?.["no_of_branches"],
+      ),
+
+    sponsor_bank_for_clg:
+      regulatory?.sponsorBankForClg ??
+      asString(
+        raw?.["sponsor_bank_for_clg"] ??
+          nested?.["sponsor_bank_for_clg"],
+      ),
+
+    sponsor_bank_for_iftas:
+      regulatory?.sponsorBankForIftas ??
+      asString(
+        raw?.["sponsor_bank_for_iftas"] ??
+          nested?.["sponsor_bank_for_iftas"],
+      ),
+
+    /* -------------------------------------------------------------------- */
+    /* ADDRESS                                                              */
+    /* -------------------------------------------------------------------- */
+
+    address_type:
+      currentTenant.addressDetails
+        ?.addressType ??
+      asString(
+        raw?.["address_type"],
+      ),
+
+    unit_gala_name_no:
+      currentTenant.addressDetails
+        ?.unitGalaNameNo ??
+      asString(
+        raw?.["unit_gala_name_no"],
+      ),
+
+    street_road:
+      currentTenant.addressDetails
+        ?.streetRoad ??
+      asString(
+        raw?.["street_road"],
+      ),
+
+    land_mark:
+      currentTenant.addressDetails
+        ?.landMark ??
+      asString(
+        raw?.["land_mark"] ??
+          raw?.["landmark"],
+      ),
+
+    city:
+      currentTenant.addressDetails
+        ?.city ??
+      asString(
+        raw?.["city"],
+      ),
+
+    state:
+      currentTenant.addressDetails
+        ?.state ??
+      asString(
+        raw?.["state"],
+      ),
+
+    pin_code:
+      currentTenant.addressDetails
+        ?.pinCode ??
+      asString(
+        raw?.["pin_code"],
+      ),
+
+    country:
+      asString(
+        raw?.["country"],
+      ),
+
+    registered_address:
+      asString(
+        raw?.["registered_address"],
+      ),
+
+    corporate_address:
+      asString(
+        raw?.["corporate_address"],
+      ),
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* UPDATE BANK API                                                            */
+/* -------------------------------------------------------------------------- */
+
+async function updateBank(
+  bankId: number,
+  payload: unknown,
+): Promise<unknown> {
+  const token =
+    getAccessToken();
+
+  if (!token) {
+    throw new Error(
+      "Session expired. Please login again.",
+    );
+  }
+
+  const url =
+    `${BANK_UPDATE_URL}/${bankId}`;
+
+  const sendRequest = async (
+    method: "PUT" | "PATCH",
+  ) => {
+    const response =
+      await fetch(url, {
+        method,
+
+        headers: {
+          Authorization:
+            `Bearer ${token}`,
+          "Content-Type":
+            "application/json",
+        },
+
+        body:
+          JSON.stringify(payload),
+      });
+
+    const text =
+      await response.text();
+
+    let data: unknown = null;
+
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = text;
+      }
+    }
+
+    return {
+      response,
+      data,
+    };
+  };
+
+  let result =
+    await sendRequest("PUT");
+
+  if (
+    result.response.status === 405
+  ) {
+    result =
+      await sendRequest("PATCH");
+  }
+
+  if (!result.response.ok) {
+    const message =
+      isRecord(result.data)
+        ? asString(
+            result.data["message"],
+          )
+        : "";
+
+    throw new Error(
+      message ||
+        `Bank update failed with status ${result.response.status}.`,
+    );
+  }
+
+  return result.data;
+}
+
+/* -------------------------------------------------------------------------- */
+/* COMPONENT                                                                  */
+/* -------------------------------------------------------------------------- */
+
+function TenantDetailsPage() {
+  const navigate =
+    useNavigate();
+
+  const {
+    updateTenant,
+  } = useAdminStore();
+
+  const params =
+    Route.useParams();
+
+  const tenantId =
+    params.tenantId;
+
+  const [tenant, setTenant] =
+    useState<Tenant | null>(null);
+
+  const [rawBank, setRawBank] =
+    useState<RawOrganization | null>(
+      null,
+    );
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [editOpen, setEditOpen] =
+    useState(false);
+
+  const [
+    userDrawerOpen,
+    setUserDrawerOpen,
+  ] = useState(false);
+
+  const [users, setUsers] =
+    useState<UserRecord[]>([]);
+
+  const [
+    loadingUsers,
+    setLoadingUsers,
+  ] = useState(false);
+
+  /* ---------------------------------------------------------------------- */
+  /* LOAD BANK DETAILS                                                      */
+  /* ---------------------------------------------------------------------- */
+
+  const loadBankDetails =
+    useCallback(async () => {
+      const token =
+        getAccessToken();
+
+      if (!token) {
+        toast.error(
+          "Session expired. Please login again.",
+        );
+
         setLoading(false);
         return;
       }
 
-      const token = getAccessToken();
-      if (!token) {
-        const message = "Your session has expired. Please log in again.";
-        setLoadError(message);
+      const parsedId =
+        Number(tenantId);
+
+      if (
+        !Number.isFinite(parsedId)
+      ) {
+        toast.error(
+          "Invalid bank ID.",
+        );
+
         setLoading(false);
-        toast.error(message);
         return;
       }
 
       try {
-        const response = await fetch(
-          `https://los-backend-355v.onrender.com/api/v1/administration/organizations/${encodeURIComponent(String(pkid))}`,
-          {
-            headers: {
-              Authorization: `Bearer ${getAccessToken()}`,
-              "Content-Type": "application/json",
+        setLoading(true);
+
+        const response =
+          await fetch(
+            `${ORGANIZATION_GET_URL}/${parsedId}`,
+            {
+              method: "GET",
+
+              headers: {
+                Authorization:
+                  `Bearer ${token}`,
+                "Content-Type":
+                  "application/json",
+              },
             },
-          },
-        );
-        if (!response.ok) {
-          if (response.status === 401) {
-            throw new Error("Your session has expired. Please log in again.");
+          );
+
+        const text =
+          await response.text();
+
+        let body: unknown = null;
+
+        if (text) {
+          try {
+            body = JSON.parse(text);
+          } catch {
+            body = null;
           }
-          const message = await getResponseError(response);
+        }
+
+        if (!response.ok) {
+          const message =
+            isRecord(body)
+              ? asString(
+                  body["message"],
+                )
+              : "";
+
           throw new Error(
-            message || `Failed to load bank details (${response.status}).`,
+            message ||
+              `Failed to load bank details (${response.status}).`,
           );
         }
 
-        const body: unknown = await response.json();
-        const match =
-          isRecord(body) && isRecord(body["data"])
-            ? body["data"] as OrganizationDetail
-            : undefined;
+        const raw =
+          unwrapOrganization(
+            body,
+            parsedId,
+          );
 
-        if (!cancelled && match) {
-          const detail = { ...match, pkid: match.pkid ?? pkid };
-          setRaw(detail);
-          setApiTenant(mapOrganizationToTenant(detail));
-        } else if (!cancelled) {
-          throw new Error("The bank details response did not include bank data.");
-        }
-      } catch (error) {
-        if (!cancelled) {
-          const message =
-            error instanceof Error
-              ? error.message
-              : "Failed to load bank details.";
-          setLoadError(message);
-          toast.error(message);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
+        const mapped =
+          mapOrganizationToTenant(
+            raw,
+          );
 
-    return () => {
-      cancelled = true;
-    };
-  }, [pkid, retryCount]);
+        setRawBank(raw);
+        setTenant(mapped);
 
-  const [users, setUsers] = useState<ApiUser[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
+        updateTenant(
+          mapped.id,
+          {
+            bankCode:
+              mapped.bankCode,
 
-  const bankPkid = apiTenant?.pkid;
+            bankName:
+              mapped.bankName,
 
-  const loadUsers = useCallback(async () => {
-    if (bankPkid == null) return;
+            bankType:
+              mapped.bankType,
 
-    try {
-      setUsersLoading(true);
+            legalName:
+              mapped.legalName,
 
-      const response = await fetch(
-        "https://los-backend-355v.onrender.com/api/v1/administration/user-management/users",
-        {
-          headers: {
-            Authorization: `Bearer ${getAccessToken()}`,
-            "Content-Type": "application/json",
+            panNo:
+              mapped.panNo,
+
+            gstNo:
+              mapped.gstNo,
+
+            cin:
+              mapped.cin,
+
+            licenseNo:
+              mapped.licenseNo,
+
+            website:
+              mapped.website,
+
+            logoUrl:
+              mapped.logoUrl,
+
+            regulatoryDetails:
+              mapped.regulatoryDetails,
+
+            addressDetails:
+              mapped.addressDetails,
+
+            contactEmail:
+              mapped.contactEmail,
+
+            contactPhone:
+              mapped.contactPhone,
+
+            branches:
+              mapped.branches,
+
+            instituteName:
+              mapped.instituteName,
+
+            instituteType:
+              mapped.instituteType,
+
+            registrationNumber:
+              mapped.registrationNumber,
+
+            status:
+              mapped.status,
+
+            designation:
+              mapped.designation,
           },
-        },
-      );
-      if (!response.ok) throw new Error(`Failed to load users (${response.status})`);
+        );
+      } catch (error) {
+        console.error(
+          "Failed to load bank details:",
+          error,
+        );
 
-      const body = await response.json();
-      const list: ApiUser[] = Array.isArray(body?.data)
-        ? body.data
-        : Array.isArray(body?.data?.items)
-          ? body.data.items
-          : [];
-
-      setUsers(
-        list.filter((u) => String(u.organization_id) === String(bankPkid)),
-      );
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to load users");
-      setUsers([]);
-    } finally {
-      setUsersLoading(false);
-    }
-  }, [bankPkid]);
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to load bank details.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    }, [
+      tenantId,
+      updateTenant,
+    ]);
 
   useEffect(() => {
-    loadUsers();
+    void loadBankDetails();
+  }, [loadBankDetails]);
+
+  /* ---------------------------------------------------------------------- */
+  /* LOAD USERS                                                             */
+  /* ---------------------------------------------------------------------- */
+
+  const loadUsers =
+    useCallback(async () => {
+      const token =
+        getAccessToken();
+
+      if (!token) {
+        return;
+      }
+
+      const bankId =
+        Number(tenantId);
+
+      if (
+        !Number.isFinite(bankId)
+      ) {
+        return;
+      }
+
+      try {
+        setLoadingUsers(true);
+
+        const response =
+          await fetch(
+            USERS_URL,
+            {
+              method: "GET",
+
+              headers: {
+                Authorization:
+                  `Bearer ${token}`,
+                "Content-Type":
+                  "application/json",
+              },
+            },
+          );
+
+        const text =
+          await response.text();
+
+        if (!response.ok) {
+          throw new Error(
+            `Failed to load users (${response.status}).`,
+          );
+        }
+
+        let body: unknown = null;
+
+        if (text) {
+          try {
+            body = JSON.parse(text);
+          } catch {
+            body = null;
+          }
+        }
+
+        let list: unknown = body;
+
+        if (
+          isRecord(body) &&
+          Array.isArray(body["data"])
+        ) {
+          list = body["data"];
+        }
+
+        if (
+          !Array.isArray(list)
+        ) {
+          setUsers([]);
+          return;
+        }
+
+        const bankUsers =
+          list.filter(
+            (item): item is UserRecord => {
+              if (!isRecord(item)) {
+                return false;
+              }
+
+              const organizationId =
+                item[
+                  "organization_id"
+                ] ??
+                item[
+                  "organizationId"
+                ];
+
+              return (
+                String(
+                  organizationId ?? "",
+                ) ===
+                String(bankId)
+              );
+            },
+          );
+
+        setUsers(bankUsers);
+      } catch (error) {
+        console.error(
+          "Failed to load users:",
+          error,
+        );
+
+        setUsers([]);
+      } finally {
+        setLoadingUsers(false);
+      }
+    }, [tenantId]);
+
+  useEffect(() => {
+    void loadUsers();
   }, [loadUsers]);
 
-  const tenant = apiTenant ?? cachedTenant;
+  /* ---------------------------------------------------------------------- */
+  /* EDIT BANK                                                              */
+  /* ---------------------------------------------------------------------- */
+
+  const handleBankUpdate =
+    useCallback(
+      async (
+        input: TenantFormSubmit,
+      ) => {
+        if (!tenant) {
+          return;
+        }
+
+        const bankId =
+          Number(
+            tenant.pkid ??
+              tenant.id,
+          );
+
+        if (
+          !Number.isFinite(bankId)
+        ) {
+          toast.error(
+            "Bank ID is invalid.",
+          );
+
+          return;
+        }
+
+        try {
+          const payload =
+            buildBankUpdatePayload(
+              input,
+              tenant,
+              rawBank ?? undefined,
+            );
+
+          console.log(
+            "Bank update payload:",
+            payload,
+          );
+
+          await updateBank(
+            bankId,
+            payload,
+          );
+
+          const token =
+            getAccessToken();
+
+          if (!token) {
+            throw new Error(
+              "Session expired. Please login again.",
+            );
+          }
+
+          const response =
+            await fetch(
+              `${ORGANIZATION_GET_URL}/${bankId}`,
+              {
+                method: "GET",
+
+                headers: {
+                  Authorization:
+                    `Bearer ${token}`,
+                  "Content-Type":
+                    "application/json",
+                },
+              },
+            );
+
+          const text =
+            await response.text();
+
+          let body: unknown = null;
+
+          if (text) {
+            try {
+              body = JSON.parse(text);
+            } catch {
+              body = null;
+            }
+          }
+
+          if (!response.ok) {
+            throw new Error(
+              `Bank was updated but refreshed details could not be loaded (${response.status}).`,
+            );
+          }
+
+          const refreshedRaw =
+            unwrapOrganization(
+              body,
+              bankId,
+            );
+
+          const refreshedTenant =
+            mapOrganizationToTenant(
+              refreshedRaw,
+            );
+
+          setRawBank(
+            refreshedRaw,
+          );
+
+          setTenant(
+            refreshedTenant,
+          );
+
+          updateTenant(
+            refreshedTenant.id,
+            {
+              bankCode:
+                refreshedTenant.bankCode,
+
+              bankName:
+                refreshedTenant.bankName,
+
+              bankType:
+                refreshedTenant.bankType,
+
+              legalName:
+                refreshedTenant.legalName,
+
+              panNo:
+                refreshedTenant.panNo,
+
+              gstNo:
+                refreshedTenant.gstNo,
+
+              cin:
+                refreshedTenant.cin,
+
+              licenseNo:
+                refreshedTenant.licenseNo,
+
+              website:
+                refreshedTenant.website,
+
+              logoUrl:
+                refreshedTenant.logoUrl,
+
+              regulatoryDetails:
+                refreshedTenant.regulatoryDetails,
+
+              addressDetails:
+                refreshedTenant.addressDetails,
+
+              contactEmail:
+                refreshedTenant.contactEmail,
+
+              contactPhone:
+                refreshedTenant.contactPhone,
+
+              branches:
+                refreshedTenant.branches,
+
+              instituteName:
+                refreshedTenant.instituteName,
+
+              instituteType:
+                refreshedTenant.instituteType,
+
+              registrationNumber:
+                refreshedTenant.registrationNumber,
+
+              status:
+                refreshedTenant.status,
+
+              designation:
+                refreshedTenant.designation,
+            },
+          );
+
+          setEditOpen(false);
+
+          toast.success(
+            "Bank details updated successfully.",
+          );
+        } catch (error) {
+          console.error(
+            "Bank update failed:",
+            error,
+          );
+
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Failed to update bank details.",
+          );
+
+          throw error;
+        }
+      },
+      [
+        tenant,
+        rawBank,
+        updateTenant,
+      ],
+    );
+
+  /* ---------------------------------------------------------------------- */
+  /* DISPLAY VALUES                                                         */
+  /* ---------------------------------------------------------------------- */
+
+  const regulatory =
+    tenant?.regulatoryDetails;
+
+  const address =
+    tenant?.addressDetails;
+
+  const country =
+    rawBank?.country ?? "-";
+
+  const registeredAddress =
+    rawBank?.registered_address ??
+    "-";
+
+  const corporateAddress =
+    rawBank?.corporate_address ??
+    "-";
+
+  const micrNumber =
+    regulatory?.micrNumber ||
+    rawBank?.micr_number ||
+    "-";
+
+  const bankId =
+    tenant?.pkid ??
+    Number(tenantId);
+
+  const pageTitle =
+    tenant?.bankName ||
+    tenant?.instituteName ||
+    "Bank Details";
+
+  const usersCount =
+    useMemo(
+      () => users.length,
+      [users],
+    );
+
+  /* ---------------------------------------------------------------------- */
+  /* LOADING                                                                */
+  /* ---------------------------------------------------------------------- */
 
   if (loading) {
     return (
-      <AppShell title="Bank Details" subtitle="Loading bank information...">
-        <div className="surface-card flex min-h-[400px] items-center justify-center">
-          <div className="text-center">
-            <div className="mx-auto mb-3 size-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
-            <p className="font-medium">Loading bank...</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Fetching bank information.
-            </p>
+      <AppShell title={pageTitle}>
+        <div className="p-6">
+          <div className="rounded-xl border bg-white p-8">
+            Loading bank details...
           </div>
         </div>
       </AppShell>
     );
   }
 
-  if (loadError) {
-    return (
-      <AppShell title="Unable to load bank details">
-        <div className="surface-card flex flex-col items-center gap-3 p-16 text-center">
-          <Building2 className="size-10 text-muted-foreground" />
-          <p className="font-medium">Bank details could not be loaded</p>
-          <p className="max-w-xl text-sm text-muted-foreground">{loadError}</p>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate({ to: "/tenants" })}>
-              <ArrowLeft className="size-4" />
-              Back to Bank Management
-            </Button>
-            <Button onClick={() => setRetryCount((count) => count + 1)}>
-              Try again
-            </Button>
-          </div>
-        </div>
-      </AppShell>
-    );
-  }
+  /* ---------------------------------------------------------------------- */
+  /* NOT FOUND                                                              */
+  /* ---------------------------------------------------------------------- */
 
   if (!tenant) {
     return (
-      <AppShell title="Bank not found">
-        <div className="surface-card flex flex-col items-center gap-3 p-16 text-center">
-          <Building2 className="size-10 text-muted-foreground" />
-          <p className="font-medium">This bank could not be found</p>
-          <Button variant="outline" onClick={() => navigate({ to: "/tenants" })}>
-            <ArrowLeft className="size-4" />
-            Back to Bank Management
-          </Button>
+      <AppShell title={pageTitle}>
+        <div className="p-6">
+          <div className="rounded-xl border bg-white p-8">
+            <p className="mb-4 text-lg font-semibold">
+              Bank not found
+            </p>
+
+            <Button
+              onClick={() =>
+                navigate({
+                  to: "/tenants",
+                })
+              }
+            >
+              Back to Banks
+            </Button>
+          </div>
         </div>
       </AppShell>
     );
   }
 
-  const bankInitials =
-    (tenant.instituteName || "")
-      .split(" ")
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part.charAt(0).toUpperCase())
-      .join("") || "B";
-
-  const createdAt = raw?.created_at ?? tenant.createdAt;
-  const updatedAt = raw?.updated_at ?? undefined;
-  const branches = tenant.branches ?? [];
+  /* ---------------------------------------------------------------------- */
+  /* PAGE                                                                    */
+  /* ---------------------------------------------------------------------- */
 
   return (
-    <AppShell
-      title={tenant.instituteName}
-      subtitle={tenant.instituteType || "Bank Details"}
-    >
-      <div className="space-y-6">
-        {/* Back */}
-        <Link
-          to="/tenants"
-          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="size-4" /> Back to Bank Management
-        </Link>
+    <AppShell title={pageTitle}>
+      <div className="min-h-screen bg-slate-50 p-6">
+        {/* ---------------------------------------------------------------- */}
+        {/* HEADER                                                           */}
+        {/* ---------------------------------------------------------------- */}
 
-        {/* Header */}
-        <div className="surface-card animate-rise flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-primary text-lg font-bold text-primary-foreground">
-              {bankInitials}
-            </span>
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() =>
+                navigate({
+                  to: "/tenants",
+                })
+              }
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+
             <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <h2 className="text-xl font-bold tracking-tight">
-                  {tenant.instituteName}
-                </h2>
-                <StatusBadge status={tenant.status} />
+              <div className="flex items-center gap-3">
+                <Building2 className="h-6 w-6 text-slate-700" />
+
+                <h1 className="text-2xl font-semibold text-slate-900">
+                  {pageTitle}
+                </h1>
+
+                <StatusBadge
+                  status={
+                    tenant.status
+                  }
+                />
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {tenant.instituteType || "Institution"}
-                {tenant.registrationNumber && <> · {tenant.registrationNumber}</>}
+
+              <p className="mt-1 text-sm text-slate-500">
+                Bank ID: {bankId}
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => setUserDrawerOpen(true)}>
+
+          <Button
+            onClick={() =>
+              setEditOpen(true)
+            }
+          >
+            <Edit className="mr-2 h-4 w-4" />
+            Edit Bank
+          </Button>
+        </div>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* BANK DETAILS                                                     */}
+        {/* ---------------------------------------------------------------- */}
+
+        <section className="mb-6 rounded-xl border bg-white shadow-sm">
+          <div className="border-b px-6 py-4">
+            <h2 className="text-lg font-semibold text-slate-900">
+              Bank Details
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 p-6 md:grid-cols-2 lg:grid-cols-3">
+            <DetailItem
+              label="Bank Code"
+              value={
+                tenant.bankCode
+              }
+            />
+
+            <DetailItem
+              label="Bank Name"
+              value={
+                tenant.bankName ||
+                tenant.instituteName
+              }
+            />
+
+            <DetailItem
+              label="Bank Type"
+              value={
+                tenant.bankType
+              }
+            />
+
+            <DetailItem
+              label="Legal Name"
+              value={
+                tenant.legalName
+              }
+            />
+
+            <DetailItem
+              label="PAN No."
+              value={
+                tenant.panNo
+              }
+            />
+
+            <DetailItem
+              label="GST No."
+              value={
+                tenant.gstNo
+              }
+            />
+
+            <DetailItem
+              label="License No."
+              value={
+                tenant.licenseNo ||
+                tenant.registrationNumber
+              }
+            />
+
+            <DetailItem
+              label="CIN No."
+              value={
+                tenant.cin
+              }
+            />
+
+            <DetailItem
+              label="Website"
+              value={
+                tenant.website
+              }
+            />
+
+            {/* <DetailItem
+              label="Contact Email"
+              value={
+                tenant.contactEmail
+              }
+              icon={
+                <Mail className="h-4 w-4" />
+              }
+            />
+
+            <DetailItem
+              label="Contact Phone"
+              value={
+                tenant.contactPhone
+              }
+              icon={
+                <Phone className="h-4 w-4" />
+              }
+            /> */}
+
+            <DetailItem
+              label="Status"
+              value={
+                tenant.status
+              }
+            />
+          </div>
+        </section>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* REGULATORY DETAILS                                               */}
+        {/* ---------------------------------------------------------------- */}
+
+        <section className="mb-6 rounded-xl border bg-white shadow-sm">
+          <div className="border-b px-6 py-4">
+            <h2 className="text-lg font-semibold text-slate-900">
+              Regulatory Details
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 p-6 md:grid-cols-2 lg:grid-cols-3">
+            <DetailItem
+              label="Direct CLG Member"
+              value={
+                regulatory?.directClgMember
+              }
+            />
+
+            <DetailItem
+              label="Direct Member IFTAS"
+              value={
+                regulatory?.directMemberIftas
+              }
+            />
+
+            <DetailItem
+              label="MICR Code"
+              value={
+                regulatory?.micrCode
+              }
+            />
+
+            <DetailItem
+              label="MICR Number"
+              value={
+                micrNumber
+              }
+            />
+
+            <DetailItem
+              label="MICR City Code"
+              value={
+                regulatory?.micrCityCode
+              }
+            />
+
+            <DetailItem
+              label="MICR Branch Code"
+              value={
+                regulatory?.micrBranchCode
+              }
+            />
+
+            <DetailItem
+              label="IFSC Code"
+              value={
+                regulatory?.ifscCode
+              }
+            />
+
+            <DetailItem
+              label="Number of Branches"
+              value={
+                regulatory?.numberOfBranches
+              }
+            />
+
+            <DetailItem
+              label="Sponsor Bank for CLG"
+              value={
+                regulatory?.sponsorBankForClg
+              }
+            />
+
+            <DetailItem
+              label="Sponsor Bank for IFTAS"
+              value={
+                regulatory?.sponsorBankForIftas
+              }
+            />
+          </div>
+        </section>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* ADDRESS DETAILS                                                  */}
+        {/* ---------------------------------------------------------------- */}
+
+        <section className="mb-6 rounded-xl border bg-white shadow-sm">
+          <div className="border-b px-6 py-4">
+            <h2 className="text-lg font-semibold text-slate-900">
+              Address Details
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 p-6 md:grid-cols-2 lg:grid-cols-3">
+            <DetailItem
+              label="Address Type"
+              value={
+                address?.addressType
+              }
+            />
+
+            <DetailItem
+              label="Unit / Gala Name & No."
+              value={
+                address?.unitGalaNameNo
+              }
+            />
+
+            <DetailItem
+              label="Street / Road"
+              value={
+                address?.streetRoad
+              }
+            />
+
+            <DetailItem
+              label="Land Mark"
+              value={
+                address?.landMark
+              }
+            />
+
+            <DetailItem
+              label="City"
+              value={
+                address?.city
+              }
+            />
+
+            <DetailItem
+              label="State"
+              value={
+                address?.state
+              }
+            />
+
+            <DetailItem
+              label="PIN Code"
+              value={
+                address?.pinCode
+              }
+            />
+
+            <DetailItem
+              label="Country"
+              value={
+                country
+              }
+            />
+
+            <DetailItem
+              label="Registered Address"
+              value={
+                registeredAddress
+              }
+            />
+
+            <DetailItem
+              label="Corporate Address"
+              value={
+                corporateAddress
+              }
+            />
+          </div>
+        </section>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* USERS                                                             */}
+        {/* ---------------------------------------------------------------- */}
+
+        <section className="rounded-xl border bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b px-6 py-4">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Users
+              </h2>
+
+              <p className="text-sm text-slate-500">
+                {usersCount} user
+                {usersCount === 1
+                  ? ""
+                  : "s"} associated with this bank
+              </p>
+            </div>
+
+            <Button
+              onClick={() =>
+                setUserDrawerOpen(
+                  true,
+                )
+              }
+            >
+              <Plus className="mr-2 h-4 w-4" />
               Add User
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                toggleTenantStatus(tenant.id);
-                toast.success(
-                  `Tenant ${tenant.status === "Active" ? "deactivated" : "activated"} successfully`,
-                );
-              }}
-            >
-              {tenant.status === "Active" ? (
-                <>
-                  <PowerOff className="size-4" /> Deactivate
-                </>
-              ) : (
-                <>
-                  <Power className="size-4" /> Activate
-                </>
-              )}
-            </Button>
-            <Button onClick={() => setEditOpen(true)}>
-              <Pencil className="size-4" /> Edit
-            </Button>
-          </div>
-        </div>
-
-        {/* Information cards */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          <UserDetailCard title="Institution Details">
-            <UserDetailRow label="Institute Name" value={tenant.instituteName || null} />
-            <UserDetailRow label="Bank Code" value={tenant.bankCode || null} />
-            <UserDetailRow label="Legal Name" value={tenant.legalName || null} />
-            {/* <UserDetailRow label="Short Name" value={raw?.short_name ?? null} /> */}
-            <UserDetailRow label="Institute Type" value={tenant.instituteType || null} />
-            <UserDetailRow
-              label="License No."
-              value={tenant.licenseNo  || null}
-            />
-            {/* <UserDetailRow
-              label="Regulatory Authority ID"
-              value={tenant.regulatoryAuthorityId || null}
-            /> */}
-            <UserDetailRow label="PAN No." value={tenant.panNo || null} />
-            <UserDetailRow label="GST No." value={tenant.gstNo || null} />
-            <UserDetailRow label="CIN No." value={tenant.cin || null} />
-            <UserDetailRow label="Logo URL" value={tenant.logoUrl || null} />
-            <UserDetailRow
-              label="Regulatory Status"
-              value={raw?.regulatory_status ?? raw?.status ?? null}
-            />
-            <UserDetailRow label="Status" value={tenant.status} />
-          </UserDetailCard>
-
-          <UserDetailCard title="Contact & Address">
-            <UserDetailRow label="Email" value={tenant.contactEmail || null} />
-            <UserDetailRow label="Phone" value={tenant.contactPhone || null} />
-            <UserDetailRow label="Website" value={tenant.website || null} />
-            <UserDetailRow label="Address Type" value={tenant.addressDetails.addressType || null} />
-            <UserDetailRow
-              label="Unit / Gala Name & No."
-              value={tenant.addressDetails.unitGalaNameNo || null}
-            />
-            <UserDetailRow label="Street / Road" value={tenant.addressDetails.streetRoad || null} />
-            <UserDetailRow label="Landmark" value={tenant.addressDetails.landMark || null} />
-            <UserDetailRow label="City" value={tenant.addressDetails.city || null} />
-            <UserDetailRow label="State" value={tenant.addressDetails.state || null} />
-            <UserDetailRow label="PIN Code" value={tenant.addressDetails.pinCode || null} />
-            <UserDetailRow label="Country" value={raw?.country ?? null} />
-          </UserDetailCard>
-
-          <UserDetailCard title="Banking Details">
-            <UserDetailRow
-              label="Number of Branches"
-              value={tenant.regulatoryDetails.numberOfBranches || null}
-            />
-            <UserDetailRow
-              label="IFSC Code"
-              value={tenant.regulatoryDetails.ifscCode || null}
-            />
-            <UserDetailRow
-              label="MICR Code"
-              value={tenant.regulatoryDetails.micrCode || null}
-            />
-            <UserDetailRow
-              label="MICR City Code"
-              value={tenant.regulatoryDetails.micrCityCode || null}
-            />
-            <UserDetailRow
-              label="MICR Branch Code"
-              value={tenant.regulatoryDetails.micrBranchCode || null}
-            />
-          </UserDetailCard>
-
-          <UserDetailCard title="Record Information">
-            <UserDetailRow label="Bank ID (pkid)" value={tenant.pkid ?? null} />
-            <UserDetailRow label="Bank ID" value={tenant.id} />
-            <UserDetailRow
-              label="Created Date"
-              value={formatUserDateTime(createdAt)}
-            />
-            <UserDetailRow
-              label="Modified Date"
-              value={formatUserDateTime(updatedAt)}
-            />
-          </UserDetailCard>
-        </div>
-
-        {/* Branches (only when available) */}
-        {branches.length > 0 && (
-          <div className="surface-card animate-rise p-6">
-            <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Branches ({branches.length})
-            </h3>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {branches.map((b) => (
-                <div
-                  key={b.id}
-                  className="flex items-center gap-2 rounded-xl border border-border bg-secondary/40 px-3 py-2 text-sm"
-                >
-                  <MapPin className="size-4 shrink-0 text-accent" />
-                  {b.location}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-                {/* Users */}
-        <div className="surface-card animate-rise overflow-hidden">
-          <div className="flex items-center gap-2 border-b border-border px-6 py-4">
-            <div className="grid size-8 place-items-center rounded-lg bg-accent/15 text-accent">
-              <Users className="size-4" />
-            </div>
-            <div>
-              <h3 className="font-semibold">Users</h3>
-              <p className="text-xs text-muted-foreground">
-                {usersLoading ? "Loading users…" : `${users.length} user(s) in this bank`}
-              </p>
-            </div>
           </div>
 
-          {usersLoading ? (
-            <div className="p-10 text-center text-sm text-muted-foreground">
-              Loading users…
+          {loadingUsers ? (
+            <div className="p-6 text-sm text-slate-500">
+              Loading users...
             </div>
           ) : users.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
-              <p className="text-sm text-muted-foreground">
-                No users have been added to this bank yet.
+            <div className="flex flex-col items-center justify-center p-10 text-center">
+              <User className="mb-3 h-10 w-10 text-slate-300" />
+
+              <p className="mb-1 font-medium text-slate-700">
+                No users found
               </p>
-              <Button variant="outline" onClick={() => setUserDrawerOpen(true)}>
+
+              <p className="mb-4 text-sm text-slate-500">
+                Add a user to this bank.
+              </p>
+
+              <Button
+                onClick={() =>
+                  setUserDrawerOpen(
+                    true,
+                  )
+                }
+              >
+                <Plus className="mr-2 h-4 w-4" />
                 Add User
               </Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-secondary/50">
-                  <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
-                    {["Name", "Emp No", "Email", "Mobile", "Designation", "Role", "Status"].map(
-                      (label) => (
-                        <th key={label} className="whitespace-nowrap px-4 py-3 font-medium">
-                          {label}
-                        </th>
-                      ),
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((u) => {
-                    const status = getUserStatus(u);
-                    const active =
-                      u.is_active === true || status === "ACTIVE" || status === "OPERATIVE";
+            <div className="divide-y">
+              {users.map(
+                (
+                  user,
+                  index,
+                ) => {
+                  const firstName =
+                    user.first_name ??
+                    user.firstName ??
+                    "";
 
-                    return (
-                      <tr
-                        key={u.id ?? u.pkid}
-                        onClick={() =>
-                          navigate({
-                            to: "/users/$userId",
-                            params: { userId: String(u.id ?? u.pkid) },
-                          })
-                        }
-                        className="cursor-pointer border-t border-border transition-colors hover:bg-secondary/60"
-                      >
-                        <td className="whitespace-nowrap px-4 py-3 font-medium">
-                          {getUserName(u) || "-"}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                          {u.emp_no || "-"}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                          {u.email || "-"}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                          {u.mobile || "-"}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3">
-                          {u.designation || "-"}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3">
-                          {getUserRole(u) || "-"}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3">
-                          <UserStatusBadge status={status} active={active} />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                  const lastName =
+                    user.last_name ??
+                    user.lastName ??
+                    "";
+
+                  const name =
+                    user.name ||
+                    `${firstName} ${lastName}`.trim() ||
+                    "Unnamed User";
+
+                  return (
+                    <div
+                      key={String(
+                        user.id ??
+                          user.pkid ??
+                          index,
+                      )}
+                      className="flex items-center justify-between px-6 py-4"
+                    >
+                      <div>
+                        <p className="font-medium text-slate-900">
+                          {name}
+                        </p>
+
+                        <div className="mt-1 flex flex-wrap gap-4 text-sm text-slate-500">
+                          {user.email && (
+                            <span className="flex items-center gap-1">
+                              <Mail className="h-3.5 w-3.5" />
+                              {user.email}
+                            </span>
+                          )}
+
+                          {(user.mobile ||
+                            user.phone) && (
+                            <span className="flex items-center gap-1">
+                              <Phone className="h-3.5 w-3.5" />
+                              {user.mobile ||
+                                user.phone}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-slate-700">
+                          {user.designation ||
+                            "-"}
+                        </p>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          {user.status ||
+                            "Active"}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                },
+              )}
             </div>
           )}
-        </div>
-
-        {/* Activity log */}
-        {/* <div className="surface-card animate-rise p-6">
-          <div className="mb-5 flex items-center gap-2">
-            <div className="grid size-8 place-items-center rounded-lg bg-accent/15 text-accent">
-              <Clock className="size-4" />
-            </div>
-            <div>
-              <h3 className="font-semibold">Activity Log</h3>
-              <p className="text-xs text-muted-foreground">Bank account activity</p>
-            </div>
-          </div>
-
-          <ul className="space-y-4">
-            <UserActivityItem
-              title="Bank onboarded"
-              date={createdAt || ""}
-              icon={<Calendar className="size-4" />}
-            />
-            <UserActivityItem
-              title={`Status is ${tenant.status}`}
-              date={updatedAt || createdAt || ""}
-              icon={<ShieldCheck className="size-4" />}
-            />
-            {tenant.activity?.map((a) => (
-              <UserActivityItem
-                key={a.id}
-                title={a.text}
-                date={a.at}
-                icon={<Clock className="size-4" />}
-              />
-            ))}
-          </ul>
-        </div> */}
+        </section>
       </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* EDIT BANK DRAWER                                                   */}
+      {/* ------------------------------------------------------------------ */}
 
       <TenantFormDrawer
         open={editOpen}
-        onOpenChange={setEditOpen}
+        onOpenChange={
+          setEditOpen
+        }
         tenant={tenant}
-        onSubmit={(input) => {
-          updateTenant(tenant.id, input);
-          toast.success("Tenant updated successfully");
-        }}
+        onSubmit={
+          handleBankUpdate
+        }
       />
+
+      {/* ------------------------------------------------------------------ */}
+      {/* ADD USER DRAWER                                                    */}
+      {/* ------------------------------------------------------------------ */}
+
       <UserFormDrawer
         open={userDrawerOpen}
-        onOpenChange={(open) => {
-          setUserDrawerOpen(open);
-          if (!open) loadUsers();
-        }}
         bank={tenant}
+        onOpenChange={(nextOpen) => {
+          setUserDrawerOpen(
+            nextOpen,
+          );
+
+          if (!nextOpen) {
+            void loadUsers();
+          }
+        }}
       />
     </AppShell>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* DETAIL ITEM                                                                */
+/* -------------------------------------------------------------------------- */
+
+function DetailItem({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value?: string | number | null | undefined;
+  icon?: ReactNode;
+}) {
+  const display =
+    value === null ||
+    value === undefined ||
+    String(value).trim() === ""
+      ? "-"
+      : String(value);
+
+  return (
+    <div>
+      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+
+      <div className="flex items-center gap-2 text-sm font-medium text-slate-800">
+        {icon && (
+          <span className="text-slate-400">
+            {icon}
+          </span>
+        )}
+
+        <span className="break-words">
+          {display}
+        </span>
+      </div>
+    </div>
   );
 }
