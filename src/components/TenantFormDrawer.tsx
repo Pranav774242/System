@@ -1,4 +1,3 @@
-
 import {
   useEffect,
   useRef,
@@ -18,7 +17,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
 import { postAdminJson } from "@/lib/admin-api";
 
 import {
@@ -28,12 +26,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-
 /* -------------------------------------------------------------------------- */
 /* TYPES                                                                      */
 /* -------------------------------------------------------------------------- */
 
-type BankType = "NBFC" | "Cooperative Bank";
+type BankType = "NBFC" | "Cooperative" | "Private" | "Nationalized" | "UCB" | "RRB";
 
 type Page = 1 | 2 | 3;
 
@@ -44,6 +41,7 @@ type RegulatoryDetails = {
   directMemberIftas: YesNo;
 
   micr1: string;
+  micrNumber: string;
   micr2: string;
   micr3: string;
 
@@ -57,27 +55,18 @@ type RegulatoryDetails = {
 
 type AddressDetails = {
   addressType: string;
-
   unitGala: string;
-
   streetRoad: string;
-
   landmark: string;
-
   city: string;
-
   state: string;
-
   pinCode: string;
 };
 
 type Props = {
   open: boolean;
-
   onOpenChange: (open: boolean) => void;
-
   tenant?: Tenant;
-
   onSubmit: (input: BankInput) => void | Promise<void>;
 };
 
@@ -90,6 +79,7 @@ const emptyRegulatory: RegulatoryDetails = {
   directMemberIftas: "",
 
   micr1: "",
+  micrNumber: "",
   micr2: "",
   micr3: "",
 
@@ -103,17 +93,11 @@ const emptyRegulatory: RegulatoryDetails = {
 
 const emptyAddress: AddressDetails = {
   addressType: "",
-
   unitGala: "",
-
   streetRoad: "",
-
   landmark: "",
-
   city: "",
-
   state: "",
-
   pinCode: "",
 };
 
@@ -124,7 +108,6 @@ const emptyForm = {
   legalName: "",
   PAN: "",
   GST: "",
-  CIN: "",
   licenseNo: "",
   website: "",
   logo: "",
@@ -142,7 +125,6 @@ type FormErrors = {
   legalName?: string;
   PAN?: string;
   GST?: string;
-  CIN?: string;
   licenseNo?: string;
   website?: string;
   logo?: string;
@@ -170,7 +152,6 @@ type BankOnboardPayload = {
 
   pan: string;
   gstNo: string;
-  cin: string;
   licenseNo: string;
 
   website: string;
@@ -183,6 +164,7 @@ type BankOnboardPayload = {
   directMemberIftas: boolean;
 
   micr1: string;
+  micrNumber: string;
   micr2: string;
   micr3: string;
 
@@ -208,24 +190,11 @@ type BankOnboardPayload = {
 /* HELPERS                                                                    */
 /* -------------------------------------------------------------------------- */
 
-/*
- * Converts the form's Yes/No value into the Boolean value
- * expected by the backend.
- *
- * "Yes" -> true
- * "No"  -> false
- */
 function yesNoToBoolean(value: YesNo): boolean {
   return value === "Yes";
 }
 
-/* -------------------------------------------------------------------------- */
-/* VALIDATION                                                                 */
-/* -------------------------------------------------------------------------- */
-
-const ifscPattern = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-
-function isHttpUrl(value: string) {
+function isHttpUrl(value: string): boolean {
   try {
     const url = new URL(value);
 
@@ -238,6 +207,19 @@ function isHttpUrl(value: string) {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* VALIDATION                                                                 */
+/* -------------------------------------------------------------------------- */
+
+const ifscPattern = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+
+
+const panPattern =
+  /^[A-Z]{5}\d{4}[A-Z]$/;
+
+const gstPattern =
+  /^[0-9A-Z]{15}$/;
+
 function getPage1Errors(
   form: typeof emptyForm,
 ): FormErrors {
@@ -249,7 +231,9 @@ function getPage1Errors(
 
   if (!form.bankName.trim()) {
     errors.bankName = "Bank name is required";
-  } else if (form.bankName.trim().length < 2) {
+  } else if (
+    form.bankName.trim().length < 2
+  ) {
     errors.bankName = "Enter a valid bank name";
   }
 
@@ -263,7 +247,7 @@ function getPage1Errors(
 
   if (
     form.PAN.trim() &&
-    !/^[A-Z]{5}\d{4}[A-Z]$/.test(
+    !panPattern.test(
       form.PAN.trim().toUpperCase(),
     )
   ) {
@@ -273,23 +257,12 @@ function getPage1Errors(
 
   if (
     form.GST.trim() &&
-    !/^[0-9A-Z]{15}$/.test(
+    !gstPattern.test(
       form.GST.trim().toUpperCase(),
     )
   ) {
     errors.GST =
       "Enter a valid 15-character GST number";
-  }
-
-  if (!form.CIN.trim()) {
-    errors.CIN = "CIN number is required";
-  } else if (
-    !/^[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}$/.test(
-      form.CIN.trim().toUpperCase(),
-    )
-  ) {
-    errors.CIN =
-      "Enter a valid 21-character CIN number";
   }
 
   if (!form.licenseNo.trim()) {
@@ -342,12 +315,12 @@ function getPage2Errors(
 
   if (!regulatory.micr2.trim()) {
     errors.micr2 =
-      "MICR detail is required";
+      "MICR city code is required";
   }
 
   if (!regulatory.micr3.trim()) {
     errors.micr3 =
-      "MICR detail is required";
+      "MICR branch code is required";
   }
 
   if (!regulatory.ifscCode.trim()) {
@@ -378,7 +351,7 @@ function getPage2Errors(
 
   if (!regulatory.sponsorBankClg.trim()) {
     errors.sponsorBankClg =
-      "Sponsor bank for Clg is required";
+      "Sponsor bank for CLG is required";
   }
 
   if (!regulatory.sponsorBankIftas.trim()) {
@@ -448,17 +421,17 @@ export function TenantFormDrawer({
   onSubmit,
 }: Props) {
   const [form, setForm] =
-    useState(emptyForm);
+    useState({ ...emptyForm });
 
   const [regulatory, setRegulatory] =
-    useState<RegulatoryDetails>(
-      emptyRegulatory,
-    );
+    useState<RegulatoryDetails>({
+      ...emptyRegulatory,
+    });
 
   const [address, setAddress] =
-    useState<AddressDetails>(
-      emptyAddress,
-    );
+    useState<AddressDetails>({
+      ...emptyAddress,
+    });
 
   const [page, setPage] =
     useState<Page>(1);
@@ -466,10 +439,11 @@ export function TenantFormDrawer({
   const [busy, setBusy] =
     useState(false);
 
-  const submittingRef = useRef(false);
-
   const [submitted, setSubmitted] =
     useState(false);
+
+  const submittingRef =
+    useRef(false);
 
   /* ------------------------------------------------------------------------ */
   /* LOAD FORM                                                                */
@@ -486,14 +460,10 @@ export function TenantFormDrawer({
     submittingRef.current = false;
 
     if (!tenant) {
-      setForm({
-        ...emptyForm,
-      });
-
+      setForm({ ...emptyForm });
       setRegulatory({
         ...emptyRegulatory,
       });
-
       setAddress({
         ...emptyAddress,
       });
@@ -501,10 +471,19 @@ export function TenantFormDrawer({
       return;
     }
 
+    const tenantBankType = String(
+      tenant.bankType ?? "",
+    );
+
     const existingBankType: BankType =
-      tenant.bankType === "NBFC"
-        ? "NBFC"
-        : "Cooperative Bank";
+      tenantBankType === "Nationalized" ||
+        tenantBankType === "UCB" ||
+        tenantBankType === "RRB" ||
+        tenantBankType === "Private" ||
+        tenantBankType === "NBFC" ||
+        tenantBankType === "Cooperative"
+        ? (tenantBankType as BankType)
+        : "Private";
 
     setForm({
       bankCode:
@@ -516,7 +495,8 @@ export function TenantFormDrawer({
         tenant.organization ||
         "",
 
-      bankType: existingBankType,
+      bankType:
+        existingBankType,
 
       legalName:
         tenant.legalName ?? "",
@@ -527,8 +507,6 @@ export function TenantFormDrawer({
       GST:
         tenant.gstNo ?? "",
 
-      CIN:
-        tenant.cin ?? "",
 
       licenseNo:
         tenant.licenseNo ||
@@ -566,8 +544,13 @@ export function TenantFormDrawer({
             : "",
 
       micr1:
+        tenant.regulatoryDetails?.micrCode ||
+        tenant.regulatoryDetails?.micrNumber ||
+        "",
+
+      micrNumber:
         tenant.regulatoryDetails
-          ?.micrCode ?? "",
+          ?.micrNumber ?? "",
 
       micr2:
         tenant.regulatoryDetails
@@ -612,16 +595,13 @@ export function TenantFormDrawer({
           ?.landMark ?? "",
 
       city:
-        tenant.addressDetails?.city ??
-        "",
+        tenant.addressDetails?.city ?? "",
 
       state:
-        tenant.addressDetails?.state ??
-        "",
+        tenant.addressDetails?.state ?? "",
 
       pinCode:
-        tenant.addressDetails?.pinCode ??
-        "",
+        tenant.addressDetails?.pinCode ?? "",
     });
   }, [open, tenant]);
 
@@ -684,7 +664,7 @@ export function TenantFormDrawer({
       string | undefined
     >,
     key: string,
-  ) =>
+  ): string | undefined =>
     submitted
       ? errors[key]
       : undefined;
@@ -698,22 +678,19 @@ export function TenantFormDrawer({
 
     if (page === 1) {
       if (
-        Object.keys(page1Errors)
-          .length > 0
+        Object.keys(page1Errors).length > 0
       ) {
         return;
       }
 
       setSubmitted(false);
       setPage(2);
-
       return;
     }
 
     if (page === 2) {
       if (
-        Object.keys(page2Errors)
-          .length > 0
+        Object.keys(page2Errors).length > 0
       ) {
         return;
       }
@@ -731,7 +708,7 @@ export function TenantFormDrawer({
     setSubmitted(false);
 
     setPage(
-      (current) =>
+      (current): Page =>
         current === 1
           ? 1
           : ((current - 1) as Page),
@@ -748,7 +725,6 @@ export function TenantFormDrawer({
     }
 
     submittingRef.current = true;
-
     setSubmitted(true);
 
     const currentPage1Errors =
@@ -761,8 +737,8 @@ export function TenantFormDrawer({
       getPage3Errors(address);
 
     if (
-      Object.keys(currentPage1Errors)
-        .length > 0
+      Object.keys(currentPage1Errors).length >
+      0
     ) {
       setPage(1);
       submittingRef.current = false;
@@ -770,8 +746,8 @@ export function TenantFormDrawer({
     }
 
     if (
-      Object.keys(currentPage2Errors)
-        .length > 0
+      Object.keys(currentPage2Errors).length >
+      0
     ) {
       setPage(2);
       submittingRef.current = false;
@@ -779,8 +755,8 @@ export function TenantFormDrawer({
     }
 
     if (
-      Object.keys(currentPage3Errors)
-        .length > 0
+      Object.keys(currentPage3Errors).length >
+      0
     ) {
       setPage(3);
       submittingRef.current = false;
@@ -789,25 +765,10 @@ export function TenantFormDrawer({
 
     setBusy(true);
 
-    /*
-     * Convert frontend bank type to the backend value.
-     */
-    const bankType: "BANK" | "NBFC" =
-      form.bankType === "NBFC"
-        ? "NBFC"
-        : "BANK";
+    // All four selections are bank categories, so the existing backend
+    // bankType field is sent as BANK.
+    const bankType: "BANK" | "NBFC" = "BANK";
 
-    /*
-     * Convert Yes/No to actual Boolean.
-     *
-     * This is important because the backend expects:
-     *
-     * true / false
-     *
-     * and NOT:
-     *
-     * "Yes" / "No"
-     */
     const directClgMember =
       yesNoToBoolean(
         regulatory.directClgMember,
@@ -818,11 +779,9 @@ export function TenantFormDrawer({
         regulatory.directMemberIftas,
       );
 
-    /* ---------------------------------------------------------------------- */
-    /* FRONTEND STORE PAYLOAD                                                 */
-    /* ---------------------------------------------------------------------- */
-
     const storePayload: BankInput = {
+      cin: "",
+
       bankCode:
         form.bankCode.trim(),
 
@@ -844,10 +803,6 @@ export function TenantFormDrawer({
           .trim()
           .toUpperCase(),
 
-      cin:
-        form.CIN
-          .trim()
-          .toUpperCase(),
 
       licenseNo:
         form.licenseNo.trim(),
@@ -867,6 +822,9 @@ export function TenantFormDrawer({
 
         micrCode:
           regulatory.micr1.trim(),
+
+        micrNumber:
+          regulatory.micrNumber.trim(),
 
         micrCityCode:
           regulatory.micr2.trim(),
@@ -913,9 +871,7 @@ export function TenantFormDrawer({
       },
 
       contactEmail: "",
-
       contactPhone: "",
-
       branches: [],
 
       instituteName:
@@ -927,10 +883,7 @@ export function TenantFormDrawer({
       registrationNumber:
         form.licenseNo.trim(),
 
-
-
-      country:
-        "India",
+      country: "India",
 
       state:
         address.state.trim(),
@@ -993,7 +946,6 @@ export function TenantFormDrawer({
               .trim()
               .toUpperCase(),
 
-          cin: form.CIN.trim().toUpperCase(),
 
           licenseNo:
             form.licenseNo.trim(),
@@ -1004,19 +956,25 @@ export function TenantFormDrawer({
           logoUrl:
             form.logo.trim(),
 
-          status: form.status === "Active" ? "ACTIVE" : "INACTIVE",
+          status:
+            form.status === "Active"
+              ? "ACTIVE"
+              : "INACTIVE",
 
-          regulatoryStatus: form.status === "Active" ? "ACTIVE" : "INACTIVE",
-          /*
-           * IMPORTANT:
-           * Send Boolean values to backend.
-           */
+          regulatoryStatus:
+            form.status === "Active"
+              ? "ACTIVE"
+              : "INACTIVE",
+
           directClgMember,
 
           directMemberIftas,
 
           micr1:
             regulatory.micr1.trim(),
+
+          micrNumber:
+            regulatory.micrNumber.trim(),
 
           micr2:
             regulatory.micr2.trim(),
@@ -1067,20 +1025,6 @@ export function TenantFormDrawer({
           apiPayload,
         );
 
-        console.log(
-          "CREATE BANK BOOLEAN VALUES:",
-          {
-            directClgMember:
-              apiPayload.directClgMember,
-
-            directMemberIftas:
-              apiPayload.directMemberIftas,
-          },
-        );
-
-        /*
-         * Create bank through backend onboarding API.
-         */
         await postAdminJson(
           "https://los-backend-355v.onrender.com/api/v1/administration/banks/onboard",
           apiPayload,
@@ -1088,14 +1032,10 @@ export function TenantFormDrawer({
       }
 
       /* -------------------------------------------------------------------- */
-      /* UPDATE FRONTEND STORE                                                */
+      /* FRONTEND STORE                                                       */
       /* -------------------------------------------------------------------- */
 
       await onSubmit(storePayload);
-
-      /* -------------------------------------------------------------------- */
-      /* SUCCESS                                                              */
-      /* -------------------------------------------------------------------- */
 
       toast.success(
         tenant
@@ -1163,7 +1103,7 @@ export function TenantFormDrawer({
           <SheetDescription className="text-sm text-muted-foreground">
             {tenant
               ? "Update bank details."
-              : "Add a new bank or NBFC to the platform."}
+              : "Add a new bank to the platform."}
           </SheetDescription>
 
           <div className="pt-4">
@@ -1198,10 +1138,9 @@ export function TenantFormDrawer({
 
         <div className="flex-1 overflow-y-auto">
           <div className="space-y-8 px-6 py-6">
-
-            {/* ============================================================ */}
-            {/* PAGE 1                                                       */}
-            {/* ============================================================ */}
+            {/* ================================================================= */}
+            {/* PAGE 1 - BANK DETAILS                                             */}
+            {/* ================================================================= */}
 
             {page === 1 && (
               <section className="space-y-5">
@@ -1281,8 +1220,26 @@ export function TenantFormDrawer({
                         NBFC
                       </option>
 
-                      <option value="Cooperative Bank">
-                        Cooperative Bank
+
+
+                      <option value="Private">
+                        Private
+                      </option>
+
+                      <option value="COOPERATIVE ">
+                        Cooperative
+                      </option>
+
+                      <option value="Nationalized">
+                        Nationalized
+                      </option>
+
+                      <option value="UCB">
+                        Urban Cooperative Bank (UCB)
+                      </option>
+
+                      <option value="RRB">
+                        Regional Rural Bank (RRB)
                       </option>
                     </select>
                   </Field>
@@ -1351,27 +1308,6 @@ export function TenantFormDrawer({
                 </div>
 
                 <div className="grid gap-5 sm:grid-cols-2">
-                  <Field
-                    label="CIN No."
-                    required
-                    error={getError(
-                      page1Errors,
-                      "CIN",
-                    )}
-                  >
-                    <Input
-                      value={form.CIN}
-                      onChange={(event) =>
-                        setFormField(
-                          "CIN",
-                          event.target.value.toUpperCase(),
-                        )
-                      }
-                      maxLength={21}
-                      className={inputClass}
-                    />
-                  </Field>
-
                   <Field
                     label="License No."
                     required
@@ -1467,9 +1403,9 @@ export function TenantFormDrawer({
               </section>
             )}
 
-            {/* ============================================================ */}
-            {/* PAGE 2                                                       */}
-            {/* ============================================================ */}
+            {/* ================================================================= */}
+            {/* PAGE 2 - REGULATORY DETAILS                                      */}
+            {/* ================================================================= */}
 
             {page === 2 && (
               <section className="space-y-5">
@@ -1547,70 +1483,71 @@ export function TenantFormDrawer({
                   </Field>
                 </div>
 
-                <SectionHeading>
-                  MICR Details
-                </SectionHeading>
+                <div className="rounded-xl border bg-muted/20 p-3">
+                  <div className="grid items-center gap-3 sm:grid-cols-[110px_repeat(3,minmax(0,1fr))]">
+                    <div className="text-sm font-semibold text-foreground">
+                      MICR Details
+                    </div>
 
-                <div className="grid gap-5 sm:grid-cols-3">
-                  <Field
-                    label="MICR Details 1"
-                    required
-                    error={getError(
-                      page2Errors,
-                      "micr1",
-                    )}
-                  >
-                    <Input
-                      value={regulatory.micr1}
-                      onChange={(event) =>
-                        setRegulatoryField(
-                          "micr1",
-                          event.target.value,
-                        )
-                      }
-                      className={inputClass}
-                    />
-                  </Field>
+                    <Field
+                      error={getError(page2Errors, "micr1")}
+                    >
+                      <Input
+                        aria-label="MICR Code"
+                        placeholder="MICR Code"
+                        value={regulatory.micr1}
+                        inputMode="numeric"
+                        maxLength={9}
+                        onChange={(event) => {
+                          const value = event.target.value.replace(/\D/g, "");
+                          setRegulatory((previous) => ({
+                            ...previous,
+                            micr1: value,
+                            micrNumber: value,
+                          }));
+                        }}
+                        className={inputClass}
+                      />
+                    </Field>
 
-                  <Field
-                    label="MICR Details 2"
-                    required
-                    error={getError(
-                      page2Errors,
-                      "micr2",
-                    )}
-                  >
-                    <Input
-                      value={regulatory.micr2}
-                      onChange={(event) =>
-                        setRegulatoryField(
-                          "micr2",
-                          event.target.value,
-                        )
-                      }
-                      className={inputClass}
-                    />
-                  </Field>
+                    <Field
+                      error={getError(page2Errors, "micr2")}
+                    >
+                      <Input
+                        aria-label="MICR City Code"
+                        placeholder="City Code"
+                        value={regulatory.micr2}
+                        inputMode="numeric"
+                        maxLength={3}
+                        onChange={(event) =>
+                          setRegulatoryField(
+                            "micr2",
+                            event.target.value.replace(/\D/g, ""),
+                          )
+                        }
+                        className={inputClass}
+                      />
+                    </Field>
 
-                  <Field
-                    label="MICR Details 3"
-                    required
-                    error={getError(
-                      page2Errors,
-                      "micr3",
-                    )}
-                  >
-                    <Input
-                      value={regulatory.micr3}
-                      onChange={(event) =>
-                        setRegulatoryField(
-                          "micr3",
-                          event.target.value,
-                        )
-                      }
-                      className={inputClass}
-                    />
-                  </Field>
+                    <Field
+                      error={getError(page2Errors, "micr3")}
+                    >
+                      <Input
+                        aria-label="MICR Branch Code"
+                        placeholder="Branch Code"
+                        value={regulatory.micr3}
+                        inputMode="numeric"
+                        maxLength={3}
+                        onChange={(event) =>
+                          setRegulatoryField(
+                            "micr3",
+                            event.target.value.replace(/\D/g, ""),
+                          )
+                        }
+                        className={inputClass}
+                      />
+                    </Field>
+                  </div>
                 </div>
 
                 <div className="grid gap-5 sm:grid-cols-2">
@@ -1636,7 +1573,7 @@ export function TenantFormDrawer({
                   </Field>
 
                   <Field
-                    label="No. of Branches"
+                    label="Branch Number"
                     required
                     error={getError(
                       page2Errors,
@@ -1644,15 +1581,14 @@ export function TenantFormDrawer({
                     )}
                   >
                     <Input
-                      type="number"
-                      min={0}
-                      value={
-                        regulatory.noOfBranches
-                      }
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={regulatory.noOfBranches}
                       onChange={(event) =>
                         setRegulatoryField(
                           "noOfBranches",
-                          event.target.value,
+                          event.target.value.replace(/\D/g, ""),
                         )
                       }
                       className={inputClass}
@@ -1708,9 +1644,9 @@ export function TenantFormDrawer({
               </section>
             )}
 
-            {/* ============================================================ */}
-            {/* PAGE 3                                                       */}
-            {/* ============================================================ */}
+            {/* ================================================================= */}
+            {/* PAGE 3 - ADDRESS                                                  */}
+            {/* ================================================================= */}
 
             {page === 3 && (
               <section className="space-y-5">
@@ -1728,7 +1664,9 @@ export function TenantFormDrawer({
                     )}
                   >
                     <select
-                      value={address.addressType}
+                      value={
+                        address.addressType
+                      }
                       onChange={(event) =>
                         setAddressField(
                           "addressType",
@@ -1864,7 +1802,7 @@ export function TenantFormDrawer({
                   </Field>
 
                   <Field
-                    label="PinCode"
+                    label="PIN Code"
                     required
                     error={getError(
                       page3Errors,
@@ -1893,9 +1831,9 @@ export function TenantFormDrawer({
           </div>
         </div>
 
-        {/* ---------------------------------------------------------------- */}
-        {/* FOOTER                                                           */}
-        {/* ---------------------------------------------------------------- */}
+        {/* ------------------------------------------------------------------ */}
+        {/* FOOTER                                                             */}
+        {/* ------------------------------------------------------------------ */}
 
         <div className="flex shrink-0 justify-between gap-3 border-t bg-background px-6 py-4">
           <div>
@@ -2033,28 +1971,30 @@ function SectionHeading({
 /* FIELD                                                                      */
 /* -------------------------------------------------------------------------- */
 
-const Field = ({
+function Field({
   label,
   required,
   error,
   children,
 }: {
-  label: string;
-  required?: boolean | undefined;
+  label?: string;
+  required?: boolean;
   error?: string | undefined;
   children: ReactNode;
-}) => {
+}) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-sm font-medium text-foreground">
-        {label}
+      {label && (
+        <Label className="text-sm font-medium text-foreground">
+          {label}
 
-        {required && (
-          <span className="ml-1 text-destructive">
-            *
-          </span>
-        )}
-      </Label>
+          {required && (
+            <span className="ml-1 text-destructive">
+              *
+            </span>
+          )}
+        </Label>
+      )}
 
       {children}
 
@@ -2065,5 +2005,4 @@ const Field = ({
       )}
     </div>
   );
-};
-
+}

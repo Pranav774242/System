@@ -31,6 +31,7 @@ export type RegulatoryDetails = {
   directMemberIftas: string;
 
   micrCode: string;
+  micrNumber: string;
   micrCityCode: string;
   micrBranchCode: string;
 
@@ -124,11 +125,8 @@ export type Tenant = {
   cin: string;
 
   /*
-   * IMPORTANT:
-   * Regulatory Authority ID is optional.
-   *
-   * The Create Bank form does not contain this field,
-   * so Tenant must not require it.
+   * Optional.
+   * Create Bank does not require this field.
    */
   regulatoryAuthorityId?: string;
 };
@@ -166,10 +164,6 @@ export type BankInput = {
 
   registrationNumber: string;
 
-  /*
-   * Optional.
-   * Do not force Create Bank to provide this value.
-   */
   regulatoryAuthorityId?: string;
 
   regulatoryAuthority?: string;
@@ -290,11 +284,16 @@ const emptyRegulatoryDetails =
   (): RegulatoryDetails => ({
     directClgMember: "",
     directMemberIftas: "",
+
     micrCode: "",
+    micrNumber: "",
     micrCityCode: "",
     micrBranchCode: "",
+
     ifscCode: "",
+
     numberOfBranches: "",
+
     sponsorBankForClg: "",
     sponsorBankForIftas: "",
   });
@@ -1007,12 +1006,6 @@ type OrganizationApiResponse = {
   logoUrl?: string;
 
   regulatory_authority?: string;
-
-  /*
-   * Optional.
-   * It can still be received from GET API,
-   * but it is not required by the frontend model.
-   */
   regulatory_authority_id?: string;
   regulatoryAuthorityId?: string;
 
@@ -1043,6 +1036,7 @@ type OrganizationApiResponse = {
   direct_member_iftas?: string;
 
   micr_code?: string;
+  micr_number?: string;
   micr_city_code?: string;
   micr_branch_code?: string;
 
@@ -1168,6 +1162,10 @@ function mapOrganizationToTenant(
         organization.micr_code ??
         "",
 
+      micrNumber:
+        organization.micr_number ??
+        "",
+
       micrCityCode:
         organization.micr_city_code ??
         "",
@@ -1231,13 +1229,6 @@ function mapOrganizationToTenant(
         "",
     };
 
-  /*
-   * Build the Tenant object without requiring
-   * regulatoryAuthorityId.
-   *
-   * If the backend sends the value, we preserve it.
-   * If it does not send it, nothing is added.
-   */
   const regulatoryAuthorityId =
     organization.regulatory_authority_id ??
     organization.regulatoryAuthorityId;
@@ -1340,12 +1331,6 @@ function mapOrganizationToTenant(
 
     cin,
 
-    /*
-     * Only add regulatoryAuthorityId
-     * when the backend actually provides it.
-     *
-     * No hardcoded value is used.
-     */
     ...(regulatoryAuthorityId
       ? {
           regulatoryAuthorityId,
@@ -1366,17 +1351,6 @@ async function fetchOrganizations(
   }
 
   try {
-    console.log(
-      "Loading organizations with token:",
-      {
-        length: token.length,
-        start: `${token.substring(
-          0,
-          12,
-        )}...`,
-      },
-    );
-
     const response =
       await fetch(
         "https://los-backend-355v.onrender.com/api/v1/administration/organizations",
@@ -1396,32 +1370,9 @@ async function fetchOrganizations(
     const responseText =
       await response.text();
 
-    console.log(
-      "Organizations API response:",
-      {
-        status:
-          response.status,
-
-        statusText:
-          response.statusText,
-      },
-    );
-
     if (
       response.status === 401
     ) {
-      console.error(
-        "401 Unauthorized from organizations API.",
-        {
-          response:
-            responseText,
-        },
-      );
-
-      /*
-       * Remove the token only if it is
-       * still the currently stored token.
-       */
       if (
         getAccessToken() ===
         token
@@ -1437,13 +1388,8 @@ async function fetchOrganizations(
     if (!response.ok) {
       console.error(
         "Organizations GET failed:",
-        {
-          status:
-            response.status,
-
-          response:
-            responseText,
-        },
+        response.status,
+        responseText,
       );
 
       return null;
@@ -1507,11 +1453,6 @@ async function fetchOrganizations(
       }
     }
 
-    console.log(
-      "Organizations received:",
-      organizations.length,
-    );
-
     return organizations.map(
       mapOrganizationToTenant,
     );
@@ -1534,10 +1475,6 @@ export function AdminStoreProvider({
 }: {
   children: ReactNode;
 }) {
-  /*
-   * Authentication is driven by the
-   * actual access token.
-   */
   const [
     accessToken,
     setAccessToken,
@@ -1608,31 +1545,11 @@ export function AdminStoreProvider({
         return;
       }
 
-      console.log(
-        "LOGIN TOKEN STORED:",
-        {
-          exists: true,
-
-          length:
-            cleanedToken.length,
-
-          start:
-            `${cleanedToken.substring(
-              0,
-              12,
-            )}...`,
-        },
-      );
-
       window.localStorage.setItem(
         "accessToken",
         cleanedToken,
       );
 
-      /*
-       * Force the organization GET
-       * to run for the new token.
-       */
       loadingTokenRef.current =
         null;
 
@@ -1680,10 +1597,6 @@ export function AdminStoreProvider({
       };
     }
 
-    /*
-     * Do not call the API twice with
-     * the exact same token.
-     */
     if (
       loadingTokenRef.current ===
       accessToken
@@ -1713,9 +1626,6 @@ export function AdminStoreProvider({
         return;
       }
 
-      /*
-       * Backend data replaces seed data.
-       */
       setTenants(
         apiTenants,
       );
@@ -1772,15 +1682,11 @@ export function AdminStoreProvider({
           (previous) => [
             {
               id: nextId("f"),
-
               text,
-
               at:
                 new Date().toISOString(),
-
               kind,
             },
-
             ...previous,
           ],
         );
@@ -1903,23 +1809,8 @@ export function AdminStoreProvider({
 
           cin:
             input.cin,
-
-          /*
-           * No regulatoryAuthorityId is required
-           * for creating a Tenant in the frontend.
-           *
-           * If the API later returns one,
-           * mapOrganizationToTenant() will preserve it.
-           */
         };
 
-        /*
-         * If the caller happens to provide
-         * a regulatory authority ID, preserve it.
-         *
-         * Create Bank does not provide it,
-         * so normally this block does nothing.
-         */
         if (
           input.regulatoryAuthorityId
         ) {
@@ -2073,12 +1964,6 @@ export function AdminStoreProvider({
                     ],
                   };
 
-                /*
-                 * Only update regulatoryAuthorityId
-                 * when the input actually contains one.
-                 *
-                 * Otherwise preserve the existing value.
-                 */
                 if (
                   input.regulatoryAuthorityId
                 ) {
@@ -2265,27 +2150,16 @@ export function AdminStoreProvider({
       }),
       [
         authed,
-
         theme,
-
         tenants,
-
         users,
-
         activity,
-
         login,
-
         logout,
-
         toggleTheme,
-
         createTenant,
-
         updateTenant,
-
         toggleTenantStatus,
-
         createUser,
       ],
     );
