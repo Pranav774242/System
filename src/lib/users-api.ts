@@ -1,6 +1,6 @@
 import { getAccessToken } from "@/lib/admin-store";
 
-export const USERS_API_URL = "https://los-backend-355v.onrender.com/api/v1/administration/users?organizationId=5";
+export const USERS_API_URL = "https://los-backend-355v.onrender.com/api/v1/administration/users?organizationId=10";
 
 export type ApiUser = {
   id: number;

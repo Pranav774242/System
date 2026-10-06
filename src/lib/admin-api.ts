@@ -30,12 +30,29 @@ async function responseMessage(response: Response) {
   return "";
 }
 
-export async function postAdminJson<TPayload>(endpoint: string, payload: TPayload) {
+export async function postAdminJson<TPayload>(
+  endpoint: string,
+  payload: TPayload,
+) {
   const token = getAccessToken();
 
   if (!token) {
     throw new Error("Unauthorized / session expired");
   }
+
+  /*
+   * LOG EXACT REQUEST SENT TO BACKEND
+   */
+  console.log("=================================");
+  console.log("ADMIN API REQUEST");
+  console.log("URL:", endpoint);
+  console.log("METHOD:", "POST");
+  console.log("PAYLOAD:", payload);
+  console.log(
+    "PAYLOAD JSON:",
+    JSON.stringify(payload, null, 2),
+  );
+  console.log("=================================");
 
   const response = await fetch(endpoint, {
     method: "POST",
@@ -47,6 +64,11 @@ export async function postAdminJson<TPayload>(endpoint: string, payload: TPayloa
 
     body: JSON.stringify(payload),
   });
+
+  /*
+   * LOG RESPONSE STATUS
+   */
+  console.log("ADMIN API RESPONSE STATUS:", response.status);
 
   if (response.status === 200 || response.status === 201) {
     return;
@@ -63,12 +85,18 @@ export async function postAdminJson<TPayload>(endpoint: string, payload: TPayloa
   const message = await responseMessage(response);
 
   if (response.status === 400) {
-    throw new Error(message || "Please check the submitted information");
+    throw new Error(
+      message || "Please check the submitted information",
+    );
   }
 
   if (response.status === 500) {
-    throw new Error(message || "The server encountered an error");
+    throw new Error(
+      message || "The server encountered an error",
+    );
   }
 
-  throw new Error(message || `Request failed (${response.status})`);
+  throw new Error(
+    message || `Request failed (${response.status})`,
+  );
 }

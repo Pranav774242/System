@@ -91,6 +91,8 @@ function UsersPage() {
     );
   }, [users, query]);
 
+  console.log(users);
+
   return (
     <AppShell title="User Management" subtitle={`${users.length} users added to the platform`}>
       <div className="space-y-4">
@@ -169,48 +171,70 @@ function UsersPage() {
 
                 <tbody>
                   {rows.map((user) => (
-                    <tr
-                      key={user.id}
-                      onClick={() =>
-                        navigate({
-                          to: "/users/$userId",
-                          params: {
-                            userId: String(user.id),
-                          },
-                        })
-                      }
-                      className="
-                        cursor-pointer
-                        border-t
-                        border-border
-                        transition-colors
-                        hover:bg-secondary/60
-                      "
-                    >
-                      <td className="whitespace-nowrap px-4 py-3 font-medium">{user.emp_no || "—"}</td>
+                 
+<tr
+  key={user.id}
+  onClick={() => {
+    console.log("Sending User ID:", user.id);
+    console.log(
+      "Sending Organization ID:",
+      user.organization_id,
+    );
+
+    navigate({
+      to: "/users/detail",
+      state: {
+        userId: user.id,
+        organizationId: user.organization_id,
+      },
+    });
+  }}
+  className="
+    cursor-pointer
+    border-t
+    border-border
+    transition-colors
+    hover:bg-secondary/60
+  "
+>
+
+                      <td className="whitespace-nowrap px-4 py-3 font-medium">
+                        {user.emp_no || "—"}
+                      </td>
 
                       <td className="whitespace-nowrap px-4 py-3">{user.organization_id || "—"}</td>
 
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{user.email || "—"}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                        {user.email || "—"}
+                      </td>
 
-                      <td className="whitespace-nowrap px-4 py-3 font-medium">{getUserName(user)}</td>
+                      <td className="whitespace-nowrap px-4 py-3 font-medium">
+                        {getUserName(user)}
+                      </td>
 
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {user.date_of_birth || user.dob || user.DOB || "—"}
                       </td>
 
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{user.mobile || "—"}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                        {user.mobile || "—"}
+                      </td>
 
                       <td className="whitespace-nowrap px-4 py-3">{user.gender || "—"}</td>
 
                       <td className="whitespace-nowrap px-4 py-3">{user.designation || "—"}</td>
 
                       <td className="whitespace-nowrap px-4 py-3">
-                        <span className="rounded-md bg-secondary px-2 py-1 text-xs font-medium">{getUserRole(user)}</span>
+                        <span className="rounded-md bg-secondary px-2 py-1 text-xs font-medium">
+                          {getUserRole(user)}
+                        </span>
                       </td>
 
                       <td className="whitespace-nowrap px-4 py-3">
-                        <UserStatusBadge status={getUserStatus(user)} active={user.is_active ?? false} />
+                        <UserStatusBadge
+                          status={getUserStatus(user)}
+                          active={user.is_active ?? false}
+                        />
                       </td>
 
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">

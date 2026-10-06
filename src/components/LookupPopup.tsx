@@ -1,5 +1,4 @@
 import { useState } from "react";
-// import type { LookupTypeForm } from "@/lib/lookup-data";
 import type { LookupTypeForm } from "@/lib/lookup-data";
 
 type LookupTypePopupProps = {
@@ -57,9 +56,10 @@ export function LookupTypePopup({ open, onClose, onSubmit }: LookupTypePopupProp
         flex
         items-center
         justify-center
-        bg-black/40
+        bg-[#172033]/40
         px-4
         py-6
+        backdrop-blur-[2px]
       "
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {
@@ -71,72 +71,82 @@ export function LookupTypePopup({ open, onClose, onSubmit }: LookupTypePopupProp
         className="
           relative
           w-full
-          max-w-[700px]
+          max-w-[620px]
+          overflow-hidden
+          rounded-2xl
           border
-          border-[#548235]
+          border-[#E2E6EE]
           bg-white
-          shadow-2xl
+          shadow-[0_20px_50px_rgba(23,32,51,0.16)]
         "
       >
-        {/* Popup Header */}
-
+        {/* Header */}
         <div
           className="
             flex
+            min-h-[64px]
             items-center
             justify-between
             border-b
-            border-[#548235]
-            bg-[#548235]
-            px-5
-            py-3
+            border-[#E2E6EE]
+            bg-white
+            px-6
+            py-4
           "
         >
-          <h2
-            className="
-              text-base
-              font-bold
-              text-white
-              sm:text-lg
-            "
-          >
-            Lookup Type Management
-          </h2>
+          <div>
+            <h2
+              className="
+                text-[18px]
+                font-semibold
+                leading-6
+                text-[#172033]
+              "
+            >
+              Lookup Type Management
+            </h2>
+
+            <p className="mt-1 text-xs text-[#667085]">Create a new lookup type</p>
+          </div>
 
           <button
             type="button"
             onClick={handleCancel}
+            aria-label="Close"
             className="
-              text-2xl
+              flex
+              h-9
+              w-9
+              items-center
+              justify-center
+              rounded-lg
+              text-xl
               leading-none
-              text-white
-              hover:opacity-70
+              text-[#667085]
+              transition
+              hover:bg-[#F7F9FC]
+              hover:text-[#172033]
+              focus:outline-none
+              focus:ring-2
+              focus:ring-[#213B7A]/20
             "
           >
             ×
           </button>
         </div>
 
-        {/* Popup Content */}
-
-        <form onSubmit={handleSubmit} className="px-5 py-7 sm:px-8 sm:py-9">
-          <div className="space-y-6">
+        {/* Content */}
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-5 px-6 py-6 sm:px-7">
             {/* Lookup Code */}
-
-            <div
-              className="
-                grid
-                gap-2
-                sm:grid-cols-[140px_1fr]
-                sm:items-center
-              "
-            >
+            <div className="space-y-2">
               <label
                 htmlFor="popupLookupCode"
                 className="
-                  text-sm
-                  font-semibold
-                  text-gray-800
+                  block
+                  text-[13px]
+                  font-medium
+                  text-[#667085]
                 "
               >
                 Lookup Code
@@ -150,98 +160,133 @@ export function LookupTypePopup({ open, onClose, onSubmit }: LookupTypePopupProp
                 placeholder="Enter lookup code"
                 readOnly
                 className="
-                  h-10
+                  h-11
                   w-full
-                  max-w-[360px]
+                  rounded-lg
                   border
-                  border-[#7ea7d8]
-                  bg-[#f5f5f5]
+                  border-[#E2E6EE]
+                  bg-[#F7F9FC]
                   px-3
                   text-sm
+                  text-[#172033]
                   outline-none
-                  focus:border-[#548235]
-                  focus:ring-1
-                  focus:ring-[#548235]
+                  transition
+                  placeholder:text-[#98A2B3]
+                  focus:border-[#213B7A]
+                  focus:ring-2
+                  focus:ring-[#213B7A]/10
                 "
               />
             </div>
 
             {/* Lookup Name */}
-
-            <div
-              className="
-                grid
-                gap-2
-                sm:grid-cols-[140px_1fr]
-                sm:items-center
-              "
-            >
+            <div className="space-y-2">
               <label
                 htmlFor="popupLookupName"
                 className="
-                  text-sm
-                  font-semibold
-                  text-gray-800
+                  block
+                  text-[13px]
+                  font-medium
+                  text-[#667085]
                 "
               >
                 Lookup Name
               </label>
+
               <input
                 id="popupLookupName"
                 type="text"
                 value={lookupName}
                 onChange={(event) => setLookupName(event.target.value)}
                 placeholder="Enter lookup name"
-                className="h-10 w-full max-w-[500px] border border-[#7ea7d8] bg-[#f5f5f5] px-3 text-sm outline-none focus:border-[#548235] focus:ring-1 focus:ring-[#548235]"
+                className="
+                  h-11
+                  w-full
+                  rounded-lg
+                  border
+                  border-[#E2E6EE]
+                  bg-white
+                  px-3
+                  text-sm
+                  text-[#172033]
+                  outline-none
+                  transition
+                  placeholder:text-[#98A2B3]
+                  hover:border-[#C8CED9]
+                  focus:border-[#213B7A]
+                  focus:ring-2
+                  focus:ring-[#213B7A]/10
+                "
               />
             </div>
           </div>
 
-          {/* Buttons */}
-
+          {/* Footer */}
           <div
             className="
-              mt-9
               flex
-              justify-center
+              items-center
+              justify-end
               gap-3
+              border-t
+              border-[#E2E6EE]
+              bg-[#F7F9FC]
+              px-6
+              py-4
+              sm:px-7
             "
           >
-            <button
-              type="submit"
-              className="
-                min-w-[90px]
-                border
-                border-[#548235]
-                bg-[#548235]
-                px-5
-                py-2
-                text-sm
-                font-semibold
-                text-white
-                hover:bg-[#426829]
-              "
-            >
-              Submit
-            </button>
-
             <button
               type="button"
               onClick={handleCancel}
               className="
-                min-w-[90px]
+                inline-flex
+                h-10
+                min-w-[92px]
+                items-center
+                justify-center
+                rounded-lg
                 border
-                border-gray-500
+                border-[#E2E6EE]
                 bg-white
-                px-5
-                py-2
+                px-4
                 text-sm
-                font-semibold
-                text-gray-800
-                hover:bg-gray-100
+                font-medium
+                text-[#667085]
+                transition
+                hover:bg-[#F7F9FC]
+                hover:text-[#172033]
+                focus:outline-none
+                focus:ring-2
+                focus:ring-[#213B7A]/20
               "
             >
               Cancel
+            </button>
+
+            <button
+              type="submit"
+              className="
+                inline-flex
+                h-10
+                min-w-[92px]
+                items-center
+                justify-center
+                rounded-lg
+                bg-[#213B7A]
+                px-4
+                text-sm
+                font-medium
+                text-white
+                shadow-sm
+                transition
+                hover:bg-[#1B3269]
+                focus:outline-none
+                focus:ring-2
+                focus:ring-[#213B7A]/20
+              "
+            >
+              Submit
             </button>
           </div>
         </form>
