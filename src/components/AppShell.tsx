@@ -13,7 +13,8 @@ import {
   ShieldCheck,
   ArrowLeft,
   Menu,
-          X,
+  X,
+  BookOpen,
 } from "lucide-react";
 
 import { useAdminStore } from "@/lib/admin-store";
@@ -33,6 +34,7 @@ const NAV = [
   { label: "Bank Management", to: "/tenants", icon: Building2 },
   { label: "User Management", to: "/users", icon: Users },
   { label: "Activity Log", to: "/activity-log", icon: Activity },
+  { label: "Lookup Management", to: "/lookup-management", icon: BookOpen },
 ] as const;
 
 export function AppShell({
@@ -102,21 +104,18 @@ export function AppShell({
 
           {!collapsed && (
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">
-                Allianza LOS
-              </p>
+              <p className="truncate text-sm font-semibold">Allianza LOS</p>
 
-              <p className="truncate text-xs text-sidebar-foreground/60">
-                System Administrator
-              </p>
+              <p className="truncate text-xs text-sidebar-foreground/60">System Administrator</p>
+              {/* <p className="truncate text-sm font-semibold">Banking LOS</p> */}
+              {/* <p className="truncate text-xs text-sidebar-foreground/60">System Administrator</p> */}
             </div>
           )}
         </div>
 
         <nav className="mt-4 flex flex-1 flex-col gap-1 px-3">
           {NAV.map(({ label, to, icon: Icon }) => {
-            const active =
-              pathname === to || pathname.startsWith(`${to}/`);
+            const active = pathname === to || pathname.startsWith(`${to}/`);
 
             return (
               <Link
@@ -132,16 +131,11 @@ export function AppShell({
                 )}
               >
                 <Icon
-                  className={cn(
-                    "size-5 shrink-0",
-                    active && "text-sidebar-primary",
-                  )}
+                  className={cn("size-5 shrink-0", active && "text-sidebar-primary")}
                   strokeWidth={2}
                 />
 
-                {!collapsed && (
-                  <span className="truncate">{label}</span>
-                )}
+                {!collapsed && <span className="truncate">{label}</span>}
               </Link>
             );
           })}
@@ -177,9 +171,7 @@ export function AppShell({
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-xl transition-transform duration-300 md:hidden",
-          mobileMenuOpen
-            ? "translate-x-0"
-            : "-translate-x-full",
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <div className="flex h-16 items-center justify-between gap-3 border-b border-sidebar-border px-4">
@@ -189,13 +181,9 @@ export function AppShell({
             </div>
 
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">
-                Allianza LOS
-              </p>
+              <p className="truncate text-sm font-semibold">Allianza LOS</p>
 
-              <p className="truncate text-xs text-sidebar-foreground/60">
-                System Administrator
-              </p>
+              <p className="truncate text-xs text-sidebar-foreground/60">System Administrator</p>
             </div>
           </div>
 
@@ -212,8 +200,7 @@ export function AppShell({
 
         <nav className="mt-4 flex flex-1 flex-col gap-1 px-3">
           {NAV.map(({ label, to, icon: Icon }) => {
-            const active =
-              pathname === to || pathname.startsWith(`${to}/`);
+            const active = pathname === to || pathname.startsWith(`${to}/`);
 
             return (
               <Link
@@ -228,10 +215,7 @@ export function AppShell({
                 )}
               >
                 <Icon
-                  className={cn(
-                    "size-5 shrink-0",
-                    active && "text-sidebar-primary",
-                  )}
+                  className={cn("size-5 shrink-0", active && "text-sidebar-primary")}
                   strokeWidth={2}
                 />
 
@@ -271,14 +255,10 @@ export function AppShell({
 
           {/* Page Title */}
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-base font-semibold tracking-tight sm:text-lg">
-              {title}
-            </h1>
+            <h1 className="truncate text-base font-semibold tracking-tight sm:text-lg">{title}</h1>
 
             {subtitle && (
-              <p className="hidden truncate text-xs text-muted-foreground sm:block">
-                {subtitle}
-              </p>
+              <p className="hidden truncate text-xs text-muted-foreground sm:block">{subtitle}</p>
             )}
           </div>
 
@@ -293,11 +273,7 @@ export function AppShell({
               aria-label="Toggle theme"
               title="Toggle theme"
             >
-              {theme === "dark" ? (
-                <Sun className="size-5" />
-              ) : (
-                <Moon className="size-5" />
-              )}
+              {theme === "dark" ? <Sun className="size-5" /> : <Moon className="size-5" />}
             </Button>
 
             <DropdownMenu>
@@ -310,24 +286,15 @@ export function AppShell({
                     {adminInitials}
                   </span>
 
-                  <span className="hidden text-sm font-medium sm:inline">
-                    {adminName}
-                  </span>
+                  <span className="hidden text-sm font-medium sm:inline">{adminName}</span>
                 </button>
               </DropdownMenuTrigger>
 
-              <DropdownMenuContent
-                align="end"
-                className="w-52"
-              >
+              <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuLabel>
-                  <p className="text-sm font-medium">
-                    {adminName}
-                  </p>
+                  <p className="text-sm font-medium">{adminName}</p>
 
-                  <p className="text-xs font-normal text-muted-foreground">
-                    System Administrator
-                  </p>
+                  <p className="text-xs font-normal text-muted-foreground">System Administrator</p>
                 </DropdownMenuLabel>
 
                 <DropdownMenuSeparator />
@@ -349,9 +316,7 @@ export function AppShell({
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 px-3 py-5 sm:px-4 sm:py-6 md:px-8 md:py-8">
-          {children}
-        </main>
+        <main className="min-w-0 flex-1 px-3 py-5 sm:px-4 sm:py-6 md:px-8 md:py-8">{children}</main>
       </div>
     </div>
   );
