@@ -1432,12 +1432,12 @@ function TenantDetailsPage() {
               }
             />
 
-            <DetailItem
+            {/* <DetailItem
               label="CIN No."
               value={
                 tenant.cin
               }
-            />
+            /> */}
 
             <DetailItem
               label="Website"

@@ -26,12 +26,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-
 /* -------------------------------------------------------------------------- */
 /* TYPES                                                                      */
 /* -------------------------------------------------------------------------- */
 
-type BankType = "NBFC" | "Cooperative Bank";
+type BankType = "NBFC" | "Cooperative" | "Private" | "Nationalized" | "UCB" | "RRB";
 
 type Page = 1 | 2 | 3;
 
@@ -109,7 +108,6 @@ const emptyForm = {
   legalName: "",
   PAN: "",
   GST: "",
-  CIN: "",
   licenseNo: "",
   website: "",
   logo: "",
@@ -127,7 +125,6 @@ type FormErrors = {
   legalName?: string;
   PAN?: string;
   GST?: string;
-  CIN?: string;
   licenseNo?: string;
   website?: string;
   logo?: string;
@@ -155,7 +152,6 @@ type BankOnboardPayload = {
 
   pan: string;
   gstNo: string;
-  cin: string;
   licenseNo: string;
 
   website: string;
@@ -217,8 +213,6 @@ function isHttpUrl(value: string): boolean {
 
 const ifscPattern = /^[A-Z]{4}0[A-Z0-9]{6}$/;
 
-const cinPattern =
-  /^[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}$/;
 
 const panPattern =
   /^[A-Z]{5}\d{4}[A-Z]$/;
@@ -271,17 +265,6 @@ function getPage1Errors(
       "Enter a valid 15-character GST number";
   }
 
-  if (!form.CIN.trim()) {
-    errors.CIN = "CIN number is required";
-  } else if (
-    !cinPattern.test(
-      form.CIN.trim().toUpperCase(),
-    )
-  ) {
-    errors.CIN =
-      "Enter a valid 21-character CIN number";
-  }
-
   if (!form.licenseNo.trim()) {
     errors.licenseNo =
       "License number is required";
@@ -328,11 +311,6 @@ function getPage2Errors(
   if (!regulatory.micr1.trim()) {
     errors.micr1 =
       "MICR detail is required";
-  }
-
-  if (!regulatory.micrNumber.trim()) {
-    errors.micrNumber =
-      "MICR number is required";
   }
 
   if (!regulatory.micr2.trim()) {
@@ -493,10 +471,19 @@ export function TenantFormDrawer({
       return;
     }
 
+    const tenantBankType = String(
+      tenant.bankType ?? "",
+    );
+
     const existingBankType: BankType =
-      tenant.bankType === "NBFC"
-        ? "NBFC"
-        : "Cooperative Bank";
+      tenantBankType === "Nationalized" ||
+        tenantBankType === "UCB" ||
+        tenantBankType === "RRB" ||
+        tenantBankType === "Private" ||
+        tenantBankType === "NBFC" ||
+        tenantBankType === "Cooperative"
+        ? (tenantBankType as BankType)
+        : "Private";
 
     setForm({
       bankCode:
@@ -520,8 +507,6 @@ export function TenantFormDrawer({
       GST:
         tenant.gstNo ?? "",
 
-      CIN:
-        tenant.cin ?? "",
 
       licenseNo:
         tenant.licenseNo ||
@@ -545,7 +530,7 @@ export function TenantFormDrawer({
           ?.directClgMember === "Yes"
           ? "Yes"
           : tenant.regulatoryDetails
-              ?.directClgMember === "No"
+            ?.directClgMember === "No"
             ? "No"
             : "",
 
@@ -554,13 +539,14 @@ export function TenantFormDrawer({
           ?.directMemberIftas === "Yes"
           ? "Yes"
           : tenant.regulatoryDetails
-              ?.directMemberIftas === "No"
+            ?.directMemberIftas === "No"
             ? "No"
             : "",
 
       micr1:
-        tenant.regulatoryDetails
-          ?.micrCode ?? "",
+        tenant.regulatoryDetails?.micrCode ||
+        tenant.regulatoryDetails?.micrNumber ||
+        "",
 
       micrNumber:
         tenant.regulatoryDetails
@@ -779,10 +765,9 @@ export function TenantFormDrawer({
 
     setBusy(true);
 
-    const bankType: "BANK" | "NBFC" =
-      form.bankType === "NBFC"
-        ? "NBFC"
-        : "BANK";
+    // All four selections are bank categories, so the existing backend
+    // bankType field is sent as BANK.
+    const bankType: "BANK" | "NBFC" = "BANK";
 
     const directClgMember =
       yesNoToBoolean(
@@ -795,6 +780,8 @@ export function TenantFormDrawer({
       );
 
     const storePayload: BankInput = {
+      cin: "",
+
       bankCode:
         form.bankCode.trim(),
 
@@ -816,10 +803,6 @@ export function TenantFormDrawer({
           .trim()
           .toUpperCase(),
 
-      cin:
-        form.CIN
-          .trim()
-          .toUpperCase(),
 
       licenseNo:
         form.licenseNo.trim(),
@@ -963,10 +946,6 @@ export function TenantFormDrawer({
               .trim()
               .toUpperCase(),
 
-          cin:
-            form.CIN
-              .trim()
-              .toUpperCase(),
 
           licenseNo:
             form.licenseNo.trim(),
@@ -1124,7 +1103,7 @@ export function TenantFormDrawer({
           <SheetDescription className="text-sm text-muted-foreground">
             {tenant
               ? "Update bank details."
-              : "Add a new bank or NBFC to the platform."}
+              : "Add a new bank to the platform."}
           </SheetDescription>
 
           <div className="pt-4">
@@ -1227,8 +1206,8 @@ export function TenantFormDrawer({
                         setFormField(
                           "bankType",
                           event.target.value as
-                            | BankType
-                            | "",
+                          | BankType
+                          | "",
                         )
                       }
                       className={selectClass}
@@ -1241,8 +1220,26 @@ export function TenantFormDrawer({
                         NBFC
                       </option>
 
-                      <option value="Cooperative Bank">
-                        Cooperative Bank
+
+
+                      <option value="Private">
+                        Private
+                      </option>
+
+                      <option value="COOPERATIVE ">
+                        Cooperative
+                      </option>
+
+                      <option value="Nationalized">
+                        Nationalized
+                      </option>
+
+                      <option value="UCB">
+                        Urban Cooperative Bank (UCB)
+                      </option>
+
+                      <option value="RRB">
+                        Regional Rural Bank (RRB)
                       </option>
                     </select>
                   </Field>
@@ -1311,27 +1308,6 @@ export function TenantFormDrawer({
                 </div>
 
                 <div className="grid gap-5 sm:grid-cols-2">
-                  <Field
-                    label="CIN No."
-                    required
-                    error={getError(
-                      page1Errors,
-                      "CIN",
-                    )}
-                  >
-                    <Input
-                      value={form.CIN}
-                      onChange={(event) =>
-                        setFormField(
-                          "CIN",
-                          event.target.value.toUpperCase(),
-                        )
-                      }
-                      maxLength={21}
-                      className={inputClass}
-                    />
-                  </Field>
-
                   <Field
                     label="License No."
                     required
@@ -1507,92 +1483,71 @@ export function TenantFormDrawer({
                   </Field>
                 </div>
 
-                <SectionHeading>
-                  MICR Details
-                </SectionHeading>
+                <div className="rounded-xl border bg-muted/20 p-3">
+                  <div className="grid items-center gap-3 sm:grid-cols-[110px_repeat(3,minmax(0,1fr))]">
+                    <div className="text-sm font-semibold text-foreground">
+                      MICR Details
+                    </div>
 
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <Field
-                    label="MICR Code"
-                    required
-                    error={getError(
-                      page2Errors,
-                      "micr1",
-                    )}
-                  >
-                    <Input
-                      value={regulatory.micr1}
-                      onChange={(event) =>
-                        setRegulatoryField(
-                          "micr1",
-                          event.target.value,
-                        )
-                      }
-                      className={inputClass}
-                    />
-                  </Field>
+                    <Field
+                      error={getError(page2Errors, "micr1")}
+                    >
+                      <Input
+                        aria-label="MICR Code"
+                        placeholder="MICR Code"
+                        value={regulatory.micr1}
+                        inputMode="numeric"
+                        maxLength={9}
+                        onChange={(event) => {
+                          const value = event.target.value.replace(/\D/g, "");
+                          setRegulatory((previous) => ({
+                            ...previous,
+                            micr1: value,
+                            micrNumber: value,
+                          }));
+                        }}
+                        className={inputClass}
+                      />
+                    </Field>
 
-                  <Field
-                    label="MICR Number"
-                    required
-                    error={getError(
-                      page2Errors,
-                      "micrNumber",
-                    )}
-                  >
-                    <Input
-                      value={
-                        regulatory.micrNumber
-                      }
-                      onChange={(event) =>
-                        setRegulatoryField(
-                          "micrNumber",
-                          event.target.value,
-                        )
-                      }
-                      className={inputClass}
-                    />
-                  </Field>
+                    <Field
+                      error={getError(page2Errors, "micr2")}
+                    >
+                      <Input
+                        aria-label="MICR City Code"
+                        placeholder="City Code"
+                        value={regulatory.micr2}
+                        inputMode="numeric"
+                        maxLength={3}
+                        onChange={(event) =>
+                          setRegulatoryField(
+                            "micr2",
+                            event.target.value.replace(/\D/g, ""),
+                          )
+                        }
+                        className={inputClass}
+                      />
+                    </Field>
 
-                  <Field
-                    label="MICR City Code"
-                    required
-                    error={getError(
-                      page2Errors,
-                      "micr2",
-                    )}
-                  >
-                    <Input
-                      value={regulatory.micr2}
-                      onChange={(event) =>
-                        setRegulatoryField(
-                          "micr2",
-                          event.target.value,
-                        )
-                      }
-                      className={inputClass}
-                    />
-                  </Field>
-
-                  <Field
-                    label="MICR Branch Code"
-                    required
-                    error={getError(
-                      page2Errors,
-                      "micr3",
-                    )}
-                  >
-                    <Input
-                      value={regulatory.micr3}
-                      onChange={(event) =>
-                        setRegulatoryField(
-                          "micr3",
-                          event.target.value,
-                        )
-                      }
-                      className={inputClass}
-                    />
-                  </Field>
+                    <Field
+                      error={getError(page2Errors, "micr3")}
+                    >
+                      <Input
+                        aria-label="MICR Branch Code"
+                        placeholder="Branch Code"
+                        value={regulatory.micr3}
+                        inputMode="numeric"
+                        maxLength={3}
+                        onChange={(event) =>
+                          setRegulatoryField(
+                            "micr3",
+                            event.target.value.replace(/\D/g, ""),
+                          )
+                        }
+                        className={inputClass}
+                      />
+                    </Field>
+                  </div>
                 </div>
 
                 <div className="grid gap-5 sm:grid-cols-2">
@@ -1618,7 +1573,7 @@ export function TenantFormDrawer({
                   </Field>
 
                   <Field
-                    label="No. of Branches"
+                    label="Branch Number"
                     required
                     error={getError(
                       page2Errors,
@@ -1626,15 +1581,14 @@ export function TenantFormDrawer({
                     )}
                   >
                     <Input
-                      type="number"
-                      min={0}
-                      value={
-                        regulatory.noOfBranches
-                      }
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={regulatory.noOfBranches}
                       onChange={(event) =>
                         setRegulatoryField(
                           "noOfBranches",
-                          event.target.value,
+                          event.target.value.replace(/\D/g, ""),
                         )
                       }
                       className={inputClass}
@@ -2023,22 +1977,24 @@ function Field({
   error,
   children,
 }: {
-  label: string;
+  label?: string;
   required?: boolean;
   error?: string | undefined;
   children: ReactNode;
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-sm font-medium text-foreground">
-        {label}
+      {label && (
+        <Label className="text-sm font-medium text-foreground">
+          {label}
 
-        {required && (
-          <span className="ml-1 text-destructive">
-            *
-          </span>
-        )}
-      </Label>
+          {required && (
+            <span className="ml-1 text-destructive">
+              *
+            </span>
+          )}
+        </Label>
+      )}
 
       {children}
 
