@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ActivityLogRouteImport } from './routes/activity-log'
+import { Route as BankUsersRouteImport } from './routes/bank-users'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as LookupManagementRouteImport } from './routes/lookup-management'
 import { Route as TenantsIndexRouteImport } from './routes/tenants.index'
@@ -27,6 +28,11 @@ const IndexRoute = IndexRouteImport.update({
 const ActivityLogRoute = ActivityLogRouteImport.update({
   id: '/activity-log',
   path: '/activity-log',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BankUsersRoute = BankUsersRouteImport.update({
+  id: '/bank-users',
+  path: '/bank-users',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -68,6 +74,7 @@ const UsersDetailRoute = UsersDetailRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/activity-log': typeof ActivityLogRoute
+  '/bank-users': typeof BankUsersRoute
   '/dashboard': typeof DashboardRoute
   '/lookup-management': typeof LookupManagementRoute
   '/tenants/$tenantId': typeof TenantsTenantIdRoute
@@ -79,6 +86,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/activity-log': typeof ActivityLogRoute
+  '/bank-users': typeof BankUsersRoute
   '/dashboard': typeof DashboardRoute
   '/lookup-management': typeof LookupManagementRoute
   '/tenants/$tenantId': typeof TenantsTenantIdRoute
@@ -91,6 +99,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/activity-log': typeof ActivityLogRoute
+  '/bank-users': typeof BankUsersRoute
   '/dashboard': typeof DashboardRoute
   '/lookup-management': typeof LookupManagementRoute
   '/tenants/$tenantId': typeof TenantsTenantIdRoute
@@ -104,6 +113,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/activity-log'
+    | '/bank-users'
     | '/dashboard'
     | '/lookup-management'
     | '/tenants/$tenantId'
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/activity-log'
+    | '/bank-users'
     | '/dashboard'
     | '/lookup-management'
     | '/tenants/$tenantId'
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/activity-log'
+    | '/bank-users'
     | '/dashboard'
     | '/lookup-management'
     | '/tenants/$tenantId'
@@ -138,6 +150,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActivityLogRoute: typeof ActivityLogRoute
+  BankUsersRoute: typeof BankUsersRoute
   DashboardRoute: typeof DashboardRoute
   LookupManagementRoute: typeof LookupManagementRoute
   TenantsTenantIdRoute: typeof TenantsTenantIdRoute
@@ -161,6 +174,13 @@ declare module '@tanstack/react-router' {
       path: '/activity-log'
       fullPath: '/activity-log'
       preLoaderRoute: typeof ActivityLogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bank-users': {
+      id: '/bank-users'
+      path: '/bank-users'
+      fullPath: '/bank-users'
+      preLoaderRoute: typeof BankUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -218,6 +238,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityLogRoute: ActivityLogRoute,
+  BankUsersRoute: BankUsersRoute,
   DashboardRoute: DashboardRoute,
   LookupManagementRoute: LookupManagementRoute,
   TenantsTenantIdRoute: TenantsTenantIdRoute,

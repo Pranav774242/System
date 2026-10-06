@@ -1,11 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpDown,
   MoreHorizontal,
@@ -14,6 +8,7 @@ import {
   Eye,
   Pencil,
   Building2,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -22,11 +17,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { TenantFormDrawer } from "@/components/TenantFormDrawer";
 import { mapOrganizationToTenant } from "@/lib/organization-mapper";
 
-import {
-  useAdminStore,
-  getAccessToken,
-  type Tenant,
-} from "@/lib/admin-store";
+import { useAdminStore, getAccessToken, type Tenant } from "@/lib/admin-store";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,13 +45,10 @@ import {
 export const Route = createFileRoute("/tenants/")({
   head: () => ({
     meta: [
-      {
-        title: "Bank Management — System Administrator Panel",
-      },
+      { title: "Bank Management — System Administrator Panel" },
       {
         name: "description",
-        content:
-          "Create, search, sort and manage banks and NBFCs on the Allianza LOS platform.",
+        content: "Create, search, sort and manage banks and NBFCs on the Allianza LOS platform.",
       },
       {
         property: "og:title",
@@ -68,8 +56,7 @@ export const Route = createFileRoute("/tenants/")({
       },
       {
         property: "og:description",
-        content:
-          "Create, search and manage banks and NBFCs on the Allianza LOS platform.",
+        content: "Create, search and manage banks and NBFCs on the Allianza LOS platform.",
       },
     ],
   }),
@@ -81,13 +68,6 @@ export const Route = createFileRoute("/tenants/")({
 /* BANK LIST TYPES                                                            */
 /* -------------------------------------------------------------------------- */
 
-/*
- * IMPORTANT:
- *
- * GST No. is now used instead of Regulatory Authority ID.
- *
- * licenseNo is also included because the bank list can sort by License No.
- */
 type SortKey =
   | "bankCode"
   | "instituteName"
@@ -99,6 +79,7 @@ type SortKey =
   | "status";
 
 type BankTenant = Tenant & {
+  pkid?: number;
   bankCode?: string;
   legalName?: string;
   panNo?: string;
@@ -117,7 +98,6 @@ type OrganizationApiResponse = {
   id?: string;
   pkid?: number;
 
-  /* Bank fields */
   bank_code?: string;
   bankCode?: string;
 
@@ -133,7 +113,6 @@ type OrganizationApiResponse = {
   institution_name?: string;
   institution_type?: string;
 
-  /* Regulatory / identification fields */
   license_no?: string;
   license_number?: string;
   licenseNo?: string;
@@ -142,10 +121,6 @@ type OrganizationApiResponse = {
   registration_id?: string;
   registrationId?: string;
 
-  /*
-   * Kept in the API type because backend may still return this field.
-   * It is NOT displayed in the Bank list.
-   */
   regulatory_authority?: string;
   regulatory_authority_id?: string;
   regulatoryAuthorityId?: string;
@@ -164,7 +139,6 @@ type OrganizationApiResponse = {
   sponsor_bank_for_clg?: string;
   sponsor_bank_for_iftas?: string;
 
-  /* Bank identification */
   pan_no?: string;
   pan_number?: string;
   pan?: string;
@@ -182,7 +156,6 @@ type OrganizationApiResponse = {
   regulatory_status?: string;
   status?: string;
 
-  /* General details */
   country?: string;
   state?: string;
   city?: string;
@@ -200,13 +173,11 @@ type OrganizationApiResponse = {
   legal_name?: string;
   short_name?: string;
 
-  /* Address */
   address_type?: string;
   unit_gala_name_no?: string;
   street_road?: string;
   landmark?: string;
 
-  /* Date/details */
   created_at?: string;
   updated_at?: string;
 
@@ -221,19 +192,11 @@ type OrganizationApiResponse = {
 /* HELPERS                                                                    */
 /* -------------------------------------------------------------------------- */
 
-function getBankCode(
-  organization: OrganizationApiResponse,
-): string {
-  return (
-    organization.bank_code ??
-    organization.bankCode ??
-    ""
-  );
+function getBankCode(organization: OrganizationApiResponse): string {
+  return organization.bank_code ?? organization.bankCode ?? "";
 }
 
-function getBankName(
-  organization: OrganizationApiResponse,
-): string {
+function getBankName(organization: OrganizationApiResponse): string {
   return (
     organization.bank_name ??
     organization.bankName ??
@@ -243,9 +206,7 @@ function getBankName(
   );
 }
 
-function getBankType(
-  organization: OrganizationApiResponse,
-): string {
+function getBankType(organization: OrganizationApiResponse): string {
   return (
     organization.bank_type ??
     organization.institution_type ??
@@ -255,20 +216,11 @@ function getBankType(
   );
 }
 
-function getLicenseNumber(
-  organization: OrganizationApiResponse,
-): string {
-  return (
-    organization.license_no ??
-    organization.license_number ??
-    organization.licenseNo ??
-    ""
-  );
+function getLicenseNumber(organization: OrganizationApiResponse): string {
+  return organization.license_no ?? organization.license_number ?? organization.licenseNo ?? "";
 }
 
-function getRegistrationNumber(
-  organization: OrganizationApiResponse,
-): string {
+function getRegistrationNumber(organization: OrganizationApiResponse): string {
   return (
     organization.registration_id ??
     organization.registrationId ??
@@ -277,38 +229,19 @@ function getRegistrationNumber(
   );
 }
 
-function getPanNumber(
-  organization: OrganizationApiResponse,
-): string {
+function getPanNumber(organization: OrganizationApiResponse): string {
+  return organization.pan_no ?? organization.pan_number ?? organization.pan ?? "";
+}
+
+function getGstNumber(organization: OrganizationApiResponse): string {
   return (
-    organization.pan_no ??
-    organization.pan_number ??
-    organization.pan ??
-    ""
+    organization.gst_no ?? organization.gstNo ?? organization.gst_number ?? organization.gst ?? ""
   );
 }
 
-function getGstNumber(
-  organization: OrganizationApiResponse,
-): string {
+function getCINNumber(organization: OrganizationApiResponse): string {
   return (
-    organization.gst_no ??
-    organization.gstNo ??
-    organization.gst_number ??
-    organization.gst ??
-    ""
-  );
-}
-
-function getCINNumber(
-  organization: OrganizationApiResponse,
-): string {
-  return (
-    organization.CIN ??
-    organization.cin_no ??
-    organization.cin_number ??
-    organization.cin ??
-    ""
+    organization.CIN ?? organization.cin_no ?? organization.cin_number ?? organization.cin ?? ""
   );
 }
 
@@ -316,125 +249,43 @@ function getCINNumber(
 /* NORMALIZE BANK TENANT                                                       */
 /* -------------------------------------------------------------------------- */
 
-function normalizeBankTenant(
-  organization: OrganizationApiResponse,
-): BankTenant {
-  const mapped = mapOrganizationToTenant(
-    organization,
-  ) as BankTenant;
+function normalizeBankTenant(organization: OrganizationApiResponse): BankTenant {
+  const mapped = mapOrganizationToTenant(organization) as BankTenant;
 
-  const bankCode = getBankCode(
-    organization,
-  );
-
-  const bankName = getBankName(
-    organization,
-  );
-
-  const bankType = getBankType(
-    organization,
-  );
-
-  const registrationNumber =
-    getRegistrationNumber(
-      organization,
-    );
-
-  const licenseNumber =
-    getLicenseNumber(
-      organization,
-    );
-
-  const panNumber =
-    getPanNumber(
-      organization,
-    );
-
-  const gstNumber =
-    getGstNumber(
-      organization,
-    );
-
-  const cinNumber =
-    getCINNumber(
-      organization,
-    );
+  const bankCode = getBankCode(organization);
+  const bankName = getBankName(organization);
+  const bankType = getBankType(organization);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const registrationNumber = getRegistrationNumber(organization);
+  const licenseNumber = getLicenseNumber(organization);
+  const panNumber = getPanNumber(organization);
+  const gstNumber = getGstNumber(organization);
+  const cinNumber = getCINNumber(organization);
 
   return {
     ...mapped,
 
-    /* Bank Code */
+    /* Keep the backend primary key so "View Users" can pass it on. */
+    pkid: organization.pkid ?? mapped.pkid,
+
     bankCode,
 
-    /* Bank Name */
-    instituteName:
-      bankName ||
-      mapped.instituteName ||
-      "",
+    instituteName: bankName || mapped.instituteName || "",
 
-    /* Bank Type */
-    instituteType:
-      bankType.toUpperCase() === "NBFC"
-        ? "NBFC"
-        : "BANK",
+    instituteType: bankType.toUpperCase() === "NBFC" ? "NBFC" : "BANK",
 
-    /* Registration ID */
-    // registrationNumber:
-    //   registrationNumber ||
-    //   mapped.registrationNumber ||
-    //   "",
+    licenseNo: licenseNumber,
+    panNo: panNumber,
+    gstNo: gstNumber,
+    cin: cinNumber || mapped.cin || "",
 
-    /* License Number */
-    licenseNo:
-      licenseNumber,
+    legalName: organization.legal_name ?? "",
 
-    /* PAN */
-    panNo:
-      panNumber,
-
-    /* GST Number */
-    gstNo:
-      gstNumber,
-
-    /* CIN Number */
-    cin:
-      cinNumber ||
-      mapped.cin ||
-      "",
-
-    /* Legal Name */
-    legalName:
-      organization.legal_name ??
-      "",
-
-    /*
-     * Keep these fields synchronized
-     * with the existing Tenant structure.
-     */
-    organization:
-      bankName ||
-      mapped.organization ||
-      "",
-
-    firstName:
-      bankName ||
-      mapped.firstName ||
-      "",
-
-    employeeId:
-      licenseNumber ||
-      mapped.employeeId ||
-      "",
-
-    email:
-      organization.contact_email ??
-      mapped.email ??
-      "",
-
-    mobile:
-      organization.contact_phone ??
-      mapped.mobile ??
-      "",
+    organization: bankName || mapped.organization || "",
+    firstName: bankName || mapped.firstName || "",
+    employeeId: licenseNumber || mapped.employeeId || "",
+    email: organization.contact_email ?? mapped.email ?? "",
+    mobile: organization.contact_phone ?? mapped.mobile ?? "",
   };
 }
 
@@ -443,614 +294,262 @@ function normalizeBankTenant(
 /* -------------------------------------------------------------------------- */
 
 function TenantsPage() {
-  const {
-    tenants,
-    createTenant,
-  } = useAdminStore();
+  const { tenants, createTenant } = useAdminStore();
 
-  const navigate =
-    useNavigate();
+  const navigate = useNavigate();
 
-  /* ------------------------------------------------------------------------ */
-  /* API DATA                                                                 */
-  /* ------------------------------------------------------------------------ */
+  const [apiTenants, setApiTenants] = useState<BankTenant[]>([]);
 
-  const [
-    apiTenants,
-    setApiTenants,
-  ] = useState<BankTenant[]>([]);
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("All");
 
-  /* ------------------------------------------------------------------------ */
-  /* SEARCH / FILTER                                                          */
-  /* ------------------------------------------------------------------------ */
-
-  const [
-    query,
-    setQuery,
-  ] = useState("");
-
-  const [
-    status,
-    setStatus,
-  ] = useState("All");
-
-  /* ------------------------------------------------------------------------ */
-  /* SORTING                                                                  */
-  /* ------------------------------------------------------------------------ */
-
-  const [
-    sort,
-    setSort,
-  ] = useState<{
-    key: SortKey;
-    dir: "asc" | "desc";
-  }>({
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "instituteName",
     dir: "asc",
   });
 
-  /* ------------------------------------------------------------------------ */
-  /* PAGINATION                                                               */
-  /* ------------------------------------------------------------------------ */
+  const [page, setPage] = useState(1);
 
-  const [
-    page,
-    setPage,
-  ] = useState(1);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  /* ------------------------------------------------------------------------ */
-  /* CREATE BANK DRAWER                                                       */
-  /* ------------------------------------------------------------------------ */
+  const [loaded, setLoaded] = useState(false);
+  const [loadingOrganizations, setLoadingOrganizations] = useState(false);
 
-  const [
-    drawerOpen,
-    setDrawerOpen,
-  ] = useState(false);
-
-  /* ------------------------------------------------------------------------ */
-  /* LOADING                                                                  */
-  /* ------------------------------------------------------------------------ */
-
-  const [
-    loaded,
-    setLoaded,
-  ] = useState(false);
-
-  const [
-    loadingOrganizations,
-    setLoadingOrganizations,
-  ] = useState(false);
-
-  const organizationRequestId =
-    useRef(0);
+  const organizationRequestId = useRef(0);
 
   /* ------------------------------------------------------------------------ */
   /* GET ORGANIZATIONS API                                                     */
   /* ------------------------------------------------------------------------ */
 
-  const loadOrganizations =
-    useCallback(async () => {
-      const requestId =
-        ++organizationRequestId.current;
+  const loadOrganizations = useCallback(async () => {
+    const requestId = ++organizationRequestId.current;
 
-      const token =
-        getAccessToken();
+    const token = getAccessToken();
 
-      if (!token) {
-        toast.error(
-          "Session expired. Please login again.",
-        );
+    if (!token) {
+      toast.error("Session expired. Please login again.");
+      setLoadingOrganizations(false);
+      return;
+    }
 
-        setLoadingOrganizations(
-          false,
-        );
+    try {
+      setLoadingOrganizations(true);
 
-        return;
-      }
+      const response = await fetch(
+        "https://los-backend-355v.onrender.com/api/v1/administration/organizations",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      const responseText = await response.text();
+
+      let responseData: unknown = null;
 
       try {
-        setLoadingOrganizations(
-          true,
-        );
-
-        const response =
-          await fetch(
-            "https://los-backend-355v.onrender.com/api/v1/administration/organizations",
-            {
-              method: "GET",
-
-              headers: {
-                Authorization:
-                  `Bearer ${token}`,
-
-                "Content-Type":
-                  "application/json",
-              },
-            },
-          );
-
-        const responseText =
-          await response.text();
-
-        let responseData: unknown =
-          null;
-
-        try {
-          responseData =
-            responseText
-              ? JSON.parse(
-                  responseText,
-                )
-              : null;
-        } catch (error) {
-          console.error(
-            "Invalid organizations API response:",
-            error,
-          );
-
-          throw new Error(
-            "Invalid organizations API response.",
-            {
-              cause: error,
-            },
-          );
-        }
-
-        if (!response.ok) {
-          if (
-            response.status ===
-            401
-          ) {
-            throw new Error(
-              "Unauthorized. Your session has expired.",
-            );
-          }
-
-          if (
-            response.status ===
-            403
-          ) {
-            throw new Error(
-              "You do not have permission to view banks.",
-            );
-          }
-
-          throw new Error(
-            `Failed to load banks (${response.status}).`,
-          );
-        }
-
-        /* ------------------------------------------------------------------ */
-        /* EXTRACT ORGANIZATIONS                                              */
-        /* ------------------------------------------------------------------ */
-
-        let organizations:
-          OrganizationApiResponse[] =
-          [];
-
-        /*
-         * API format:
-         *
-         * [
-         *   {...}
-         * ]
-         */
-        if (
-          Array.isArray(
-            responseData,
-          )
-        ) {
-          organizations =
-            responseData as OrganizationApiResponse[];
-        }
-
-        /*
-         * API format:
-         *
-         * {
-         *   data: [...]
-         * }
-         */
-        else if (
-          responseData &&
-          typeof responseData ===
-            "object"
-        ) {
-          const body =
-            responseData as {
-              data?: unknown;
-              organizations?: unknown;
-            };
-
-          if (
-            Array.isArray(
-              body.data,
-            )
-          ) {
-            organizations =
-              body.data as OrganizationApiResponse[];
-          } else if (
-            Array.isArray(
-              body.organizations,
-            )
-          ) {
-            organizations =
-              body.organizations as OrganizationApiResponse[];
-          }
-        }
-
-        console.log(
-          "Organizations received from API:",
-          organizations,
-        );
-
-        /* ------------------------------------------------------------------ */
-        /* MAP API DATA                                                       */
-        /* ------------------------------------------------------------------ */
-
-        const mappedTenants =
-          organizations.map(
-            normalizeBankTenant,
-          );
-
-        console.log(
-          "Banks mapped for table:",
-          mappedTenants,
-        );
-
-        if (
-          requestId ===
-          organizationRequestId.current
-        ) {
-          setApiTenants(
-            mappedTenants,
-          );
-        }
-
-        return mappedTenants;
+        responseData = responseText ? JSON.parse(responseText) : null;
       } catch (error) {
-        if (
-          requestId !==
-          organizationRequestId.current
-        ) {
-          return undefined;
+        console.error("Invalid organizations API response:", error);
+
+        throw new Error("Invalid organizations API response.", {
+          cause: error,
+        });
+      }
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Unauthorized. Your session has expired.");
         }
 
-        console.error(
-          "Failed to load organizations:",
-          error,
-        );
+        if (response.status === 403) {
+          throw new Error("You do not have permission to view banks.");
+        }
 
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Failed to load banks.",
-        );
+        throw new Error(`Failed to load banks (${response.status}).`);
+      }
 
-        return undefined;
-      } finally {
-        if (
-          requestId ===
-          organizationRequestId.current
-        ) {
-          setLoadingOrganizations(
-            false,
-          );
+      let organizations: OrganizationApiResponse[] = [];
+
+      if (Array.isArray(responseData)) {
+        organizations = responseData as OrganizationApiResponse[];
+      } else if (responseData && typeof responseData === "object") {
+        const body = responseData as {
+          data?: unknown;
+          organizations?: unknown;
+        };
+
+        if (Array.isArray(body.data)) {
+          organizations = body.data as OrganizationApiResponse[];
+        } else if (Array.isArray(body.organizations)) {
+          organizations = body.organizations as OrganizationApiResponse[];
         }
       }
-    }, []);
 
-  /* ------------------------------------------------------------------------ */
-  /* LOAD DATA                                                                */
-  /* ------------------------------------------------------------------------ */
+      console.log("Organizations received from API:", organizations);
+
+      const mappedTenants = organizations.map(normalizeBankTenant);
+
+      console.log("Banks mapped for table:", mappedTenants);
+
+      if (requestId === organizationRequestId.current) {
+        setApiTenants(mappedTenants);
+      }
+
+      return mappedTenants;
+    } catch (error) {
+      if (requestId !== organizationRequestId.current) {
+        return undefined;
+      }
+
+      console.error("Failed to load organizations:", error);
+
+      toast.error(error instanceof Error ? error.message : "Failed to load banks.");
+
+      return undefined;
+    } finally {
+      if (requestId === organizationRequestId.current) {
+        setLoadingOrganizations(false);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     void loadOrganizations();
-  }, [
-    loadOrganizations,
-  ]);
-
-  /* ------------------------------------------------------------------------ */
-  /* INITIAL LOADING                                                          */
-  /* ------------------------------------------------------------------------ */
+  }, [loadOrganizations]);
 
   useEffect(() => {
-    const timer =
-      setTimeout(() => {
-        setLoaded(true);
-      }, 450);
+    const timer = setTimeout(() => {
+      setLoaded(true);
+    }, 450);
 
-    return () =>
-      clearTimeout(timer);
+    return () => clearTimeout(timer);
   }, []);
 
-  /* ------------------------------------------------------------------------ */
-  /* DATA USED BY TABLE                                                       */
-  /* ------------------------------------------------------------------------ */
-
-  const displayTenants:
-    BankTenant[] =
-    apiTenants.length > 0
-      ? apiTenants
-      : (tenants as BankTenant[]);
-
-  /* ------------------------------------------------------------------------ */
-  /* RESET PAGE                                                               */
-  /* ------------------------------------------------------------------------ */
+  const displayTenants: BankTenant[] =
+    apiTenants.length > 0 ? apiTenants : (tenants as BankTenant[]);
 
   useEffect(() => {
     setPage(1);
-  }, [
-    query,
-    status,
-  ]);
+  }, [query, status]);
 
   /* ------------------------------------------------------------------------ */
   /* SEARCH + FILTER + SORT                                                   */
   /* ------------------------------------------------------------------------ */
 
-  const rows =
-    useMemo<BankTenant[]>(
-      () => {
-        const q =
-          query
-            .trim()
-            .toLowerCase();
+  const rows = useMemo<BankTenant[]>(() => {
+    const q = query.trim().toLowerCase();
 
-        const value = (
-          tenant: BankTenant,
-          key: SortKey,
-        ): string => {
-          switch (key) {
-            case "bankCode":
-              return (
-                tenant.bankCode ??
-                ""
-              ).toLowerCase();
+    const value = (tenant: BankTenant, key: SortKey): string => {
+      switch (key) {
+        case "bankCode":
+          return (tenant.bankCode ?? "").toLowerCase();
+        case "instituteName":
+          return (tenant.instituteName ?? "").toLowerCase();
+        case "instituteType":
+          return (tenant.instituteType ?? "").toLowerCase();
+        case "registrationNumber":
+          return (tenant.registrationNumber ?? "").toLowerCase();
+        case "gstNo":
+          return (tenant.gstNo ?? "").toLowerCase();
+        case "licenseNo":
+          return (tenant.licenseNo ?? "").toLowerCase();
+        case "cin":
+          return (tenant.cin ?? "").toLowerCase();
+        case "status":
+          return (tenant.status ?? "").toLowerCase();
+        default:
+          return "";
+      }
+    };
 
-            case "instituteName":
-              return (
-                tenant.instituteName ??
-                ""
-              ).toLowerCase();
+    return displayTenants
+      .filter((tenant) => (status === "All" ? true : tenant.status === status))
+      .filter((tenant) => {
+        if (!q) {
+          return true;
+        }
 
-            case "instituteType":
-              return (
-                tenant.instituteType ??
-                ""
-              ).toLowerCase();
+        return [
+          tenant.bankCode,
+          tenant.instituteName,
+          tenant.instituteType,
+          tenant.registrationNumber,
+          tenant.gstNo,
+          tenant.licenseNo,
+          tenant.cin,
+          tenant.contactEmail,
+          tenant.contactPhone,
+          tenant.organization,
+          tenant.legalName,
+          tenant.panNo,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(q);
+      })
+      .sort((a, b) => {
+        const av = value(a, sort.key);
+        const bv = value(b, sort.key);
 
-            case "registrationNumber":
-              return (
-                tenant.registrationNumber ??
-                ""
-              ).toLowerCase();
+        const comparison = av > bv ? 1 : av < bv ? -1 : 0;
 
-            /*
-             * GST No.
-             */
-            case "gstNo":
-              return (
-                tenant.gstNo ??
-                ""
-              ).toLowerCase();
+        return sort.dir === "asc" ? comparison : -comparison;
+      });
+  }, [displayTenants, query, status, sort]);
 
-            /*
-             * License No.
-             */
-            case "licenseNo":
-              return (
-                tenant.licenseNo ??
-                ""
-              ).toLowerCase();
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
 
-            case "cin":
-              return (
-                tenant.cin ??
-                ""
-              ).toLowerCase();
+  const pageRows = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-            case "status":
-              return (
-                tenant.status ??
-                ""
-              ).toLowerCase();
-
-            default:
-              return "";
-          }
-        };
-
-        return displayTenants
-          /* -------------------------------------------------------------- */
-          /* STATUS FILTER                                                  */
-          /* -------------------------------------------------------------- */
-          .filter(
-            (tenant) => {
-              if (
-                status ===
-                "All"
-              ) {
-                return true;
-              }
-
-              return (
-                tenant.status ===
-                status
-              );
-            },
-          )
-
-          /* -------------------------------------------------------------- */
-          /* SEARCH                                                          */
-          /* -------------------------------------------------------------- */
-          .filter(
-            (tenant) => {
-              if (!q) {
-                return true;
-              }
-
-              return [
-                tenant.bankCode,
-                tenant.instituteName,
-                tenant.instituteType,
-                tenant.registrationNumber,
-                tenant.gstNo,
-                tenant.licenseNo,
-                tenant.cin,
-                tenant.contactEmail,
-                tenant.contactPhone,
-                tenant.organization,
-                tenant.legalName,
-                tenant.panNo,
-              ]
-                .filter(Boolean)
-                .join(" ")
-                .toLowerCase()
-                .includes(q);
-            },
-          )
-
-          /* -------------------------------------------------------------- */
-          /* SORT                                                            */
-          /* -------------------------------------------------------------- */
-          .sort(
-            (a, b) => {
-              const av =
-                value(
-                  a,
-                  sort.key,
-                );
-
-              const bv =
-                value(
-                  b,
-                  sort.key,
-                );
-
-              const comparison =
-                av > bv
-                  ? 1
-                  : av < bv
-                    ? -1
-                    : 0;
-
-              return sort.dir ===
-                "asc"
-                ? comparison
-                : -comparison;
-            },
-          );
-      },
-      [
-        displayTenants,
-        query,
-        status,
-        sort,
-      ],
-    );
+  const toggleSort = (key: SortKey) => {
+    setSort((previous) => ({
+      key,
+      dir: previous.key === key && previous.dir === "asc" ? "desc" : "asc",
+    }));
+  };
 
   /* ------------------------------------------------------------------------ */
-  /* PAGINATION                                                               */
+  /* VIEW USERS                                                               */
   /* ------------------------------------------------------------------------ */
 
-  const totalPages =
-    Math.max(
-      1,
-      Math.ceil(
-        rows.length /
-          PAGE_SIZE,
-      ),
-    );
+  const openUsers = (tenant: BankTenant) => {
+    const pkid = tenant.pkid;
 
-  const pageRows =
-    rows.slice(
-      (page - 1) *
-        PAGE_SIZE,
-      page *
-        PAGE_SIZE,
-    );
+    console.log("View Users clicked. Selected pkid:", pkid, tenant);
 
-  /* ------------------------------------------------------------------------ */
-  /* SORT                                                                     */
-  /* ------------------------------------------------------------------------ */
+    if (pkid === undefined || pkid === null) {
+      toast.error("Unable to open users: this bank has no pkid.");
+      return;
+    }
 
-  const toggleSort = (
-    key: SortKey,
-  ) => {
-    setSort(
-      (previous) => ({
-        key,
-
-        dir:
-          previous.key ===
-            key &&
-          previous.dir ===
-            "asc"
-            ? "desc"
-            : "asc",
-      }),
-    );
+    navigate({
+      to: "/bank-users",
+      state: {
+        organizationId: String(pkid),
+        bankName: tenant.instituteName,
+      } as never,
+    });
   };
 
   /* ------------------------------------------------------------------------ */
   /* TABLE COLUMNS                                                            */
   /* ------------------------------------------------------------------------ */
 
-  const columns: {
-    key: SortKey | null;
-    label: string;
-  }[] = [
-    {
-      key: "bankCode",
-      label: "Bank Code",
-    },
-
-    {
-      key: "instituteName",
-      label: "Bank Name",
-    },
-
-    {
-      key: "instituteType",
-      label: "Bank Type",
-    },
-
-    // {
-    //   key: "registrationNumber",
-    //   label: "Registration ID",
-    // },
-
-    /*
-     * GST No. replaces Regulatory Authority ID.
-     */
-    {
-      key: "gstNo",
-      label: "GST No.",
-    },
-
-    /*
-     * License No. is included in the list.
-     */
-    {
-      key: "licenseNo",
-      label: "License No.",
-    },
-
-    {
-      key: "cin",
-      label: "CIN No.",
-    },
-
-    {
-      key: "status",
-      label: "Status",
-    },
-
-    {
-      key: null,
-      label: "Action",
-    },
+  const columns: { key: SortKey | null; label: string }[] = [
+    { key: "bankCode", label: "Bank Code" },
+    { key: "instituteName", label: "Bank Name" },
+    { key: "instituteType", label: "Bank Type" },
+    { key: "gstNo", label: "GST No." },
+    { key: "licenseNo", label: "License No." },
+    { key: "cin", label: "CIN No." },
+    { key: "status", label: "Status" },
+    { key: null, label: "Action" },
+    { key: null, label: "View Users" },
   ];
 
   /* ------------------------------------------------------------------------ */
@@ -1063,11 +562,7 @@ function TenantsPage() {
       subtitle={`${displayTenants.length} banks onboarded on the platform`}
       actions={
         <Button
-          onClick={() =>
-            setDrawerOpen(
-              true,
-            )
-          }
+          onClick={() => setDrawerOpen(true)}
           className="bg-accent text-accent-foreground hover:bg-accent/90"
         >
           <Plus className="size-4" />
@@ -1076,451 +571,239 @@ function TenantsPage() {
       }
     >
       <div className="space-y-4">
-
-        {/* ------------------------------------------------------------------ */}
-        {/* SEARCH AND FILTER                                                  */}
-        {/* ------------------------------------------------------------------ */}
-
+        {/* SEARCH AND FILTER */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 
             <Input
               value={query}
-              onChange={(
-                event,
-              ) =>
-                setQuery(
-                  event.target
-                    .value,
-                )
-              }
+              onChange={(event) => setQuery(event.target.value)}
               placeholder="Search by bank name, bank code, license number, GST number..."
               className="pl-9"
             />
           </div>
 
-          <Select
-            value={status}
-            onValueChange={
-              setStatus
-            }
-          >
+          <Select value={status} onValueChange={setStatus}>
             <SelectTrigger className="sm:w-44">
               <SelectValue />
             </SelectTrigger>
 
             <SelectContent>
-              <SelectItem value="All">
-                All statuses
-              </SelectItem>
-
-              <SelectItem value="Active">
-                Active
-              </SelectItem>
-
-              <SelectItem value="Inactive">
-                Inactive
-              </SelectItem>
+              <SelectItem value="All">All statuses</SelectItem>
+              <SelectItem value="Active">Active</SelectItem>
+              <SelectItem value="Inactive">Inactive</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        {/* ------------------------------------------------------------------ */}
-        {/* TABLE                                                              */}
-        {/* ------------------------------------------------------------------ */}
-
+        {/* TABLE */}
         <div className="surface-card animate-rise overflow-hidden">
-
-          {!loaded ||
-          loadingOrganizations ? (
+          {!loaded || loadingOrganizations ? (
             <div className="space-y-3 p-5">
-              {Array.from({
-                length: 8,
-              }).map(
-                (
-                  _,
-                  index,
-                ) => (
-                  <Skeleton
-                    key={index}
-                    className="h-11 w-full"
-                  />
-                ),
-              )}
+              {Array.from({ length: 8 }).map((_, index) => (
+                <Skeleton key={index} className="h-11 w-full" />
+              ))}
             </div>
-          ) : pageRows.length ===
-            0 ? (
+          ) : pageRows.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
-
               <span className="grid size-12 place-items-center rounded-2xl bg-secondary text-muted-foreground">
                 <Building2 className="size-6" />
               </span>
 
-              <p className="font-medium">
-                No banks match your filters
-              </p>
+              <p className="font-medium">No banks match your filters</p>
 
               <p className="max-w-sm text-sm text-muted-foreground">
-                Try a different
-                search term or
-                status filter,
-                or create a
-                new bank.
+                Try a different search term or status filter, or create a new bank.
               </p>
 
-              <Button
-                variant="outline"
-                onClick={() =>
-                  setDrawerOpen(
-                    true,
-                  )
-                }
-              >
+              <Button variant="outline" onClick={() => setDrawerOpen(true)}>
                 <Plus className="size-4" />
                 Create Bank
               </Button>
             </div>
           ) : (
             <div className="overflow-x-auto">
-
               <table className="w-full text-sm">
-
-                {/* ---------------------------------------------------------- */}
-                {/* TABLE HEADER                                                */}
-                {/* ---------------------------------------------------------- */}
-
                 <thead className="bg-secondary/50">
                   <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
-
-                    {columns.map(
-                      (
-                        column,
-                        index,
-                      ) => (
-                        <th
-                          key={
-                            index
-                          }
-                          className="whitespace-nowrap px-4 py-3 font-medium"
-                        >
-                          {column.key ? (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                toggleSort(
-                                  column.key as SortKey,
-                                )
-                              }
-                              className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
-                            >
-                              {
-                                column.label
-                              }
-
-                              <ArrowUpDown className="size-3" />
-                            </button>
-                          ) : (
-                            column.label
-                          )}
-                        </th>
-                      ),
-                    )}
-
+                    {columns.map((column, index) => (
+                      <th key={index} className="whitespace-nowrap px-4 py-3 font-medium">
+                        {column.key ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleSort(column.key as SortKey)}
+                            className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
+                          >
+                            {column.label}
+                            <ArrowUpDown className="size-3" />
+                          </button>
+                        ) : (
+                          column.label
+                        )}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
 
-                {/* ---------------------------------------------------------- */}
-                {/* TABLE BODY                                                  */}
-                {/* ---------------------------------------------------------- */}
-
                 <tbody>
+                  {pageRows.map((tenant) => (
+                    <tr
+                      key={tenant.id}
+                      onClick={() =>
+                        navigate({
+                          to: "/tenants/$tenantId",
+                          params: {
+                            tenantId: String(tenant.pkid ?? tenant.id),
+                          },
+                        })
+                      }
+                      className="cursor-pointer border-t border-border transition-colors hover:bg-secondary/60"
+                    >
+                      {/* Bank Code */}
+                      <td className="whitespace-nowrap px-4 py-3 font-medium">
+                        {tenant.bankCode || "-"}
+                      </td>
 
-                  {pageRows.map(
-                    (
-                      tenant,
-                    ) => (
-                      <tr
-                        key={
-                          tenant.id
-                        }
-                        onClick={() =>
-                          navigate(
-                            {
-                              to: "/tenants/$tenantId",
-                              params: {
-                                tenantId:
-                                  String(
-                                    tenant.pkid ??
-                                      tenant.id,
-                                  ),
-                              },
-                            },
-                          )
-                        }
-                        className="cursor-pointer border-t border-border transition-colors hover:bg-secondary/60"
+                      {/* Bank Name */}
+                      <td className="whitespace-nowrap px-4 py-3 font-medium">
+                        {tenant.instituteName || "-"}
+                      </td>
+
+                      {/* Bank Type */}
+                      <td className="whitespace-nowrap px-4 py-3">{tenant.instituteType || "-"}</td>
+
+                      {/* GST No. */}
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                        {tenant.gstNo || "-"}
+                      </td>
+
+                      {/* License No. */}
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                        {tenant.licenseNo || "-"}
+                      </td>
+
+                      {/* CIN No. */}
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                        {tenant.cin || "-"}
+                      </td>
+
+                      {/* Status */}
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <StatusBadge status={tenant.status} />
+                      </td>
+
+                      {/* Actions */}
+                      <td
+                        className="px-4 py-3 text-right"
+                        onClick={(event) => event.stopPropagation()}
                       >
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" aria-label="Row actions">
+                              <MoreHorizontal className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
 
-                        {/* Bank Code */}
-                        <td className="whitespace-nowrap px-4 py-3 font-medium">
-                          {tenant.bankCode ||
-                            "-"}
-                        </td>
-
-                        {/* Bank Name */}
-                        <td className="whitespace-nowrap px-4 py-3 font-medium">
-                          {tenant.instituteName ||
-                            "-"}
-                        </td>
-
-                        {/* Bank Type */}
-                        <td className="whitespace-nowrap px-4 py-3">
-                          {tenant.instituteType ||
-                            "-"}
-                        </td>
-
-                        {/* Registration ID */}
-                        {/* <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                          {tenant.registrationNumber ||
-                            "-"}
-                        </td> */}
-
-                        {/* GST No. */}
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                          {tenant.gstNo ||
-                            "-"}
-                        </td>
-
-                        {/* License No. */}
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                          {tenant.licenseNo ||
-                            "-"}
-                        </td>
-
-                        {/* CIN No. */}
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                          {tenant.cin ||
-                            "-"}
-                        </td>
-
-                        {/* Status */}
-                        <td className="whitespace-nowrap px-4 py-3">
-                          <StatusBadge
-                            status={
-                              tenant.status
-                            }
-                          />
-                        </td>
-
-                        {/* Actions */}
-                        <td
-                          className="px-4 py-3 text-right"
-                          onClick={(
-                            event,
-                          ) =>
-                            event.stopPropagation()
-                          }
-                        >
-                          <DropdownMenu>
-
-                            <DropdownMenuTrigger
-                              asChild
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() =>
+                                navigate({
+                                  to: "/tenants/$tenantId",
+                                  params: {
+                                    tenantId: String(tenant.pkid ?? tenant.id),
+                                  },
+                                })
+                              }
                             >
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                aria-label="Row actions"
-                              >
-                                <MoreHorizontal className="size-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
+                              <Eye className="mr-2 size-4" />
+                              View
+                            </DropdownMenuItem>
 
-                            <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() =>
+                                navigate({
+                                  to: "/tenants/$tenantId",
+                                  params: {
+                                    tenantId: String(tenant.pkid ?? tenant.id),
+                                  },
+                                })
+                              }
+                            >
+                              <Pencil className="mr-2 size-4" />
+                              Edit
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
 
-                              {/* View */}
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  navigate(
-                                    {
-                                      to: "/tenants/$tenantId",
-                                      params: {
-                                        tenantId:
-                                          String(
-                                            tenant.pkid ??
-                                              tenant.id,
-                                          ),
-                                      },
-                                    },
-                                  )
-                                }
-                              >
-                                <Eye className="mr-2 size-4" />
-                                View
-                              </DropdownMenuItem>
-
-                              {/* Edit */}
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  navigate(
-                                    {
-                                      to: "/tenants/$tenantId",
-                                      params: {
-                                        tenantId:
-                                          String(
-                                            tenant.pkid ??
-                                              tenant.id,
-                                          ),
-                                      },
-                                    },
-                                  )
-                                }
-                              >
-                                <Pencil className="mr-2 size-4" />
-                                Edit
-                              </DropdownMenuItem>
-
-                            </DropdownMenuContent>
-
-                          </DropdownMenu>
-                        </td>
-
-                      </tr>
-                    ),
-                  )}
-
+                      {/* View Users */}
+                      <td
+                        className="whitespace-nowrap px-4 py-3"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <Button variant="outline" size="sm" onClick={() => openUsers(tenant)}>
+                          <Users className="mr-1.5 size-4" />
+                          View Users
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           )}
 
-          {/* ---------------------------------------------------------------- */}
-          {/* PAGINATION                                                       */}
-          {/* ---------------------------------------------------------------- */}
+          {/* PAGINATION */}
+          {loaded && !loadingOrganizations && pageRows.length > 0 && (
+            <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
+              <p className="text-muted-foreground">
+                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, rows.length)} of{" "}
+                {rows.length}
+              </p>
 
-          {loaded &&
-            !loadingOrganizations &&
-            pageRows.length > 0 && (
-              <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page === 1}
+                  onClick={() => setPage((previous) => previous - 1)}
+                >
+                  Previous
+                </Button>
 
-                <p className="text-muted-foreground">
-                  Showing{" "}
-                  {(page - 1) *
-                    PAGE_SIZE +
-                    1}
-                  –
-                  {Math.min(
-                    page *
-                      PAGE_SIZE,
-                    rows.length,
-                  )}{" "}
-                  of{" "}
-                  {rows.length}
-                </p>
+                <span className="text-muted-foreground">
+                  Page {page} of {totalPages}
+                </span>
 
-                <div className="flex items-center gap-2">
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={
-                      page ===
-                      1
-                    }
-                    onClick={() =>
-                      setPage(
-                        (
-                          previous,
-                        ) =>
-                          previous -
-                          1,
-                      )
-                    }
-                  >
-                    Previous
-                  </Button>
-
-                  <span className="text-muted-foreground">
-                    Page{" "}
-                    {page} of{" "}
-                    {
-                      totalPages
-                    }
-                  </span>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={
-                      page >=
-                      totalPages
-                    }
-                    onClick={() =>
-                      setPage(
-                        (
-                          previous,
-                        ) =>
-                          previous +
-                          1,
-                      )
-                    }
-                  >
-                    Next
-                  </Button>
-
-                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((previous) => previous + 1)}
+                >
+                  Next
+                </Button>
               </div>
-            )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* -------------------------------------------------------------------- */}
-      {/* CREATE BANK DRAWER                                                   */}
-      {/* -------------------------------------------------------------------- */}
-
+      {/* CREATE BANK DRAWER */}
       <TenantFormDrawer
         open={drawerOpen}
-        onOpenChange={
-          setDrawerOpen
-        }
+        onOpenChange={setDrawerOpen}
         onSubmit={async (input) => {
-          /*
-           * Keep the frontend store updated.
-           */
-          const createdTenant =
-            createTenant(input);
+          const createdTenant = createTenant(input);
 
-          /*
-           * Refresh the list from backend.
-           */
-          const refreshedBanks =
-            await loadOrganizations();
+          const refreshedBanks = await loadOrganizations();
 
-          /*
-           * If the newly created bank is not
-           * immediately returned by GET API,
-           * keep it visible in the frontend list.
-           */
-          if (
-            !refreshedBanks?.some(
-              (bank) =>
-                bank.bankCode ===
-                input.bankCode,
-            )
-          ) {
-            setApiTenants(
-              (
-                currentBanks,
-              ) =>
-                currentBanks.some(
-                  (bank) =>
-                    bank.bankCode ===
-                    input.bankCode,
-                )
-                  ? currentBanks
-                  : [
-                      createdTenant,
-                      ...currentBanks,
-                    ],
+          if (!refreshedBanks?.some((bank) => bank.bankCode === input.bankCode)) {
+            setApiTenants((currentBanks) =>
+              currentBanks.some((bank) => bank.bankCode === input.bankCode)
+                ? currentBanks
+                : [createdTenant as BankTenant, ...currentBanks],
             );
           }
         }}
