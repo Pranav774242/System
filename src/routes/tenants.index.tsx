@@ -174,10 +174,10 @@ type OrganizationApiResponse = {
   gstNo?: string;
   gst?: string;
 
-  cin?: string;
-  CIN?: string;
-  cin_no?: string;
-  cin_number?: string;
+  // cin?: string;
+  // CIN?: string;
+  // cin_no?: string;
+  // cin_number?: string;
 
   regulatory_status?: string;
   status?: string;
@@ -300,17 +300,17 @@ function getGstNumber(
   );
 }
 
-function getCINNumber(
-  organization: OrganizationApiResponse,
-): string {
-  return (
-    organization.CIN ??
-    organization.cin_no ??
-    organization.cin_number ??
-    organization.cin ??
-    ""
-  );
-}
+// function getCINNumber(
+//   organization: OrganizationApiResponse,
+// ): string {
+//   return (
+//     organization.CIN ??
+//     organization.cin_no ??
+//     organization.cin_number ??
+//     organization.cin ??
+//     ""
+//   );
+// }
 
 /* -------------------------------------------------------------------------- */
 /* NORMALIZE BANK TENANT                                                       */
@@ -355,10 +355,10 @@ function normalizeBankTenant(
       organization,
     );
 
-  const cinNumber =
-    getCINNumber(
-      organization,
-    );
+  // const cinNumber =
+  //   getCINNumber(
+  //     organization,
+  //   );
 
   return {
     ...mapped,
@@ -397,10 +397,10 @@ function normalizeBankTenant(
       gstNumber,
 
     /* CIN Number */
-    cin:
-      cinNumber ||
-      mapped.cin ||
-      "",
+    // cin:
+    //   cinNumber ||
+    //   mapped.cin ||
+    //   "",
 
     /* Legal Name */
     legalName:
@@ -579,8 +579,8 @@ function TenantsPage() {
           responseData =
             responseText
               ? JSON.parse(
-                  responseText,
-                )
+                responseText,
+              )
               : null;
         } catch (error) {
           console.error(
@@ -654,7 +654,7 @@ function TenantsPage() {
         else if (
           responseData &&
           typeof responseData ===
-            "object"
+          "object"
         ) {
           const body =
             responseData as {
@@ -959,16 +959,16 @@ function TenantsPage() {
       1,
       Math.ceil(
         rows.length /
-          PAGE_SIZE,
+        PAGE_SIZE,
       ),
     );
 
   const pageRows =
     rows.slice(
       (page - 1) *
-        PAGE_SIZE,
+      PAGE_SIZE,
       page *
-        PAGE_SIZE,
+      PAGE_SIZE,
     );
 
   /* ------------------------------------------------------------------------ */
@@ -985,7 +985,7 @@ function TenantsPage() {
         dir:
           previous.key ===
             key &&
-          previous.dir ===
+            previous.dir ===
             "asc"
             ? "desc"
             : "asc",
@@ -1001,57 +1001,57 @@ function TenantsPage() {
     key: SortKey | null;
     label: string;
   }[] = [
-    {
-      key: "bankCode",
-      label: "Bank Code",
-    },
+      {
+        key: "bankCode",
+        label: "Bank Code",
+      },
 
-    {
-      key: "instituteName",
-      label: "Bank Name",
-    },
+      {
+        key: "instituteName",
+        label: "Bank Name",
+      },
 
-    {
-      key: "instituteType",
-      label: "Bank Type",
-    },
+      {
+        key: "instituteType",
+        label: "Bank Type",
+      },
 
-    // {
-    //   key: "registrationNumber",
-    //   label: "Registration ID",
-    // },
+      // {
+      //   key: "registrationNumber",
+      //   label: "Registration ID",
+      // },
 
-    /*
-     * GST No. replaces Regulatory Authority ID.
-     */
-    {
-      key: "gstNo",
-      label: "GST No.",
-    },
+      /*
+       * GST No. replaces Regulatory Authority ID.
+       */
+      {
+        key: "gstNo",
+        label: "GST No.",
+      },
 
-    /*
-     * License No. is included in the list.
-     */
-    {
-      key: "licenseNo",
-      label: "License No.",
-    },
+      /*
+       * License No. is included in the list.
+       */
+      {
+        key: "licenseNo",
+        label: "License No.",
+      },
 
-    {
-      key: "cin",
-      label: "CIN No.",
-    },
+      // {
+      //   key: "cin",
+      //   label: "CIN No.",
+      // },
 
-    {
-      key: "status",
-      label: "Status",
-    },
+      {
+        key: "status",
+        label: "Status",
+      },
 
-    {
-      key: null,
-      label: "Action",
-    },
-  ];
+      {
+        key: null,
+        label: "Action",
+      },
+    ];
 
   /* ------------------------------------------------------------------------ */
   /* RENDER                                                                   */
@@ -1133,7 +1133,7 @@ function TenantsPage() {
         <div className="surface-card animate-rise overflow-hidden">
 
           {!loaded ||
-          loadingOrganizations ? (
+            loadingOrganizations ? (
             <div className="space-y-3 p-5">
               {Array.from({
                 length: 8,
@@ -1252,7 +1252,7 @@ function TenantsPage() {
                                 tenantId:
                                   String(
                                     tenant.pkid ??
-                                      tenant.id,
+                                    tenant.id,
                                   ),
                               },
                             },
@@ -1298,10 +1298,10 @@ function TenantsPage() {
                         </td>
 
                         {/* CIN No. */}
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                        {/* <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                           {tenant.cin ||
                             "-"}
-                        </td>
+                        </td> */}
 
                         {/* Status */}
                         <td className="whitespace-nowrap px-4 py-3">
@@ -1315,17 +1315,10 @@ function TenantsPage() {
                         {/* Actions */}
                         <td
                           className="px-4 py-3 text-right"
-                          onClick={(
-                            event,
-                          ) =>
-                            event.stopPropagation()
-                          }
+                          onClick={(event) => event.stopPropagation()}
                         >
                           <DropdownMenu>
-
-                            <DropdownMenuTrigger
-                              asChild
-                            >
+                            <DropdownMenuTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -1336,51 +1329,22 @@ function TenantsPage() {
                             </DropdownMenuTrigger>
 
                             <DropdownMenuContent align="end">
-
-                              {/* View */}
                               <DropdownMenuItem
                                 onClick={() =>
-                                  navigate(
-                                    {
-                                      to: "/tenants/$tenantId",
-                                      params: {
-                                        tenantId:
-                                          String(
-                                            tenant.pkid ??
-                                              tenant.id,
-                                          ),
-                                      },
+                                  navigate({
+                                    to: "/tenants/$tenantId",
+                                    params: {
+                                      tenantId: String(
+                                        tenant.pkid ?? tenant.id
+                                      ),
                                     },
-                                  )
+                                  })
                                 }
                               >
                                 <Eye className="mr-2 size-4" />
-                                View
+                                User View
                               </DropdownMenuItem>
-
-                              {/* Edit */}
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  navigate(
-                                    {
-                                      to: "/tenants/$tenantId",
-                                      params: {
-                                        tenantId:
-                                          String(
-                                            tenant.pkid ??
-                                              tenant.id,
-                                          ),
-                                      },
-                                    },
-                                  )
-                                }
-                              >
-                                <Pencil className="mr-2 size-4" />
-                                Edit
-                              </DropdownMenuItem>
-
                             </DropdownMenuContent>
-
                           </DropdownMenu>
                         </td>
 
@@ -1410,7 +1374,7 @@ function TenantsPage() {
                   –
                   {Math.min(
                     page *
-                      PAGE_SIZE,
+                    PAGE_SIZE,
                     rows.length,
                   )}{" "}
                   of{" "}
@@ -1518,9 +1482,9 @@ function TenantsPage() {
                 )
                   ? currentBanks
                   : [
-                      createdTenant,
-                      ...currentBanks,
-                    ],
+                    createdTenant,
+                    ...currentBanks,
+                  ],
             );
           }
         }}

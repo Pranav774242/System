@@ -1,105 +1,204 @@
-import type {
-  AddressDetails,
-  InstituteType,
-  RegulatoryDetails,
-  Tenant,
+import {
+  type Tenant,
+  type RegulatoryDetails,
+  type AddressDetails,
+  type InstituteType,
+  type TenantStatus,
 } from "@/lib/admin-store";
 
+/* -------------------------------------------------------------------------- */
+/* BACKEND ORGANIZATION RESPONSE                                              */
+/* -------------------------------------------------------------------------- */
+
 export type OrganizationApiResponse = {
-  id?: string;
-  pkid?: number | string | null;
+  id?: string | number;
+  pkid?: number | string;
+
+  /* Bank details */
+  bank_code?: string | null;
+  bankCode?: string | null;
+
+  bank_name?: string | null;
+  bankName?: string | null;
+
+  bank_type?: string | null;
+  bankType?: string | null;
 
   name?: string | null;
   type?: string | null;
-
-  bank_code?: string | null;
-  bankCode?: string | null;
-  bank_name?: string | null;
-  bankName?: string | null;
-  bank_type?: string | null;
-  bankType?: string | null;
 
   institution_name?: string | null;
   institution_type?: string | null;
 
   legal_name?: string | null;
+  legalName?: string | null;
+
+  short_name?: string | null;
+  shortName?: string | null;
 
   pan_no?: string | null;
   pan_number?: string | null;
   pan?: string | null;
-  PAN?: string | null;
+  panNo?: string | null;
 
   gst_no?: string | null;
   gst_number?: string | null;
   gst?: string | null;
-
-  cin?: string | null;
-  CIN?: string | null;
-  cin_no?: string | null;
-  cin_number?: string | null;
+  gstNo?: string | null;
 
   license_no?: string | null;
   license_number?: string | null;
   licenseNo?: string | null;
 
   registration_number?: string | null;
-  registrationNumber?: string | null;
   registration_id?: string | null;
   registrationId?: string | null;
 
+  CIN?: string | null;
+  cin?: string | null;
+  cin_no?: string | null;
+  cin_number?: string | null;
+
   website?: string | null;
 
-  logo?: string | null;
   logo_url?: string | null;
   logoUrl?: string | null;
 
-  status?: string | null;
-  regulatory_status?: string | null;
+  /* Regulatory authority */
   regulatory_authority?: string | null;
   regulatory_authority_id?: string | null;
   regulatoryAuthorityId?: string | null;
 
-  contact_email?: string | null;
-  contact_phone?: string | null;
+  /* Status */
+  regulatory_status?: string | null;
+  status?: string | null;
 
-  country?: string | null;
-  state?: string | null;
-  city?: string | null;
-  pin_code?: string | null;
-  pincode?: string | null;
-
-  registered_address?: string | null;
-  corporate_address?: string | null;
-
-  created_at?: string | null;
-  updated_at?: string | null;
+  /* ---------------------------------------------------------------------- */
+  /* Regulatory details                                                     */
+  /* ---------------------------------------------------------------------- */
 
   direct_clg_member?: string | null;
   direct_member_iftas?: string | null;
 
   micr_code?: string | null;
   micr_number?: string | null;
+
   micr_city_code?: string | null;
   micr_branch_code?: string | null;
-  micr_details?: unknown;
 
   ifsc_code?: string | null;
 
   number_of_branches?: string | number | null;
+  no_of_branches?: string | number | null;
 
   sponsor_bank_for_clg?: string | null;
   sponsor_bank_for_iftas?: string | null;
 
+  /*
+   * Some backend responses can return regulatory information
+   * inside a nested regulatory_details object.
+   */
+  regulatory_details?: {
+    direct_clg_member?: string | null;
+    direct_member_iftas?: string | null;
+
+    micr_code?: string | null;
+    micr_number?: string | null;
+
+    micr_city_code?: string | null;
+    micr_branch_code?: string | null;
+
+    ifsc_code?: string | null;
+
+    number_of_branches?: string | number | null;
+    no_of_branches?: string | number | null;
+
+    sponsor_bank_for_clg?: string | null;
+    sponsor_bank_for_iftas?: string | null;
+  } | null;
+
+  /*
+   * Backend can also return MICR information as an object.
+   */
+  micr_details?: Record<string, unknown> | null;
+
+  /* ---------------------------------------------------------------------- */
+  /* Address                                                                */
+  /* ---------------------------------------------------------------------- */
+
+  country?: string | null;
+  state?: string | null;
+  city?: string | null;
+  pin_code?: string | null;
+  pinCode?: string | null;
+
   address_type?: string | null;
   unit_gala_name_no?: string | null;
-  unit_gala_name_and_number?: string | null;
   street_road?: string | null;
   land_mark?: string | null;
   landmark?: string | null;
+
+  registered_address?: string | null;
+  corporate_address?: string | null;
+
+  /* Contact */
+  contact_email?: string | null;
+  contact_phone?: string | null;
+
+  /* Dates */
+  created_at?: string | null;
+  updated_at?: string | null;
+
+  /* Database information */
+  db_name?: string | null;
+  db_host?: string | null;
+  db_port?: number | null;
+
+  /* Branches */
+  branches?: unknown[] | null;
 };
 
-function normalizeBankType(value?: string | null): InstituteType {
-  const normalized = value?.trim().toUpperCase() ?? "";
+/* -------------------------------------------------------------------------- */
+/* HELPERS                                                                    */
+/* -------------------------------------------------------------------------- */
+
+function firstString(
+  ...values: unknown[]
+): string {
+  for (const value of values) {
+    if (
+      value !== null &&
+      value !== undefined &&
+      String(value).trim() !== ""
+    ) {
+      return String(value);
+    }
+  }
+
+  return "";
+}
+
+function firstValue(
+  ...values: unknown[]
+): unknown {
+  for (const value of values) {
+    if (
+      value !== null &&
+      value !== undefined &&
+      String(value).trim() !== ""
+    ) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
+function normalizeBankType(
+  value?: string | null,
+): InstituteType {
+  const normalized =
+    value?.trim().toUpperCase() ?? "";
 
   if (normalized === "NBFC") {
     return "NBFC";
@@ -108,166 +207,378 @@ function normalizeBankType(value?: string | null): InstituteType {
   return "BANK";
 }
 
-function normalizeStatus(value?: string | null): Tenant["status"] {
-  const normalized = value?.trim().toUpperCase() ?? "";
+function normalizeStatus(
+  value?: string | null,
+): TenantStatus {
+  const normalized =
+    value?.trim().toUpperCase();
 
-  if (normalized === "ACTIVE") {
-    return "Active";
+  if (
+    normalized === "INACTIVE" ||
+    normalized === "DISABLED"
+  ) {
+    return "Inactive";
   }
 
-  return "Inactive";
+  return "Active";
 }
 
-export function mapOrganizationToTenant(
-  o: OrganizationApiResponse,
-): Tenant {
-  const pkid =
-    typeof o.pkid === "number"
-      ? o.pkid
-      : typeof o.pkid === "string" &&
-          Number.isFinite(Number(o.pkid))
-        ? Number(o.pkid)
-        : undefined;
+function toStringValue(
+  value: unknown,
+): string {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return "";
+  }
 
-  const micrDetails =
-    typeof o.micr_details === "object" &&
-    o.micr_details !== null &&
-    !Array.isArray(o.micr_details)
-      ? o.micr_details as Record<string, unknown>
-      : {};
-  const micrValue = (...values: unknown[]): string =>
-    values.find(
-      (value): value is string =>
-        typeof value === "string" && value.trim().length > 0,
-    ) ?? "";
+  return String(value);
+}
+
+/* -------------------------------------------------------------------------- */
+/* BRANCH MAPPING                                                             */
+/* -------------------------------------------------------------------------- */
+
+function mapBranches(
+  branches: unknown,
+): {
+  id: string;
+  location: string;
+}[] {
+  if (!Array.isArray(branches)) {
+    return [];
+  }
+
+  return branches.map(
+    (branch, index) => {
+      if (
+        typeof branch === "string"
+      ) {
+        return {
+          id: `branch-${index + 1}`,
+          location: branch,
+        };
+      }
+
+      if (
+        branch &&
+        typeof branch === "object"
+      ) {
+        const item =
+          branch as Record<string, unknown>;
+
+        const branchName =
+          firstString(
+            item["branch_name"],
+            item["branchName"],
+            item["name"],
+            item["location"],
+          );
+
+        const city =
+          firstString(
+            item["city"],
+          );
+
+        const location =
+          city && branchName
+            ? `${branchName} — ${city}`
+            : branchName;
+
+        return {
+          id:
+            firstString(
+              item["id"],
+              item["pkid"],
+            ) ||
+            `branch-${index + 1}`,
+
+          location,
+        };
+      }
+
+      return {
+        id: `branch-${index + 1}`,
+        location: "",
+      };
+    },
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* MAP ORGANIZATION TO TENANT                                                  */
+/* -------------------------------------------------------------------------- */
+
+export function mapOrganizationToTenant(
+  organization: OrganizationApiResponse,
+): Tenant {
+  const pkidValue =
+    firstValue(
+      organization.pkid,
+      organization.id,
+    );
+
+  const pkid =
+    pkidValue !== undefined
+      ? Number(pkidValue)
+      : undefined;
+
+  /* ---------------------------------------------------------------------- */
+  /* Bank details                                                           */
+  /* ---------------------------------------------------------------------- */
 
   const bankName =
-    o.bank_name ??
-    o.bankName ??
-    o.institution_name ??
-    o.name ??
-    "";
+    firstString(
+      organization.bank_name,
+      organization.bankName,
+      organization.institution_name,
+      organization.name,
+    );
 
-  const bankType = normalizeBankType(
-    o.bank_type ??
-    o.bankType ??
-    o.institution_type ??
-    o.type,
-  );
+  const bankType =
+    normalizeBankType(
+      firstString(
+        organization.bank_type,
+        organization.bankType,
+        organization.institution_type,
+        organization.type,
+      ),
+    );
 
   const bankCode =
-    o.bank_code ??
-    o.bankCode ??
-    "";
+    firstString(
+      organization.bank_code,
+      organization.bankCode,
+    );
 
   const legalName =
-    o.legal_name ??
-    bankName;
+    firstString(
+      organization.legal_name,
+      organization.legalName,
+    );
 
   const panNo =
-    o.pan_no ??
-    o.pan_number ??
-    o.pan ??
-    o.PAN ??
-    "";
+    firstString(
+      organization.pan_no,
+      organization.pan_number,
+      organization.pan,
+      organization.panNo,
+    );
 
   const gstNo =
-    o.gst_no ??
-    o.gst_number ??
-    o.gst ??
-    "";
-
-  const cin =
-    o.CIN ??
-    o.cin_no ??
-    o.cin_number ??
-    o.cin ??
-    "";
+    firstString(
+      organization.gst_no,
+      organization.gst_number,
+      organization.gst,
+      organization.gstNo,
+    );
 
   const licenseNo =
-    o.license_no ??
-    o.license_number ??
-    o.licenseNo ??
-    o.registration_number ??
-    o.registrationNumber ??
-    o.registration_id ??
-    o.registrationId ??
-    "";
+    firstString(
+      organization.license_no,
+      organization.license_number,
+      organization.licenseNo,
+      organization.registration_number,
+      organization.registration_id,
+      organization.registrationId,
+    );
 
-  const registrationNumber =
-    o.registration_id ??
-    o.registrationId ??
-    o.registration_number ??
-    o.registrationNumber ??
-    licenseNo;
+  const cin =
+    firstString(
+      organization.CIN,
+      organization.cin_no,
+      organization.cin_number,
+      organization.cin,
+    );
 
-  const status = normalizeStatus(
-    o.status ??
-    o.regulatory_status ??
-    "ACTIVE",
-  );
+  const website =
+    firstString(
+      organization.website,
+    );
 
-  const regulatoryDetails: RegulatoryDetails = {
-    directClgMember:o.direct_clg_member ?? "",
+  const logoUrl =
+    firstString(
+      organization.logo_url,
+      organization.logoUrl,
+    );
 
-    directMemberIftas:o.direct_member_iftas ?? "",
+  /* ---------------------------------------------------------------------- */
+  /* Regulatory details                                                     */
+  /* ---------------------------------------------------------------------- */
 
-    micrCode:micrValue(
-      o.micr_code,
-      o.micr_number,
+  const nestedRegulatory =
+    organization.regulatory_details ?? {};
+
+  const micrDetails =
+    organization.micr_details ?? {};
+
+  const directClgMember =
+    firstString(
+      organization.direct_clg_member,
+      nestedRegulatory.direct_clg_member,
+    );
+
+  const directMemberIftas =
+    firstString(
+      organization.direct_member_iftas,
+      nestedRegulatory.direct_member_iftas,
+    );
+
+  const micrCode =
+    firstString(
+      organization.micr_code,
+      nestedRegulatory.micr_code,
       micrDetails["micr_code"],
-      micrDetails["micr_number"],
       micrDetails["micr"],
-      typeof o.micr_details === "string" ? o.micr_details : undefined,
-    ),
+    );
 
-    micrCityCode:micrValue(
-      o.micr_city_code,
+  /*
+   * IMPORTANT:
+   * micr_number is now retained.
+   */
+  const micrNumber =
+    firstString(
+      organization.micr_number,
+      nestedRegulatory.micr_number,
+      micrDetails["micr_number"],
+    );
+
+  const micrCityCode =
+    firstString(
+      organization.micr_city_code,
+      nestedRegulatory.micr_city_code,
       micrDetails["micr_city_code"],
       micrDetails["city_code"],
-    ),
+    );
 
-    micrBranchCode:micrValue(
-      o.micr_branch_code,
+  const micrBranchCode =
+    firstString(
+      organization.micr_branch_code,
+      nestedRegulatory.micr_branch_code,
       micrDetails["micr_branch_code"],
       micrDetails["branch_code"],
-    ),
+    );
 
-    ifscCode:o.ifsc_code ?? "",
+  const ifscCode =
+    firstString(
+      organization.ifsc_code,
+      nestedRegulatory.ifsc_code,
+    );
 
-    numberOfBranches:o.number_of_branches != null
-        ? String(o.number_of_branches)
-        : "",
+  const numberOfBranchesValue =
+    firstValue(
+      organization.number_of_branches,
+      organization.no_of_branches,
+      nestedRegulatory.number_of_branches,
+      nestedRegulatory.no_of_branches,
+    );
 
-    sponsorBankForClg:o.sponsor_bank_for_clg ?? "",
+  const numberOfBranches =
+    numberOfBranchesValue !== undefined
+      ? String(numberOfBranchesValue)
+      : "";
 
-    sponsorBankForIftas:o.sponsor_bank_for_iftas ?? "",
-  };
+  const sponsorBankForClg =
+    firstString(
+      organization.sponsor_bank_for_clg,
+      nestedRegulatory.sponsor_bank_for_clg,
+    );
 
-  const addressDetails: AddressDetails = {
-    addressType:o.address_type ?? "",
+  const sponsorBankForIftas =
+    firstString(
+      organization.sponsor_bank_for_iftas,
+      nestedRegulatory.sponsor_bank_for_iftas,
+    );
 
-    unitGalaNameNo:o.unit_gala_name_no ?? o.unit_gala_name_and_number ?? "",
+  const regulatoryDetails: RegulatoryDetails =
+    {
+      directClgMember,
+      directMemberIftas,
 
-    streetRoad:o.street_road ?? "",
+      micrCode,
+      micrNumber,
 
-    landMark:o.land_mark ?? o.landmark ?? "",
+      micrCityCode,
+      micrBranchCode,
 
-    city:o.city ?? "",
+      ifscCode,
 
-    state:o.state ?? "",
+      numberOfBranches,
 
-    pinCode:o.pin_code ?? o.pincode ?? "",
-  };
+      sponsorBankForClg,
+      sponsorBankForIftas,
+    };
 
-  const tenant: Tenant = {
-    id:o.id ??String(  pkid ??
-        crypto.randomUUID(),
+  /* ---------------------------------------------------------------------- */
+  /* Address                                                                */
+  /* ---------------------------------------------------------------------- */
+
+  const addressDetails: AddressDetails =
+    {
+      addressType:
+        firstString(
+          organization.address_type,
+        ),
+
+      unitGalaNameNo:
+        firstString(
+          organization.unit_gala_name_no,
+        ),
+
+      streetRoad:
+        firstString(
+          organization.street_road,
+        ),
+
+      landMark:
+        firstString(
+          organization.land_mark,
+          organization.landmark,
+        ),
+
+      city:
+        firstString(
+          organization.city,
+        ),
+
+      state:
+        firstString(
+          organization.state,
+        ),
+
+      pinCode:
+        firstString(
+          organization.pin_code,
+          organization.pinCode,
+        ),
+    };
+
+  /* ---------------------------------------------------------------------- */
+  /* Status                                                                 */
+  /* ---------------------------------------------------------------------- */
+
+  const status =
+    normalizeStatus(
+      firstString(
+        organization.status,
+        organization.regulatory_status,
+      ),
+    );
+
+  /* ---------------------------------------------------------------------- */
+  /* Final tenant                                                           */
+  /* ---------------------------------------------------------------------- */
+
+  return {
+    id:
+      String(
+        pkid ??
+          organization.id ??
+          `tenant-${Date.now()}`,
       ),
 
-    ...(pkid !== undefined
-      ? { pkid }
-      : {}),
+    ...(pkid !== undefined ? { pkid } : {}),
 
     firstName: bankName,
     middleName: "",
@@ -275,13 +586,22 @@ export function mapOrganizationToTenant(
 
     employeeId: licenseNo,
 
-    email:o.contact_email ?? "",
+    email:
+      firstString(
+        organization.contact_email,
+      ),
 
-    mobile:o.contact_phone ?? "",
+    mobile:
+      firstString(
+        organization.contact_phone,
+      ),
 
     organization: bankName,
 
-    branches: [],
+    branches:
+      mapBranches(
+        organization.branches,
+      ),
 
     designation:
       "Relationship Manager",
@@ -289,55 +609,62 @@ export function mapOrganizationToTenant(
     status,
 
     createdAt:
-      o.created_at ??
+      firstString(
+        organization.created_at,
+      ) ||
       new Date().toISOString(),
 
     activity: [],
 
+    /* Bank */
     bankCode,
     bankName,
     bankType,
+
     legalName,
+
     panNo,
     gstNo,
     licenseNo,
 
-    website:
-      o.website ?? "",
+    website,
+    logoUrl,
 
-    logoUrl:
-      o.logo ??
-      o.logo_url ??
-      o.logoUrl ??
-      "",
-
+    /* Regulatory */
     regulatoryDetails,
+
+    /* Address */
     addressDetails,
 
+    /* Contact */
     contactEmail:
-      o.contact_email ?? "",
+      firstString(
+        organization.contact_email,
+      ),
 
     contactPhone:
-      o.contact_phone ?? "",
+      firstString(
+        organization.contact_phone,
+      ),
 
-    instituteName:
-      bankName,
-
-    instituteType:
-      bankType,
+    /* Compatibility */
+    instituteName: bankName,
+    instituteType: bankType,
 
     registrationNumber:
-      registrationNumber,
+      firstString(
+        organization.registration_id,
+        organization.registration_number,
+        licenseNo,
+      ),
 
-    cin:
-      cin,
+    cin,
 
     regulatoryAuthorityId:
-      o.regulatory_authority_id ??
-      o.regulatoryAuthorityId ??
-      o.regulatory_authority ??
-      "",
+      firstString(
+        organization.regulatory_authority_id,
+        organization.regulatoryAuthorityId,
+        organization.regulatory_authority,
+      ),
   };
-
-  return tenant;
 }
