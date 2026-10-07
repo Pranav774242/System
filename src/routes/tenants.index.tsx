@@ -48,7 +48,8 @@ export const Route = createFileRoute("/tenants/")({
       { title: "Bank Management — System Administrator Panel" },
       {
         name: "description",
-        content: "Create, search, sort and manage banks and NBFCs on the Allianza LOS platform.",
+        content:
+          "Create, search, sort and manage banks and NBFCs on the Allianza LOS platform.",
       },
       {
         property: "og:title",
@@ -56,7 +57,8 @@ export const Route = createFileRoute("/tenants/")({
       },
       {
         property: "og:description",
-        content: "Create, search and manage banks and NBFCs on the Allianza LOS platform.",
+        content:
+          "Create, search and manage banks and NBFCs on the Allianza LOS platform.",
       },
     ],
   }),
@@ -148,10 +150,10 @@ type OrganizationApiResponse = {
   gstNo?: string;
   gst?: string;
 
-  cin?: string;
-  CIN?: string;
-  cin_no?: string;
-  cin_number?: string;
+  // cin?: string;
+  // CIN?: string;
+  // cin_no?: string;
+  // cin_number?: string;
 
   regulatory_status?: string;
   status?: string;
@@ -217,7 +219,12 @@ function getBankType(organization: OrganizationApiResponse): string {
 }
 
 function getLicenseNumber(organization: OrganizationApiResponse): string {
-  return organization.license_no ?? organization.license_number ?? organization.licenseNo ?? "";
+  return (
+    organization.license_no ??
+    organization.license_number ??
+    organization.licenseNo ??
+    ""
+  );
 }
 
 function getRegistrationNumber(organization: OrganizationApiResponse): string {
@@ -230,26 +237,34 @@ function getRegistrationNumber(organization: OrganizationApiResponse): string {
 }
 
 function getPanNumber(organization: OrganizationApiResponse): string {
-  return organization.pan_no ?? organization.pan_number ?? organization.pan ?? "";
+  return (
+    organization.pan_no ?? organization.pan_number ?? organization.pan ?? ""
+  );
 }
 
 function getGstNumber(organization: OrganizationApiResponse): string {
   return (
-    organization.gst_no ?? organization.gstNo ?? organization.gst_number ?? organization.gst ?? ""
+    organization.gst_no ??
+    organization.gstNo ??
+    organization.gst_number ??
+    organization.gst ??
+    ""
   );
 }
 
-function getCINNumber(organization: OrganizationApiResponse): string {
-  return (
-    organization.CIN ?? organization.cin_no ?? organization.cin_number ?? organization.cin ?? ""
-  );
-}
+// function getCINNumber(organization: OrganizationApiResponse): string {
+//   return (
+//     organization.CIN ?? organization.cin_no ?? organization.cin_number ?? organization.cin ?? ""
+//   );
+// }
 
 /* -------------------------------------------------------------------------- */
 /* NORMALIZE BANK TENANT                                                       */
 /* -------------------------------------------------------------------------- */
 
-function normalizeBankTenant(organization: OrganizationApiResponse): BankTenant {
+function normalizeBankTenant(
+  organization: OrganizationApiResponse,
+): BankTenant {
   const mapped = mapOrganizationToTenant(organization) as BankTenant;
 
   const bankCode = getBankCode(organization);
@@ -260,7 +275,7 @@ function normalizeBankTenant(organization: OrganizationApiResponse): BankTenant 
   const licenseNumber = getLicenseNumber(organization);
   const panNumber = getPanNumber(organization);
   const gstNumber = getGstNumber(organization);
-  const cinNumber = getCINNumber(organization);
+  // const cinNumber = getCINNumber(organization);
 
   return {
     ...mapped,
@@ -277,7 +292,7 @@ function normalizeBankTenant(organization: OrganizationApiResponse): BankTenant 
     licenseNo: licenseNumber,
     panNo: panNumber,
     gstNo: gstNumber,
-    cin: cinNumber || mapped.cin || "",
+    // cin: cinNumber || mapped.cin || "",
 
     legalName: organization.legal_name ?? "",
 
@@ -407,7 +422,9 @@ function TenantsPage() {
 
       console.error("Failed to load organizations:", error);
 
-      toast.error(error instanceof Error ? error.message : "Failed to load banks.");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to load banks.",
+      );
 
       return undefined;
     } finally {
@@ -546,7 +563,7 @@ function TenantsPage() {
     { key: "instituteType", label: "Bank Type" },
     { key: "gstNo", label: "GST No." },
     { key: "licenseNo", label: "License No." },
-    { key: "cin", label: "CIN No." },
+    // { key: "cin", label: "CIN No." },
     { key: "status", label: "Status" },
     { key: null, label: "Action" },
     { key: null, label: "View Users" },
@@ -614,7 +631,8 @@ function TenantsPage() {
               <p className="font-medium">No banks match your filters</p>
 
               <p className="max-w-sm text-sm text-muted-foreground">
-                Try a different search term or status filter, or create a new bank.
+                Try a different search term or status filter, or create a new
+                bank.
               </p>
 
               <Button variant="outline" onClick={() => setDrawerOpen(true)}>
@@ -628,7 +646,10 @@ function TenantsPage() {
                 <thead className="bg-secondary/50">
                   <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
                     {columns.map((column, index) => (
-                      <th key={index} className="whitespace-nowrap px-4 py-3 font-medium">
+                      <th
+                        key={index}
+                        className="whitespace-nowrap px-4 py-3 font-medium"
+                      >
                         {column.key ? (
                           <button
                             type="button"
@@ -671,7 +692,9 @@ function TenantsPage() {
                       </td>
 
                       {/* Bank Type */}
-                      <td className="whitespace-nowrap px-4 py-3">{tenant.instituteType || "-"}</td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        {tenant.instituteType || "-"}
+                      </td>
 
                       {/* GST No. */}
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
@@ -684,9 +707,9 @@ function TenantsPage() {
                       </td>
 
                       {/* CIN No. */}
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                      {/* <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {tenant.cin || "-"}
-                      </td>
+                      </td> */}
 
                       {/* Status */}
                       <td className="whitespace-nowrap px-4 py-3">
@@ -700,7 +723,11 @@ function TenantsPage() {
                       >
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" aria-label="Row actions">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Row actions"
+                            >
                               <MoreHorizontal className="size-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -742,7 +769,11 @@ function TenantsPage() {
                         className="whitespace-nowrap px-4 py-3"
                         onClick={(event) => event.stopPropagation()}
                       >
-                        <Button variant="outline" size="sm" onClick={() => openUsers(tenant)}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openUsers(tenant)}
+                        >
                           <Users className="mr-1.5 size-4" />
                           View Users
                         </Button>
@@ -758,8 +789,8 @@ function TenantsPage() {
           {loaded && !loadingOrganizations && pageRows.length > 0 && (
             <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
               <p className="text-muted-foreground">
-                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, rows.length)} of{" "}
-                {rows.length}
+                Showing {(page - 1) * PAGE_SIZE + 1}–
+                {Math.min(page * PAGE_SIZE, rows.length)} of {rows.length}
               </p>
 
               <div className="flex items-center gap-2">
@@ -799,7 +830,9 @@ function TenantsPage() {
 
           const refreshedBanks = await loadOrganizations();
 
-          if (!refreshedBanks?.some((bank) => bank.bankCode === input.bankCode)) {
+          if (
+            !refreshedBanks?.some((bank) => bank.bankCode === input.bankCode)
+          ) {
             setApiTenants((currentBanks) =>
               currentBanks.some((bank) => bank.bankCode === input.bankCode)
                 ? currentBanks

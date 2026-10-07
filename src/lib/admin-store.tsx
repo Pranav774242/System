@@ -31,6 +31,7 @@ export type RegulatoryDetails = {
   directMemberIftas: string;
 
   micrCode: string;
+  micrNumber: string;
   micrCityCode: string;
   micrBranchCode: string;
 
@@ -286,18 +287,18 @@ const daysAgo = (
 /* EMPTY VALUES                                                               */
 /* -------------------------------------------------------------------------- */
 
-const emptyRegulatoryDetails =
-  (): RegulatoryDetails => ({
-    directClgMember: "",
-    directMemberIftas: "",
-    micrCode: "",
-    micrCityCode: "",
-    micrBranchCode: "",
-    ifscCode: "",
-    numberOfBranches: "",
-    sponsorBankForClg: "",
-    sponsorBankForIftas: "",
-  });
+const emptyRegulatoryDetails = (): RegulatoryDetails => ({
+  directClgMember: "",
+  directMemberIftas: "",
+  micrCode: "",
+  micrNumber: "",
+  micrCityCode: "",
+  micrBranchCode: "",
+  ifscCode: "",
+  numberOfBranches: "",
+  sponsorBankForClg: "",
+  sponsorBankForIftas: "",
+});
 
 const emptyAddressDetails =
   (): AddressDetails => ({
@@ -1043,14 +1044,13 @@ type OrganizationApiResponse = {
   direct_member_iftas?: string;
 
   micr_code?: string;
+  micr_number?: string;
   micr_city_code?: string;
   micr_branch_code?: string;
 
   ifsc_code?: string;
 
-  number_of_branches?:
-    | string
-    | number;
+  number_of_branches?: string | number;
 
   sponsor_bank_for_clg?: string;
   sponsor_bank_for_iftas?: string;
@@ -1154,48 +1154,28 @@ function mapOrganizationToTenant(
       ? "Active"
       : "Inactive";
 
-  const regulatoryDetails: RegulatoryDetails =
-    {
-      directClgMember:
-        organization.direct_clg_member ??
-        "",
+  const regulatoryDetails: RegulatoryDetails = {
+    directClgMember: organization.direct_clg_member ?? "",
 
-      directMemberIftas:
-        organization.direct_member_iftas ??
-        "",
+    directMemberIftas: organization.direct_member_iftas ?? "",
 
-      micrCode:
-        organization.micr_code ??
-        "",
+    micrCode: organization.micr_code ?? "",
 
-      micrCityCode:
-        organization.micr_city_code ??
-        "",
+    micrNumber: organization.micr_number ?? "",
 
-      micrBranchCode:
-        organization.micr_branch_code ??
-        "",
+    micrCityCode: organization.micr_city_code ?? "",
 
-      ifscCode:
-        organization.ifsc_code ??
-        "",
+    micrBranchCode: organization.micr_branch_code ?? "",
 
-      numberOfBranches:
-        organization.number_of_branches !=
-        null
-          ? String(
-              organization.number_of_branches,
-            )
-          : "",
+    ifscCode: organization.ifsc_code ?? "",
 
-      sponsorBankForClg:
-        organization.sponsor_bank_for_clg ??
-        "",
+    numberOfBranches:
+      organization.number_of_branches != null ? String(organization.number_of_branches) : "",
 
-      sponsorBankForIftas:
-        organization.sponsor_bank_for_iftas ??
-        "",
-    };
+    sponsorBankForClg: organization.sponsor_bank_for_clg ?? "",
+
+    sponsorBankForIftas: organization.sponsor_bank_for_iftas ?? "",
+  };
 
   const addressDetails: AddressDetails =
     {
