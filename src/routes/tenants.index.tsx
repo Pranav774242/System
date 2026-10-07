@@ -1342,7 +1342,7 @@ function TenantsPage() {
                                 }
                               >
                                 <Eye className="mr-2 size-4" />
-                                User View
+                                User   View
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>

@@ -114,14 +114,14 @@ type RawOrganization =
     ifsc_code?: string | null;
 
     number_of_branches?:
-      | string
-      | number
-      | null;
+    | string
+    | number
+    | null;
 
     no_of_branches?:
-      | string
-      | number
-      | null;
+    | string
+    | number
+    | null;
 
     sponsor_bank_for_clg?: string | null;
     sponsor_bank_for_iftas?: string | null;
@@ -233,8 +233,8 @@ function unwrapOrganization(
         ...(organization as RawOrganization),
         pkid: Number(
           organization["pkid"] ??
-            organization["id"] ??
-            pkid,
+          organization["id"] ??
+          pkid,
         ),
       };
     }
@@ -246,8 +246,8 @@ function unwrapOrganization(
         ...(bank as RawOrganization),
         pkid: Number(
           bank["pkid"] ??
-            bank["id"] ??
-            pkid,
+          bank["id"] ??
+          pkid,
         ),
       };
     }
@@ -256,8 +256,8 @@ function unwrapOrganization(
       ...(data as RawOrganization),
       pkid: Number(
         data["pkid"] ??
-          data["id"] ??
-          pkid,
+        data["id"] ??
+        pkid,
       ),
     };
   }
@@ -270,8 +270,8 @@ function unwrapOrganization(
       ...(organization as RawOrganization),
       pkid: Number(
         organization["pkid"] ??
-          organization["id"] ??
-          pkid,
+        organization["id"] ??
+        pkid,
       ),
     };
   }
@@ -283,8 +283,8 @@ function unwrapOrganization(
       ...(bank as RawOrganization),
       pkid: Number(
         bank["pkid"] ??
-          bank["id"] ??
-          pkid,
+        bank["id"] ??
+        pkid,
       ),
     };
   }
@@ -315,8 +315,8 @@ function buildBankUpdatePayload(
 
   const raw =
     currentRaw as
-      | Record<string, unknown>
-      | undefined;
+    | Record<string, unknown>
+    | undefined;
 
   const nested =
     getNestedRecord(
@@ -336,7 +336,7 @@ function buildBankUpdatePayload(
     asString(
       statusValue,
     ).toUpperCase() ===
-    "INACTIVE"
+      "INACTIVE"
       ? "INACTIVE"
       : "ACTIVE";
 
@@ -465,72 +465,72 @@ function buildBankUpdatePayload(
       regulatory?.directClgMember ??
       asString(
         raw?.["direct_clg_member"] ??
-          nested?.["direct_clg_member"],
+        nested?.["direct_clg_member"],
       ),
 
     direct_member_iftas:
       regulatory?.directMemberIftas ??
       asString(
         raw?.["direct_member_iftas"] ??
-          nested?.["direct_member_iftas"],
+        nested?.["direct_member_iftas"],
       ),
 
     micr_code:
       regulatory?.micrCode ??
       asString(
         raw?.["micr_code"] ??
-          nested?.["micr_code"],
+        nested?.["micr_code"],
       ),
 
     micr_number:
       regulatory?.micrNumber ??
       asString(
         raw?.["micr_number"] ??
-          nested?.["micr_number"],
+        nested?.["micr_number"],
       ),
 
     micr_city_code:
       regulatory?.micrCityCode ??
       asString(
         raw?.["micr_city_code"] ??
-          nested?.["micr_city_code"],
+        nested?.["micr_city_code"],
       ),
 
     micr_branch_code:
       regulatory?.micrBranchCode ??
       asString(
         raw?.["micr_branch_code"] ??
-          nested?.["micr_branch_code"],
+        nested?.["micr_branch_code"],
       ),
 
     ifsc_code:
       regulatory?.ifscCode ??
       asString(
         raw?.["ifsc_code"] ??
-          nested?.["ifsc_code"],
+        nested?.["ifsc_code"],
       ),
 
     number_of_branches:
       regulatory?.numberOfBranches ??
       asString(
         raw?.["number_of_branches"] ??
-          raw?.["no_of_branches"] ??
-          nested?.["number_of_branches"] ??
-          nested?.["no_of_branches"],
+        raw?.["no_of_branches"] ??
+        nested?.["number_of_branches"] ??
+        nested?.["no_of_branches"],
       ),
 
     sponsor_bank_for_clg:
       regulatory?.sponsorBankForClg ??
       asString(
         raw?.["sponsor_bank_for_clg"] ??
-          nested?.["sponsor_bank_for_clg"],
+        nested?.["sponsor_bank_for_clg"],
       ),
 
     sponsor_bank_for_iftas:
       regulatory?.sponsorBankForIftas ??
       asString(
         raw?.["sponsor_bank_for_iftas"] ??
-          nested?.["sponsor_bank_for_iftas"],
+        nested?.["sponsor_bank_for_iftas"],
       ),
 
     /* -------------------------------------------------------------------- */
@@ -563,7 +563,7 @@ function buildBankUpdatePayload(
         ?.landMark ??
       asString(
         raw?.["land_mark"] ??
-          raw?.["landmark"],
+        raw?.["landmark"],
       ),
 
     city:
@@ -675,13 +675,13 @@ async function updateBank(
     const message =
       isRecord(result.data)
         ? asString(
-            result.data["message"],
-          )
+          result.data["message"],
+        )
         : "";
 
     throw new Error(
       message ||
-        `Bank update failed with status ${result.response.status}.`,
+      `Bank update failed with status ${result.response.status}.`,
     );
   }
 
@@ -800,13 +800,13 @@ function TenantDetailsPage() {
           const message =
             isRecord(body)
               ? asString(
-                  body["message"],
-                )
+                body["message"],
+              )
               : "";
 
           throw new Error(
             message ||
-              `Failed to load bank details (${response.status}).`,
+            `Failed to load bank details (${response.status}).`,
           );
         }
 
@@ -995,10 +995,10 @@ function TenantDetailsPage() {
 
               const organizationId =
                 item[
-                  "organization_id"
+                "organization_id"
                 ] ??
                 item[
-                  "organizationId"
+                "organizationId"
                 ];
 
               return (
@@ -1043,7 +1043,7 @@ function TenantDetailsPage() {
         const bankId =
           Number(
             tenant.pkid ??
-              tenant.id,
+            tenant.id,
           );
 
         if (
@@ -1503,31 +1503,24 @@ function TenantDetailsPage() {
 
             <DetailItem
               label="MICR Code"
-              value={
-                regulatory?.micrCode
-              }
+              value={regulatory?.micrCode}
             />
 
             <DetailItem
               label="MICR Number"
-              value={
-                micrNumber
-              }
+              value={micrNumber}
             />
 
             <DetailItem
               label="MICR City Code"
-              value={
-                regulatory?.micrCityCode
-              }
+              value={regulatory?.micrCityCode}
             />
 
             <DetailItem
               label="MICR Branch Code"
-              value={
-                regulatory?.micrBranchCode
-              }
+              value={regulatory?.micrBranchCode}
             />
+
 
             <DetailItem
               label="IFSC Code"
@@ -1727,8 +1720,8 @@ function TenantDetailsPage() {
                     <div
                       key={String(
                         user.id ??
-                          user.pkid ??
-                          index,
+                        user.pkid ??
+                        index,
                       )}
                       className="flex items-center justify-between px-6 py-4"
                     >
@@ -1747,12 +1740,12 @@ function TenantDetailsPage() {
 
                           {(user.mobile ||
                             user.phone) && (
-                            <span className="flex items-center gap-1">
-                              <Phone className="h-3.5 w-3.5" />
-                              {user.mobile ||
-                                user.phone}
-                            </span>
-                          )}
+                              <span className="flex items-center gap-1">
+                                <Phone className="h-3.5 w-3.5" />
+                                {user.mobile ||
+                                  user.phone}
+                              </span>
+                            )}
                         </div>
                       </div>
 
@@ -1827,8 +1820,8 @@ function DetailItem({
 }) {
   const display =
     value === null ||
-    value === undefined ||
-    String(value).trim() === ""
+      value === undefined ||
+      String(value).trim() === ""
       ? "-"
       : String(value);
 
