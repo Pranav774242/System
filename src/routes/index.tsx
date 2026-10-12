@@ -98,8 +98,8 @@ function LoginPage() {
 
   const [step, setStep] = useState<1 | 2>(1);
 
-  const [email, setEmail] = useState("admin@bankinglos.com");
-  const [password, setPassword] = useState("demo1234");
+  const [email, setEmail] = useState("admin@losplatform.com");
+  const [password, setPassword] = useState("Admin@123");
 
   const [accessToken, setAccessToken] = useState<string | null>(null);
 

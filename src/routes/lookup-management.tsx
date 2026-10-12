@@ -4,7 +4,11 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { LookupTypePopup } from "@/components/LookupPopup";
-import { initialLookupData, type LookupItem, type LookupTypeForm } from "@/lib/lookup-data";
+import {
+  initialLookupData,
+  type LookupItem,
+  type LookupTypeForm,
+} from "@/lib/lookup-data";
 
 export const Route = createFileRoute("/lookup-management")({
   head: () => ({
@@ -56,10 +60,10 @@ function LookupManagementPage() {
     console.log("Popup Submitted:", data);
 
     /*
-     * For now we are only printing the data.
-     *
-     * Later your API call can be placed here.
-     */
+    * For now we are only printing the data.
+    *
+    * Later your API call can be placed here.
+    */
 
     const newLookup: LookupItem = {
       id: lookupData.length + 1,
@@ -73,7 +77,10 @@ function LookupManagementPage() {
   }
 
   return (
-    <AppShell title="Lookup Management" subtitle="Manage lookup types and lookup sub types">
+    <AppShell
+      title="Lookup Management"
+      subtitle="Manage lookup types and lookup sub types"
+    >
       <div className="space-y-6">
         {/* Main Card */}
         <section className="rounded-2xl border border-[#E2E6EE] bg-white shadow-[0_2px_10px_rgba(23,32,51,0.04)]">
@@ -93,32 +100,32 @@ function LookupManagementPage() {
               type="button"
               onClick={() => setPopupOpen(true)}
               className="
-                inline-flex
-                h-10
-                items-center
-                justify-center
-                rounded-lg
-                border
-                border-[#E2E6EE]
-                bg-accent
-                px-4
-                text-sm
-                font-medium
-                text-[#213B7A]
-                transition
-                duration-150
-                focus:outline-none
-                focus:ring-2
-                focus:ring-[#213B7A]/20
-              "
+                  inline-flex
+                  h-10
+                  items-center
+                  justify-center
+                  rounded-lg
+                  border
+                  border-[#E2E6EE]
+                  bg-accent
+                  px-4
+                  text-sm
+                  font-medium
+                  text-[#213B7A]
+                  transition
+                  duration-150
+                  focus:outline-none
+                  focus:ring-2
+                  focus:ring-[#213B7A]/20
+                "
             >
               Add Lookup
               <Plus className="size-4" />
             </button>
           </div>
           {/* bg-white
-                hover:border-[#213B7A]
-                hover:bg-[#F7F9FC] */}
+                  hover:border-[#213B7A]
+                  hover:bg-[#F7F9FC] */}
 
           {/* Form Section */}
           <div className="px-6 py-6 lg:px-7">
@@ -126,7 +133,7 @@ function LookupManagementPage() {
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 {/* Lookup Code */}
                 {/*
-                 */}
+                  */}
                 <div className="space-y-2">
                   <label
                     htmlFor="lookupSearch"
@@ -145,93 +152,93 @@ function LookupManagementPage() {
                     }}
                     placeholder="Search by lookup code or lookup name..."
                     className="
-      h-11
-w-[1200px]
-      rounded-lg
-      border
-      border-[#E2E6EE]
-      bg-white
-      px-3
-      text-sm
-      text-[#172033]
-      outline-none
-      transition
-      placeholder:text-[#98A2B3]
-      hover:border-[#C8CED9]
-      focus:border-[#213B7A]
-      focus:ring-2
-      focus:ring-[#213B7A]/10
-    "
+        h-11
+  w-[1200px]
+        rounded-lg
+        border
+        border-[#E2E6EE]
+        bg-white
+        px-3
+        text-sm
+        text-[#172033]
+        outline-none
+        transition
+        placeholder:text-[#98A2B3]
+        hover:border-[#C8CED9]
+        focus:border-[#213B7A]
+        focus:ring-2
+        focus:ring-[#213B7A]/10
+      "
                   />
                 </div>
 
                 {/* <div className="space-y-2">
-                  <label
-                    htmlFor="lookupCode"
-                    className="block text-[13px] font-medium text-[#667085]"
-                  >
-                    Lookup Code
-                  </label>
+                    <label
+                      htmlFor="lookupCode"
+                      className="block text-[13px] font-medium text-[#667085]"
+                    >
+                      Lookup Code
+                    </label>
 
-                  <input
-                    id="lookupCode"
-                    type="text"
-                    value={lookupCode}
-                    onChange={(event) => setLookupCode(event.target.value)}
-                    className="
-                      h-11
-                      w-full
-                      rounded-lg
-                      border
-                      border-[#E2E6EE]
-                      bg-white
-                      px-3
-                      text-sm
-                      text-[#172033]
-                      outline-none
-                      transition
-                      placeholder:text-[#98A2B3]
-                      hover:border-[#C8CED9]
-                      focus:border-[#213B7A]
-                      focus:ring-2
-                      focus:ring-[#213B7A]/10
-                    "
-                  />
-                </div> */}
+                    <input
+                      id="lookupCode"
+                      type="text"
+                      value={lookupCode}
+                      onChange={(event) => setLookupCode(event.target.value)}
+                      className="
+                        h-11
+                        w-full
+                        rounded-lg
+                        border
+                        border-[#E2E6EE]
+                        bg-white
+                        px-3
+                        text-sm
+                        text-[#172033]
+                        outline-none
+                        transition
+                        placeholder:text-[#98A2B3]
+                        hover:border-[#C8CED9]
+                        focus:border-[#213B7A]
+                        focus:ring-2
+                        focus:ring-[#213B7A]/10
+                      "
+                    />
+                  </div> */}
                 {/* Lookup Name */}
                 {/* <div className="space-y-2">
-                  <label
-                    htmlFor="lookupName"
-                    className="block text-[13px] font-medium text-[#667085]"
-                  >
-                    Lookup Name
-                  </label>
+                    <label
+                      htmlFor="lookupName"
+                      className="block text-[13px] font-medium text-[#667085]"
+                    >
+                      Lookup Name
+                    </label>
 
-                  <input
-                    id="lookupName"
-                    type="text"
-                    value={lookupName}
-                    onChange={(event) => setLookupName(event.target.value)}
-                    className="
-                      h-11
-                      w-full
-                      rounded-lg
-                      border
-                      border-[#E2E6EE]
-                      bg-white
-                      px-3
-                      text-sm
-                      text-[#172033]
-                      outline-none
-                      transition
-                      placeholder:text-[#98A2B3]
-                      hover:border-[#C8CED9]
-                      focus:border-[#213B7A]
-                      focus:ring-2
-                      focus:ring-[#213B7A]/10
-                    "
-                  />
-                </div> */}
+                    <input
+                      id="lookupName"
+                      type="text"
+                      value={lookupName}
+                      onChange={(event) => setLookupName(event.target.value)}
+                      className="
+                        h-11
+                        w-full
+                        rounded-lg
+                        border
+                        border-[#E2E6EE]
+                        bg-white
+                        px-3
+                        text-sm
+                        text-[#172033]
+                        outline-none
+                        transition
+                        placeholder:text-[#98A2B3]
+                        hover:border-[#C8CED9]
+                        focus:border-[#213B7A]
+                        focus:ring-2
+                        focus:ring-[#213B7A]/10
+                      "
+                    />
+                  </div> */}
               </div>
 
               {/* Table */}
@@ -242,47 +249,47 @@ w-[1200px]
                       <tr className="bg-[#F7F9FC]">
                         <th
                           className="
-                            w-[80px]
-                            border-b
-                            border-[#E2E6EE]
-                            px-4
-                            py-3
-                            text-center
-                            text-[12px]
-                            font-semibold
-                            text-[#667085]
-                          "
+                              w-[80px]
+                              border-b
+                              border-[#E2E6EE]
+                              px-4
+                              py-3
+                              text-center
+                              text-[12px]
+                              font-semibold
+                              text-[#667085]
+                            "
                         >
                           Sr
                         </th>
 
                         <th
                           className="
-                            w-[220px]
-                            border-b
-                            border-[#E2E6EE]
-                            px-4
-                            py-3
-                            text-left
-                            text-[12px]
-                            font-semibold
-                            text-[#667085]
-                          "
+                              w-[220px]
+                              border-b
+                              border-[#E2E6EE]
+                              px-4
+                              py-3
+                              text-left
+                              text-[12px]
+                              font-semibold
+                              text-[#667085]
+                            "
                         >
                           Lookup Code
                         </th>
 
                         <th
                           className="
-                            border-b
-                            border-[#E2E6EE]
-                            px-4
-                            py-3
-                            text-left
-                            text-[12px]
-                            font-semibold
-                            text-[#667085]
-                          "
+                              border-b
+                              border-[#E2E6EE]
+                              px-4
+                              py-3
+                              text-left
+                              text-[12px]
+                              font-semibold
+                              text-[#667085]
+                            "
                         >
                           Lookup Description
                         </th>
@@ -294,45 +301,45 @@ w-[1200px]
                         <tr
                           key={item.id}
                           className="
-                            h-[58px]
-                            transition-colors
-                            hover:bg-[#F7F9FC]
-                          "
+                              h-[58px]
+                              transition-colors
+                              hover:bg-[#F7F9FC]
+                            "
                         >
                           <td
                             className="
-                              border-b
-                              border-[#E2E6EE]
-                              px-4
-                              text-center
-                              text-sm
-                              text-[#667085]
-                            "
+                                border-b
+                                border-[#E2E6EE]
+                                px-4
+                                text-center
+                                text-sm
+                                text-[#667085]
+                              "
                           >
                             {index + 1}
                           </td>
 
                           <td
                             className="
-                              border-b
-                              border-[#E2E6EE]
-                              px-4
-                              text-sm
-                              font-medium
-                              text-[#172033]
-                            "
+                                border-b
+                                border-[#E2E6EE]
+                                px-4
+                                text-sm
+                                font-medium
+                                text-[#172033]
+                              "
                           >
                             {item.lookupCode}
                           </td>
 
                           <td
                             className="
-                              border-b
-                              border-[#E2E6EE]
-                              px-4
-                              text-sm
-                              text-[#667085]
-                            "
+                                border-b
+                                border-[#E2E6EE]
+                                px-4
+                                text-sm
+                                text-[#667085]
+                              "
                           >
                             {item.lookupDescription}
                           </td>
@@ -357,61 +364,61 @@ w-[1200px]
 
               {/* Actions */}
               {/* <div className="mt-6 flex flex-wrap justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  className="
-                    inline-flex
-                    h-10
-                    min-w-[92px]
-                    items-center
-                    justify-center
-                    rounded-lg
-                    border
-                    border-[#E2E6EE]
-                    bg-white
-                    px-4
-                    text-sm
-                    font-medium
-                    text-[#667085]
-                    transition
-                    duration-150
-                    hover:bg-[#F7F9FC]
-                    hover:text-[#172033]
-                    focus:outline-none
-                    focus:ring-2
-                    focus:ring-[#213B7A]/20
-                  "
-                >
-                  Cancel
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="
+                      inline-flex
+                      h-10
+                      min-w-[92px]
+                      items-center
+                      justify-center
+                      rounded-lg
+                      border
+                      border-[#E2E6EE]
+                      bg-white
+                      px-4
+                      text-sm
+                      font-medium
+                      text-[#667085]
+                      transition
+                      duration-150
+                      hover:bg-[#F7F9FC]
+                      hover:text-[#172033]
+                      focus:outline-none
+                      focus:ring-2
+                      focus:ring-[#213B7A]/20
+                    "
+                  >
+                    Cancel
+                  </button>
 
-                <button
-                  type="submit"
-                  className="
-                    inline-flex
-                    h-10
-                    min-w-[92px]
-                    items-center
-                    justify-center
-                    rounded-lg
-                    bg-[#213B7A]
-                    px-4
-                    text-sm
-                    font-medium
-                    text-white
-                    shadow-sm
-                    transition
-                    duration-150
-                    hover:bg-[#1B3269]
-                    focus:outline-none
-                    focus:ring-2
-                    focus:ring-[#213B7A]/20
-                  "
-                >
-                  Submit
-                </button>
-              </div> */}
+                  <button
+                    type="submit"
+                    className="
+                      inline-flex
+                      h-10
+                      min-w-[92px]
+                      items-center
+                      justify-center
+                      rounded-lg
+                      bg-[#213B7A]
+                      px-4
+                      text-sm
+                      font-medium
+                      text-white
+                      shadow-sm
+                      transition
+                      duration-150
+                      hover:bg-[#1B3269]
+                      focus:outline-none
+                      focus:ring-2
+                      focus:ring-[#213B7A]/20
+                    "
+                  >
+                    Submit
+                  </button>
+                </div> */}
             </form>
           </div>
         </section>

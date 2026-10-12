@@ -1,103 +1,255 @@
-import { createFileRoute, Link, useLocation, useNavigate } from "@tanstack/react-router";
-
 import {
-  ArrowLeft,
-  Calendar,
-  Clock,
-  Edit,
-  KeyRound,
-  Power,
-  PowerOff,
-  ShieldCheck,
-  UserRound,
-} from "lucide-react";
-
+  createFileRoute,
+  Link,
+  useLocation,
+  useNavigate,
+} from "@tanstack/react-router";
+import { ArrowLeft, Edit, Power, PowerOff, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/AppShell";
-
 import {
-  UserActivityItem,
   UserBooleanRow,
   UserDetailCard,
   UserDetailRow,
   UserStatusBadge,
 } from "@/components/UserDetailSections";
-
+import { UserEditDialog } from "@/components/UserEditDialog";
 import { Button } from "@/components/ui/button";
-
-import {
-  formatUserDate,
-  formatUserDateTime,
-  getUserBranch,
-  getUserDateOfBirth,
-  getUserName,
-  getUserRole,
-  getUserStatus,
-  getUserById,
-  type ApiUser,
-} from "@/lib/users-api";
+import { getAccessToken } from "@/lib/admin-store";
 
 export const Route = createFileRoute("/users/detail")({
   head: () => ({
     meta: [
-      {
-        title: "User Detail — System Administrator Panel",
-      },
+      { title: "User Detail — System Administrator Panel" },
       {
         name: "description",
-        content: "View complete user information, access details, security settings and activity.",
+        content:
+          "View complete user information, access details, security settings and activity.",
       },
     ],
   }),
-
   component: UserDetailPage,
 });
+
+/* ========================================================= */
+/* TYPES                                                      */
+/* ========================================================= */
 
 type UserRouteState = {
   userId?: number | string;
   organizationId?: number | string;
 };
 
+type DetailUser = {
+  id: number;
+  pkid?: number;
+  emp_no?: string;
+  organization_id?: number;
+  organization_code?: string;
+  organization_name?: string;
+  email?: string;
+  username?: string;
+  name?: string;
+  fullName?: string;
+  first_name?: string;
+  middle_name?: string;
+  last_name?: string;
+  mobile?: string;
+  gender?: string;
+  date_of_birth?: string;
+  dob?: string;
+  DOB?: string;
+  designation?: string;
+  role?: string;
+  role_id?: number;
+  role_name?: string;
+  status?: string;
+  is_active?: boolean;
+  login_branch?: string;
+  login_branch_id?: number;
+  login_branch_name?: string;
+  mbrAccess?: boolean;
+  m_br_access?: boolean;
+  multi_branch_access?: boolean;
+  two_fa_enabled?: boolean;
+  "2fA"?: boolean;
+  holiday_login?: boolean;
+  login_on_holidays?: boolean;
+  inactive_session_timeout?: number;
+  no_of_bad_logins?: number;
+  lastlogindate?: string;
+  last_login_date?: string;
+  last_login_time?: string;
+  created_by?: number;
+  created_date?: string;
+  created_at?: string;
+  modified_date?: string;
+  updated_at?: string;
+};
+
+/* ========================================================= */
+/* API (single call, lives in this page)                      */
+/* ========================================================= */
+
+const API_BASE =
+  "https://los-backend-355v.onrender.com/api/v1/administration/users";
+const STORAGE_KEY = "user-detail-ids";
+
+async function fetchUserDetail(
+  userId: string,
+  organizationId: string,
+  signal?: AbortSignal,
+): Promise<DetailUser | null> {
+  const token = getAccessToken();
+
+  if (!token) {
+    throw new Error("Unauthorized / session expired");
+  }
+
+  // GET /api/v1/administration/users/{userId}?organizationId={organizationId}
+  const url = `${API_BASE}/${encodeURIComponent(userId)}?organizationId=${encodeURIComponent(
+    organizationId,
+  )}`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    signal, // <-- restored
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (response.status === 401)
+    throw new Error("Unauthorized / session expired");
+  if (response.status === 403)
+    throw new Error("You do not have permission to view this user");
+  if (response.status === 404) return null;
+
+  if (!response.ok) {
+    let message = "";
+    try {
+      const body = await response.json();
+      if (typeof body?.message === "string") message = body.message;
+    } catch {
+      // ignore invalid JSON
+    }
+    throw new Error(message || `Unable to load user (${response.status})`);
+  }
+
+  const result = await response.json();
+
+  if (result?.success === false) {
+    throw new Error(result.message || "Unable to load user");
+  }
+
+  // Supports { data: {...} }, { data: [{...}] } or a plain user object
+  const data = result?.data ?? result;
+
+  if (Array.isArray(data)) return data[0] ?? null;
+
+  return data ?? null;
+}
+
+/* ========================================================= */
+/* HELPERS                                                    */
+/* ========================================================= */
+
+function getName(u: DetailUser) {
+  return (
+    u.fullName ||
+    u.name ||
+    [u.first_name, u.middle_name, u.last_name].filter(Boolean).join(" ") ||
+    "Unnamed User"
+  );
+}
+
+function getRole(u: DetailUser) {
+  return u.role_name || u.role || "—";
+}
+
+function getStatus(u: DetailUser) {
+  return u.status || (u.is_active ? "OPERATIVE" : "INACTIVE");
+}
+
+function getBranch(u: DetailUser) {
+  return u.login_branch_name || u.login_branch || "—";
+}
+
+function getDob(u: DetailUser) {
+  return u.date_of_birth || u.dob || u.DOB || "—";
+}
+
+function formatDate(value?: string) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatDateTime(value?: string) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/* ========================================================= */
+/* PAGE                                                       */
+/* ========================================================= */
+
 function UserDetailPage() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  /*
-   * User ID and Organization ID are received
-   * from the Users page through router state.
-   *
-   * Example:
-   *
-   * userId = 4
-   * organizationId = 10
-   */
-
+  // IDs sent from the Users page via router state
   const state = location.state as UserRouteState | undefined;
 
-  const userId = state?.userId;
-  const organizationId = state?.organizationId;
+  let userId = state?.userId;
+  let organizationId = state?.organizationId;
 
-  const [user, setUser] = useState<ApiUser | null>(null);
+  // Router state is lost on hard refresh, so fall back to sessionStorage
+  if (userId === undefined || organizationId === undefined) {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as UserRouteState;
+        userId = userId ?? parsed.userId;
+        organizationId = organizationId ?? parsed.organizationId;
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  const [user, setUser] = useState<DetailUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Edit popup state (must live INSIDE the component)
+  const [editOpen, setEditOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
   useEffect(() => {
+    const controller = new AbortController();
+
     async function loadUser() {
       try {
         setLoading(true);
         setError("");
 
-        console.log("=================================");
-        console.log("User Detail Page");
-        console.log("Received User ID:", userId);
-        console.log("Received Organization ID:", organizationId);
-        console.log("=================================");
-
-        /*
-         * Both IDs are required for the API.
-         */
         if (
           userId === undefined ||
           userId === null ||
@@ -107,19 +259,23 @@ function UserDetailPage() {
           setError(
             "User ID or Organization ID is missing. Please open the user from User Management.",
           );
-
           return;
         }
 
-        /*
-         * API:
-         *
-         * GET
-         * /api/v1/administration/users/{userId}?organizationId={organizationId}
-         */
-        const data = await getUserById(String(userId), String(organizationId));
+        try {
+          sessionStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({ userId, organizationId }),
+          );
+        } catch {
+          // ignore storage errors
+        }
 
-        console.log("User API Response:", data);
+        const data = await fetchUserDetail(
+          String(userId),
+          String(organizationId),
+          controller.signal,
+        );
 
         if (!data) {
           setError("The requested user could not be found.");
@@ -128,71 +284,50 @@ function UserDetailPage() {
 
         setUser(data);
       } catch (err) {
-        console.error("Failed to load user:", err);
+        if (err instanceof DOMException && err.name === "AbortError") return;
 
+        console.error("Failed to load user:", err);
         setError(err instanceof Error ? err.message : "Unable to load user.");
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }
 
     loadUser();
-  }, [userId, organizationId]);
 
-  /* -------------------------------- */
-  /* Loading                          */
-  /* -------------------------------- */
+    return () => controller.abort();
+  }, [userId, organizationId, refreshKey]);
+
+  /* ---------------- Loading ---------------- */
 
   if (loading) {
     return (
       <AppShell title="User Details" subtitle="Loading user information...">
         <div className="surface-card flex min-h-[400px] items-center justify-center">
           <div className="text-center">
-            <div
-              className="
-                mx-auto mb-3
-                size-8
-                animate-spin
-                rounded-full
-                border-2
-                border-muted
-                border-t-primary
-              "
-            />
-
+            <div className="mx-auto mb-3 size-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
             <p className="font-medium">Loading user...</p>
-
-            <p className="mt-1 text-sm text-muted-foreground">Fetching user information.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Fetching user information.
+            </p>
           </div>
         </div>
       </AppShell>
     );
   }
 
-  /* -------------------------------- */
-  /* Error / Not Found                */
-  /* -------------------------------- */
+  /* ---------------- Error / Not found ---------------- */
 
   if (!user || error) {
     return (
       <AppShell title="User Details" subtitle="User not found">
         <div className="surface-card flex flex-col items-center gap-3 p-16 text-center">
           <UserRound className="size-10 text-muted-foreground" />
-
           <p className="font-medium">This user could not be found</p>
-
           <p className="max-w-md text-sm text-muted-foreground">
             {error || "The requested user no longer exists."}
           </p>
-
-          <Button
-            variant="outline"
-            onClick={() =>
-              navigate({
-                to: "/users",
-              })
-            }
-          >
+          <Button variant="outline" onClick={() => navigate({ to: "/users" })}>
             <ArrowLeft className="size-4" />
             Back to User Management
           </Button>
@@ -201,19 +336,14 @@ function UserDetailPage() {
     );
   }
 
-  /* -------------------------------- */
-  /* User Data                        */
-  /* -------------------------------- */
+  /* ---------------- User data ---------------- */
 
-  const name = getUserName(user);
-
-  const role = getUserRole(user);
-
-  const status = getUserStatus(user);
-
-  const branch = getUserBranch(user);
-
-  const isActive = user.is_active === true || status === "ACTIVE" || status === "OPERATIVE";
+  const name = getName(user);
+  const role = getRole(user);
+  const status = getStatus(user);
+  const branch = getBranch(user);
+  const isActive =
+    user.is_active === true || status === "ACTIVE" || status === "OPERATIVE";
 
   const initials =
     name
@@ -226,73 +356,29 @@ function UserDetailPage() {
   return (
     <AppShell title={name} subtitle={user.designation || "User Details"}>
       <div className="space-y-6">
-        {/* -------------------------------- */}
-        {/* Back                             */}
-        {/* -------------------------------- */}
-
         <Link
           to="/users"
-          className="
-            inline-flex
-            items-center
-            gap-2
-            text-sm
-            font-medium
-            text-muted-foreground
-            transition-colors
-            hover:text-foreground
-          "
+          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="size-4" />
           Back to User Management
         </Link>
 
-        {/* -------------------------------- */}
-        {/* Header                           */}
-        {/* -------------------------------- */}
-
-        <div
-          className="
-            surface-card
-            animate-rise
-            flex
-            flex-col
-            gap-4
-            p-6
-            sm:flex-row
-            sm:items-center
-            sm:justify-between
-          "
-        >
+        {/* Header */}
+        <div className="surface-card animate-rise flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            {/* Avatar */}
-
-            <span
-              className="
-                grid
-                size-14
-                shrink-0
-                place-items-center
-                rounded-2xl
-                bg-primary
-                text-lg
-                font-bold
-                text-primary-foreground
-              "
-            >
+            <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-primary text-lg font-bold text-primary-foreground">
               {initials}
             </span>
 
             <div>
               <div className="flex flex-wrap items-center gap-3">
                 <h2 className="text-xl font-bold tracking-tight">{name}</h2>
-
                 <UserStatusBadge status={status} active={isActive} />
               </div>
 
               <p className="mt-1 text-sm text-muted-foreground">
                 {user.designation || "User"}
-
                 {user.emp_no && (
                   <>
                     {" · "}
@@ -303,24 +389,20 @@ function UserDetailPage() {
             </div>
           </div>
 
-          {/* Actions */}
-
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                toast.info("Edit User can be connected to your existing UserFormDrawer.");
-              }}
-            >
+            {/* Edit button opens the popup */}
+            <Button variant="outline" onClick={() => setEditOpen(true)}>
               <Edit className="size-4" />
               Edit
             </Button>
 
             <Button
               variant="outline"
-              onClick={() => {
-                toast.info("Status action is ready to connect to the user status API.");
-              }}
+              onClick={() =>
+                toast.info(
+                  "Status action is ready to connect to the user status API.",
+                )
+              }
             >
               {isActive ? (
                 <>
@@ -337,119 +419,104 @@ function UserDetailPage() {
           </div>
         </div>
 
-        {/* -------------------------------- */}
-        {/* Information Cards               */}
-        {/* -------------------------------- */}
-
+        {/* Cards */}
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* -------------------------------- */}
-          {/* Personal Details                 */}
-          {/* -------------------------------- */}
-
           <UserDetailCard title="Personal Details">
             <UserDetailRow label="Full Name" value={name} />
-
-            {/* <UserDetailRow label="First Name" value={user.first_name ?? null} /> */}
-
-            {/* <UserDetailRow label="Middle Name" value={user.middle_name ?? null} /> */}
-
-            {/* <UserDetailRow label="Last Name" value={user.last_name ?? null} /> */}
-
-            <UserDetailRow label="Date of Birth" value={getUserDateOfBirth(user)} />
-
+            <UserDetailRow label="Date of Birth" value={getDob(user)} />
             <UserDetailRow label="Gender" value={user.gender ?? null} />
-
-            <UserDetailRow label="Employee Number" value={user.emp_no ?? null} />
-
+            <UserDetailRow
+              label="Employee Number"
+              value={user.emp_no ?? null}
+            />
             <UserDetailRow label="Email" value={user.email ?? null} />
-
             <UserDetailRow label="Mobile Number" value={user.mobile ?? null} />
           </UserDetailCard>
 
-          {/* -------------------------------- */}
-          {/* Organization Details             */}
-          {/* -------------------------------- */}
-
           <UserDetailCard title="Organization Details">
-            <UserDetailRow label="Organization Name" value={user.organization_name ?? null} />
-
-            <UserDetailRow label="Organization Code" value={user.organization_code ?? null} />
-
-            {/* <UserDetailRow label="Bank ID" value={user.organization_id ?? organizationId ?? null} /> */}
-
-            <UserDetailRow label="Designation" value={user.designation ?? null} />
-
+            <UserDetailRow
+              label="Organization Name"
+              value={user.organization_name ?? null}
+            />
+            <UserDetailRow
+              label="Organization Code"
+              value={user.organization_code ?? null}
+            />
+            <UserDetailRow
+              label="Designation"
+              value={user.designation ?? null}
+            />
             <UserDetailRow label="Role" value={role} />
-
-            {/* <UserDetailRow label="Role ID" value={user.role_id ?? null} /> */}
-
             <UserDetailRow label="Status" value={status} />
-
             <UserDetailRow label="Login Branch" value={branch} />
-
-            <UserDetailRow label="Login Branch ID" value={user.login_branch_id ?? null} />
+            <UserDetailRow
+              label="Login Branch ID"
+              value={user.login_branch_id ?? null}
+            />
           </UserDetailCard>
-
-          {/* -------------------------------- */}
-          {/* Login & Access                   */}
-          {/* -------------------------------- */}
 
           <UserDetailCard title="Login & Access">
             <UserDetailRow label="Username" value={user.username ?? null} />
-
             <UserBooleanRow
               label="2FA Enabled"
               value={user.two_fa_enabled ?? user["2fA"] ?? false}
             />
-
-            <UserBooleanRow label="Multi Branch Access" value={user.multi_branch_access ?? false} />
-
+            <UserBooleanRow
+              label="Multi Branch Access"
+              value={user.multi_branch_access ?? false}
+            />
             <UserBooleanRow
               label="MBR Access"
               value={user.mbrAccess ?? user.m_br_access ?? false}
             />
-
             <UserBooleanRow
               label="Holiday Login"
               value={user.holiday_login ?? user.login_on_holidays ?? false}
             />
-
             <UserDetailRow
               label="Session Timeout"
               value={
-                user.inactive_session_timeout ? `${user.inactive_session_timeout} seconds` : "—"
+                user.inactive_session_timeout
+                  ? `${user.inactive_session_timeout} seconds`
+                  : "—"
               }
             />
-
-            <UserDetailRow label="Bad Login Attempts" value={user.no_of_bad_logins ?? null} />
+            <UserDetailRow
+              label="Bad Login Attempts"
+              value={user.no_of_bad_logins ?? null}
+            />
           </UserDetailCard>
-
-          {/* -------------------------------- */}
-          {/* Login Information                */}
-          {/* -------------------------------- */}
 
           <UserDetailCard title="Login Information">
             <UserDetailRow
               label="Last Login Date"
-              value={formatUserDate(user.last_login_date || user.lastlogindate)}
+              value={formatDate(user.last_login_date || user.lastlogindate)}
             />
-
-            <UserDetailRow label="Last Login Time" value={user.last_login_time ?? null} />
-
+            <UserDetailRow
+              label="Last Login Time"
+              value={user.last_login_time ?? null}
+            />
             <UserDetailRow
               label="Created Date"
-              value={formatUserDateTime(user.created_date || user.created_at)}
+              value={formatDateTime(user.created_date || user.created_at)}
             />
-
             <UserDetailRow label="Created By" value={user.created_by ?? null} />
-
             <UserDetailRow
               label="Modified Date"
-              value={formatUserDateTime(user.modified_date || user.updated_at)}
+              value={formatDateTime(user.modified_date || user.updated_at)}
             />
           </UserDetailCard>
         </div>
       </div>
+
+      {/* Edit popup: rendered once, controlled by editOpen */}
+      <UserEditDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        user={user}
+        organizationId={organizationId}
+        onSaved={() => setRefreshKey((k) => k + 1)}
+      />
     </AppShell>
   );
 }

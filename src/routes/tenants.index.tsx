@@ -565,7 +565,7 @@ function TenantsPage() {
     { key: "licenseNo", label: "License No." },
     // { key: "cin", label: "CIN No." },
     { key: "status", label: "Status" },
-    { key: null, label: "Action" },
+    // { key: null, label: "Action" },
     { key: null, label: "View Users" },
   ];
 
@@ -661,6 +661,7 @@ function TenantsPage() {
                           </button>
                         ) : (
                           column.label
+                          
                         )}
                       </th>
                     ))}
@@ -717,7 +718,7 @@ function TenantsPage() {
                       </td>
 
                       {/* Actions */}
-                      <td
+                      {/* <td
                         className="px-4 py-3 text-right"
                         onClick={(event) => event.stopPropagation()}
                       >
@@ -762,7 +763,7 @@ function TenantsPage() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      </td>
+                      </td> */}
 
                       {/* View Users */}
                       <td

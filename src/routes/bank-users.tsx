@@ -1,4 +1,10 @@
-import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
+
+import {
+  createFileRoute,
+  Link,
+  useLocation,
+  useNavigate,
+} from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -14,6 +20,7 @@ import {
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/AppShell";
+import { UserFormDrawer } from "@/components/UserFormDrawer";
 import { StatusBadge } from "@/components/StatusBadge";
 import { getAccessToken } from "@/lib/admin-store";
 
@@ -53,10 +60,15 @@ export const Route = createFileRoute("/bank-users")({
  */
 const CONTEXT_KEY = "bank-users-context";
 
-function useOrgContext(): { organizationId: string; bankName?: string } {
+function useOrgContext(): {
+  organizationId: string;
+  bankName?: string;
+  organizationCode?: string;
+} {
   const state = useLocation({ select: (l) => l.state }) as {
     organizationId?: string;
     bankName?: string;
+    organizationCode?: string;
   };
 
   return useMemo(() => {
@@ -64,6 +76,7 @@ function useOrgContext(): { organizationId: string; bankName?: string } {
       const ctx = {
         organizationId: state.organizationId,
         bankName: state.bankName,
+        organizationCode: state.organizationCode,
       };
       try {
         sessionStorage.setItem(CONTEXT_KEY, JSON.stringify(ctx));
@@ -80,8 +93,12 @@ function useOrgContext(): { organizationId: string; bankName?: string } {
       /* ignore */
     }
 
-    return { organizationId: "", bankName: undefined };
-  }, [state?.organizationId, state?.bankName]);
+    return {
+      organizationId: "",
+      bankName: undefined,
+      organizationCode: undefined,
+    };
+  }, [state?.organizationId, state?.bankName, state?.organizationCode]);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -92,6 +109,8 @@ type ApiRecord = Record<string, unknown>;
 
 type BankUser = {
   key: string;
+  /** API user ID (record.id), not the organization pkid. */
+  userId: string;
   name: string;
   role: string;
   branch: string;
@@ -102,7 +121,8 @@ type BankUser = {
 
 const PAGE_SIZE = 10;
 
-const USERS_API_BASE = "https://los-backend-355v.onrender.com/api/v1/administration/users";
+const USERS_API_BASE =
+  "https://los-backend-355v.onrender.com/api/v1/administration/users";
 
 /* -------------------------------------------------------------------------- */
 /* HELPERS — tolerant mapping of the users API response                       */
@@ -121,7 +141,8 @@ function pickText(record: ApiRecord, keys: string[]): string {
 
     if (value && typeof value === "object" && !Array.isArray(value)) {
       const nested = value as ApiRecord;
-      const nestedText = text(nested.name) || text(nested.title) || text(nested.role_name);
+      const nestedText =
+        text(nested.name) || text(nested.title) || text(nested.role_name);
       if (nestedText) return nestedText;
       continue;
     }
@@ -155,7 +176,9 @@ function resolveStatus(record: ApiRecord): "Active" | "Inactive" {
   const raw = text(record.status).toLowerCase();
 
   if (raw) {
-    return raw === "active" || raw === "enabled" || raw === "true" ? "Active" : "Inactive";
+    return raw === "active" || raw === "enabled" || raw === "true"
+      ? "Active"
+      : "Inactive";
   }
 
   return "Active";
@@ -164,14 +187,23 @@ function resolveStatus(record: ApiRecord): "Active" | "Inactive" {
 function normalizeUser(record: ApiRecord, index: number): BankUser {
   const fullName =
     pickText(record, ["full_name", "fullName", "name", "display_name"]) ||
-    [text(record.first_name), text(record.last_name)].filter(Boolean).join(" ") ||
+    [text(record.first_name), text(record.last_name)]
+      .filter(Boolean)
+      .join(" ") ||
     pickText(record, ["username", "user_name"]);
 
   const email = pickText(record, ["email", "email_id", "contact_email"]);
 
+  const userId =
+    text(record.id) ||
+    text(record.user_id) ||
+    text(record.userId) ||
+    text(record.pkid);
+
   return {
-    key:
-      text(record.pkid) || text(record.id) || text(record.user_id) || `${email || "user"}-${index}`,
+    // Use the actual user ID for the row identity where possible.
+    key: userId || `${email || "user"}-${index}`,
+    userId,
     name: fullName || email || "-",
     role: pickText(record, ["role_name", "role", "roles", "designation"]),
     branch: pickText(record, ["branch_name", "branch", "branch_code"]),
@@ -221,8 +253,43 @@ function csvCell(value: string): string {
 /* -------------------------------------------------------------------------- */
 
 function BankUsersPage() {
-  /* Organization ID passed from the Bank list (selected record's pkid). */
-  const { organizationId, bankName } = useOrgContext();
+  const navigate = useNavigate();
+
+  /* Organization ID passed from the Bank list (selected bank's pkid). */
+  const { organizationId, bankName, organizationCode } = useOrgContext();
+
+  const openUserDetails = useCallback(
+    (user: BankUser) => {
+      if (!organizationId) {
+        toast.error("Organization ID is missing. Please select a bank first.");
+        return;
+      }
+
+      if (!user.userId) {
+        toast.error("User ID is missing for this row.");
+        console.error("Cannot open user details; missing user ID:", user);
+        return;
+      }
+
+      console.log("Opening user detail page");
+      console.log("Organization ID (selected bank pkid):", organizationId);
+      console.log("User ID (selected user's id):", user.userId);
+      console.log(
+        "Detail API URL:",
+        `${USERS_API_BASE}/${encodeURIComponent(user.userId)}?organizationId=${encodeURIComponent(organizationId)}`,
+      );
+
+      void navigate({
+        to: "/users/detail",
+        state: {
+          userId: user.userId,
+          organizationId,
+        },
+      });
+    },
+    [navigate, organizationId],
+  );
+  const [userDrawerOpen, setUserDrawerOpen] = useState(false);
 
   const [users, setUsers] = useState<BankUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -315,7 +382,8 @@ function BankUsersPage() {
 
       console.error("Failed to load users:", err);
 
-      const message = err instanceof Error ? err.message : "Failed to load users.";
+      const message =
+        err instanceof Error ? err.message : "Failed to load users.";
 
       setError(message);
       toast.error(message);
@@ -344,7 +412,8 @@ function BankUsersPage() {
   );
 
   const branchOptions = useMemo(
-    () => Array.from(new Set(users.map((u) => u.branch).filter(Boolean))).sort(),
+    () =>
+      Array.from(new Set(users.map((u) => u.branch).filter(Boolean))).sort(),
     [users],
   );
 
@@ -393,7 +462,9 @@ function BankUsersPage() {
     const header = ["User", "Employee ID", "Role", "Branch", "Email", "Status"];
 
     const lines = rows.map((u) =>
-      [u.name, u.employeeId, u.role, u.branch, u.email, u.status].map(csvCell).join(","),
+      [u.name, u.employeeId, u.role, u.branch, u.email, u.status]
+        .map(csvCell)
+        .join(","),
     );
 
     const blob = new Blob([[header.join(","), ...lines].join("\n")], {
@@ -447,7 +518,7 @@ function BankUsersPage() {
           </Button>
 
           <Button
-            onClick={() => toast.info("Add user is not available yet.")}
+            onClick={() => setUserDrawerOpen(true)}
             className="bg-accent text-accent-foreground hover:bg-accent/90"
           >
             <Plus className="size-4" />
@@ -567,8 +638,18 @@ function BankUsersPage() {
               <table className="w-full text-sm">
                 <thead className="bg-secondary/50">
                   <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
-                    {["User", "Role", "Branch", "Email", "Status", "Actions"].map((label) => (
-                      <th key={label} className="whitespace-nowrap px-4 py-3 font-medium">
+                    {[
+                      "User",
+                      "Role",
+                      "Branch",
+                      "Email",
+                      "Status",
+                      "Actions",
+                    ].map((label) => (
+                      <th
+                        key={label}
+                        className="whitespace-nowrap px-4 py-3 font-medium"
+                      >
                         {label}
                       </th>
                     ))}
@@ -587,15 +668,26 @@ function BankUsersPage() {
                           <span className="grid size-7 place-items-center rounded-full border border-border bg-secondary text-[10px] font-medium text-muted-foreground">
                             {initials(user.name)}
                           </span>
-                          <span className="font-medium">{user.name}</span>
+                          <button
+                            type="button"
+                            className="font-medium text-left hover:text-primary hover:underline"
+                            onClick={() => openUserDetails(user)}
+                            title={`View details for ${user.name}`}
+                          >
+                            {user.name}
+                          </button>
                         </div>
                       </td>
 
                       {/* Role */}
-                      <td className="whitespace-nowrap px-4 py-3">{user.role || "-"}</td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        {user.role || "-"}
+                      </td>
 
                       {/* Branch */}
-                      <td className="whitespace-nowrap px-4 py-3">{user.branch || "-"}</td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        {user.branch || "-"}
+                      </td>
 
                       {/* Email */}
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
@@ -614,7 +706,7 @@ function BankUsersPage() {
                             variant="ghost"
                             size="icon"
                             aria-label="View user"
-                            onClick={() => toast.info("User details are not available yet.")}
+                            onClick={() => openUserDetails(user)}
                           >
                             <Eye className="size-4" />
                           </Button>
@@ -623,7 +715,9 @@ function BankUsersPage() {
                             variant="ghost"
                             size="icon"
                             aria-label="Edit user"
-                            onClick={() => toast.info("Editing users is not available yet.")}
+                            onClick={() =>
+                              toast.info("Editing users is not available yet.")
+                            }
                           >
                             <Pencil className="size-4" />
                           </Button>
@@ -632,7 +726,11 @@ function BankUsersPage() {
                             variant="ghost"
                             size="icon"
                             aria-label="Manage access"
-                            onClick={() => toast.info("Access management is not available yet.")}
+                            onClick={() =>
+                              toast.info(
+                                "Access management is not available yet.",
+                              )
+                            }
                           >
                             <Lock className="size-4" />
                           </Button>
@@ -649,8 +747,8 @@ function BankUsersPage() {
           {!loading && !error && pageRows.length > 0 && (
             <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
               <p className="text-muted-foreground">
-                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, rows.length)} of{" "}
-                {rows.length}
+                Showing {(page - 1) * PAGE_SIZE + 1}–
+                {Math.min(page * PAGE_SIZE, rows.length)} of {rows.length}
               </p>
 
               <div className="flex items-center gap-2">
@@ -680,6 +778,20 @@ function BankUsersPage() {
           )}
         </div>
       </div>
+
+      <UserFormDrawer
+        open={userDrawerOpen}
+        bank={{
+          id: Number(organizationId),
+          pkid: Number(organizationId),
+          instituteName: displayName,
+          organization_code: organizationCode ?? "",
+        }}
+        onOpenChange={(nextOpen) => {
+          setUserDrawerOpen(nextOpen);
+          if (!nextOpen) void loadUsers();
+        }}
+      />
     </AppShell>
   );
 }

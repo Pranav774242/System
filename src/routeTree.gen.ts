@@ -17,7 +17,6 @@ import { Route as LookupManagementRouteImport } from './routes/lookup-management
 import { Route as TenantsIndexRouteImport } from './routes/tenants.index'
 import { Route as TenantsTenantIdRouteImport } from './routes/tenants.$tenantId'
 import { Route as UsersIndexRouteImport } from './routes/users.index'
-import { Route as UsersUserIdRouteImport } from './routes/users.$userId'
 import { Route as UsersDetailRouteImport } from './routes/users/detail'
 
 const IndexRoute = IndexRouteImport.update({
@@ -60,11 +59,6 @@ const UsersIndexRoute = UsersIndexRouteImport.update({
   path: '/users/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const UsersUserIdRoute = UsersUserIdRouteImport.update({
-  id: '/users/$userId',
-  path: '/users/$userId',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const UsersDetailRoute = UsersDetailRouteImport.update({
   id: '/users/detail',
   path: '/users/detail',
@@ -78,7 +72,6 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/lookup-management': typeof LookupManagementRoute
   '/tenants/$tenantId': typeof TenantsTenantIdRoute
-  '/users/$userId': typeof UsersUserIdRoute
   '/users/detail': typeof UsersDetailRoute
   '/tenants/': typeof TenantsIndexRoute
   '/users/': typeof UsersIndexRoute
@@ -90,7 +83,6 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/lookup-management': typeof LookupManagementRoute
   '/tenants/$tenantId': typeof TenantsTenantIdRoute
-  '/users/$userId': typeof UsersUserIdRoute
   '/users/detail': typeof UsersDetailRoute
   '/tenants': typeof TenantsIndexRoute
   '/users': typeof UsersIndexRoute
@@ -103,7 +95,6 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/lookup-management': typeof LookupManagementRoute
   '/tenants/$tenantId': typeof TenantsTenantIdRoute
-  '/users/$userId': typeof UsersUserIdRoute
   '/users/detail': typeof UsersDetailRoute
   '/tenants/': typeof TenantsIndexRoute
   '/users/': typeof UsersIndexRoute
@@ -117,7 +108,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/lookup-management'
     | '/tenants/$tenantId'
-    | '/users/$userId'
     | '/users/detail'
     | '/tenants/'
     | '/users/'
@@ -129,7 +119,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/lookup-management'
     | '/tenants/$tenantId'
-    | '/users/$userId'
     | '/users/detail'
     | '/tenants'
     | '/users'
@@ -141,7 +130,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/lookup-management'
     | '/tenants/$tenantId'
-    | '/users/$userId'
     | '/users/detail'
     | '/tenants/'
     | '/users/'
@@ -154,7 +142,6 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   LookupManagementRoute: typeof LookupManagementRoute
   TenantsTenantIdRoute: typeof TenantsTenantIdRoute
-  UsersUserIdRoute: typeof UsersUserIdRoute
   UsersDetailRoute: typeof UsersDetailRoute
   TenantsIndexRoute: typeof TenantsIndexRoute
   UsersIndexRoute: typeof UsersIndexRoute
@@ -218,13 +205,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsersIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/users/$userId': {
-      id: '/users/$userId'
-      path: '/users/$userId'
-      fullPath: '/users/$userId'
-      preLoaderRoute: typeof UsersUserIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/users/detail': {
       id: '/users/detail'
       path: '/users/detail'
@@ -242,7 +222,6 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   LookupManagementRoute: LookupManagementRoute,
   TenantsTenantIdRoute: TenantsTenantIdRoute,
-  UsersUserIdRoute: UsersUserIdRoute,
   UsersDetailRoute: UsersDetailRoute,
   TenantsIndexRoute: TenantsIndexRoute,
   UsersIndexRoute: UsersIndexRoute,

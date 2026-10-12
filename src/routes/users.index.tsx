@@ -1,14 +1,24 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-
-import { Search, Users } from "lucide-react";
-
+import {
+  Eye,
+  MoreHorizontal,
+  Pencil,
+  Search,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { AppShell } from "@/components/AppShell";
-
 import { Input } from "@/components/ui/input";
 
-import { getUsers, getUserName, getUserRole, getUserStatus, type ApiUser } from "@/lib/users-api";
+import {
+  getUsers,
+  getUserName,
+  getUserRole,
+  getUserStatus,
+  type ApiUser,
+} from "@/lib/users-api";
 
 export const Route = createFileRoute("/users/")({
   head: () => ({
@@ -26,14 +36,16 @@ export const Route = createFileRoute("/users/")({
   component: UsersPage,
 });
 
+/* ========================================================= */
+/* USERS PAGE                                                 */
+/* ========================================================= */
+
 function UsersPage() {
   const navigate = useNavigate();
 
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [query, setQuery] = useState("");
-
   const [loading, setLoading] = useState(true);
-
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -46,6 +58,7 @@ function UsersPage() {
       setError("");
 
       const data = await getUsers();
+      console.log("Fetched users:", data);
 
       setUsers(data);
     } catch (error) {
@@ -56,6 +69,10 @@ function UsersPage() {
       setLoading(false);
     }
   }
+
+  /* ------------------------------------------------------- */
+  /* Filter users                                             */
+  /* ------------------------------------------------------- */
 
   const rows = useMemo(() => {
     const value = query.trim().toLowerCase();
@@ -91,12 +108,90 @@ function UsersPage() {
     );
   }, [users, query]);
 
-  console.log(users);
+  /* ------------------------------------------------------- */
+  /* View user                                                */
+  /* ------------------------------------------------------- */
+
+  function handleViewUser(user: ApiUser) {
+    console.log("=================================");
+    console.log("VIEW USER");
+    console.log("Sending User ID:", user.id);
+    console.log("Sending Organization ID:", user.organization_id);
+    console.log("=================================");
+
+    navigate({
+      to: "/users/detail",
+      state: {
+        userId: user.id,
+        organizationId: user.organization_id,
+      },
+    });
+  }
+
+  /* ------------------------------------------------------- */
+  /* Edit user                                                */
+  /* ------------------------------------------------------- */
+
+  function handleEditUser(user: ApiUser) {
+    console.log("=================================");
+    console.log("EDIT USER");
+    console.log("Sending User ID:", user.id);
+    console.log("Sending Organization ID:", user.organization_id);
+    console.log("=================================");
+
+    navigate({
+      to: "/users/edit",
+      state: {
+        userId: user.id,
+        organizationId: user.organization_id,
+      },
+    });
+  }
+
+  /* ------------------------------------------------------- */
+  /* Delete user                                              */
+  /* ------------------------------------------------------- */
+
+  function handleDeleteUser(user: ApiUser) {
+    console.log("=================================");
+    console.log("DELETE USER");
+    console.log("User ID:", user.id);
+    console.log("Organization ID:", user.organization_id);
+    console.log("=================================");
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${getUserName(user)}?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    /*
+     * Add your DELETE API here.
+     *
+     * Example:
+     *
+     * await deleteUser(user.id, user.organization_id);
+     *
+     * Then reload users:
+     *
+     * await loadUsers();
+     */
+
+    console.log("Delete confirmed for user:", user.id);
+  }
 
   return (
-    <AppShell title="User Management" subtitle={`${users.length} users added to the platform`}>
+    <AppShell
+      title="User Management"
+      subtitle={`${users.length} users added to the platform`}
+    >
       <div className="space-y-4">
-        {/* Search */}
+        {/* ================================================= */}
+        {/* SEARCH                                            */}
+        {/* ================================================= */}
+
         <div className="relative w-full max-w-xl">
           <Search
             className="
@@ -116,7 +211,10 @@ function UsersPage() {
           />
         </div>
 
-        {/* Error */}
+        {/* ================================================= */}
+        {/* ERROR                                             */}
+        {/* ================================================= */}
+
         {error && (
           <div
             className="
@@ -134,7 +232,10 @@ function UsersPage() {
           </div>
         )}
 
-        {/* Table */}
+        {/* ================================================= */}
+        {/* TABLE                                             */}
+        {/* ================================================= */}
+
         <div className="surface-card animate-rise overflow-hidden">
           {loading ? (
             <LoadingState />
@@ -142,89 +243,102 @@ function UsersPage() {
             <EmptyState searching={Boolean(query)} />
           ) : (
             <div className="w-full overflow-x-auto">
-              <table className="w-full min-w-[1450px] text-sm">
+              <table className="w-full min-w-[1550px] text-sm">
+                {/* ========================================= */}
+                {/* TABLE HEADER                               */}
+                {/* ========================================= */}
+
                 <thead className="bg-secondary/50">
                   <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
-                    <th className="whitespace-nowrap px-4 py-3 font-medium">Employee Number</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">
+                      Employee Number
+                    </th>
 
-                    <th className="whitespace-nowrap px-4 py-3 font-medium">Bank ID</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">
+                      Bank ID
+                    </th>
 
-                    <th className="whitespace-nowrap px-4 py-3 font-medium">Email</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">
+                      Name
+                    </th>
 
-                    <th className="whitespace-nowrap px-4 py-3 font-medium">Name</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">
+                      Mobile Number
+                    </th>
 
-                    <th className="whitespace-nowrap px-4 py-3 font-medium">Date of Birth</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">
+                      Designation
+                    </th>
 
-                    <th className="whitespace-nowrap px-4 py-3 font-medium">Mobile Number</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">
+                      Role
+                    </th>
 
-                    <th className="whitespace-nowrap px-4 py-3 font-medium">Gender</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">
+                      Status
+                    </th>
 
-                    <th className="whitespace-nowrap px-4 py-3 font-medium">Designation</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">
+                      Login Branch
+                    </th>
 
-                    <th className="whitespace-nowrap px-4 py-3 font-medium">Role</th>
-
-                    <th className="whitespace-nowrap px-4 py-3 font-medium">Status</th>
-
-                    <th className="whitespace-nowrap px-4 py-3 font-medium">Login Branch</th>
+                    {/* NEW */}
+                    <th className="w-[90px] whitespace-nowrap px-4 py-3 text-center font-medium">
+                      Action
+                    </th>
                   </tr>
                 </thead>
+
+                {/* ========================================= */}
+                {/* TABLE BODY                                 */}
+                {/* ========================================= */}
 
                 <tbody>
                   {rows.map((user) => (
                     <tr
                       key={user.id}
-                      onClick={() => {
-                        console.log("Sending User ID:", user.id);
-                        console.log("Sending Organization ID:", user.organization_id);
-
-                        navigate({
-                          to: "/users/detail",
-                          state: {
-                            userId: user.id,
-                            organizationId: user.organization_id,
-                          },
-                        });
-                      }}
+                      onClick={() => handleViewUser(user)}
                       className="
-    cursor-pointer
-    border-t
-    border-border
-    transition-colors
-    hover:bg-secondary/60
-  "
+                        cursor-pointer
+                        border-t
+                        border-border
+                        transition-colors
+                        hover:bg-secondary/60
+                      "
                     >
+                      {/* Employee Number */}
                       <td className="whitespace-nowrap px-4 py-3 font-medium">
                         {user.emp_no || "—"}
                       </td>
 
-                      <td className="whitespace-nowrap px-4 py-3">{user.organization_id || "—"}</td>
-
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {user.email || "—"}
+                      {/* Bank ID */}
+                      <td className="whitespace-nowrap px-4 py-3">
+                        {user.organization_id || "—"}
                       </td>
 
+                      {/* Name */}
                       <td className="whitespace-nowrap px-4 py-3 font-medium">
                         {getUserName(user)}
                       </td>
 
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {user.date_of_birth || user.dob || user.DOB || "—"}
-                      </td>
-
+                      {/* Mobile */}
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {user.mobile || "—"}
                       </td>
 
-                      <td className="whitespace-nowrap px-4 py-3">{user.gender || "—"}</td>
+                      {/* Designation */}
+                      <td className="whitespace-nowrap px-4 py-3">
+                        {user.designation || "—"}
+                      </td>
 
-                      <td className="whitespace-nowrap px-4 py-3">{user.designation || "—"}</td>
-
+                      {/* Role */}
                       <td className="whitespace-nowrap px-4 py-3">
                         <span className="rounded-md bg-secondary px-2 py-1 text-xs font-medium">
                           {getUserRole(user)}
                         </span>
                       </td>
 
+                      {/* Status */}
                       <td className="whitespace-nowrap px-4 py-3">
                         <UserStatusBadge
                           status={getUserStatus(user)}
@@ -232,8 +346,38 @@ function UsersPage() {
                         />
                       </td>
 
+                      {/* Login Branch */}
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {user.login_branch_name || user.login_branch || "—"}
+                      </td>
+
+                      {/* ===================================== */}
+                      {/* ACTION                                 */}
+                      {/* ===================================== */}
+
+                      <td
+                        className="
+                          relative
+                          whitespace-nowrap
+                          px-4
+                          py-3
+                          text-center
+                        "
+                        onClick={(event) => {
+                          /*
+                           * VERY IMPORTANT:
+                           * Prevent clicking Action from
+                           * triggering row View action.
+                           */
+                          event.stopPropagation();
+                        }}
+                      >
+                        <UserActions
+                          user={user}
+                          onView={handleViewUser}
+                          onEdit={handleEditUser}
+                          onDelete={handleDeleteUser}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -247,9 +391,98 @@ function UsersPage() {
   );
 }
 
-/* -------------------------------- */
-/* Loading                           */
-/* -------------------------------- */
+/* ========================================================= */
+/* USER ACTIONS                                               */
+/* ========================================================= */
+
+type UserActionsProps = {
+  user: ApiUser;
+  onView: (user: ApiUser) => void;
+  onEdit: (user: ApiUser) => void;
+  onDelete: (user: ApiUser) => void;
+};
+
+function UserActions({ user, onView, onEdit, onDelete }: UserActionsProps) {
+  return (
+    <div
+      className="inline-flex items-center gap-1"
+      onClick={(event) => event.stopPropagation()}
+    >
+      {/* View */}
+      <button
+        type="button"
+        title="View User"
+        onClick={() => onView(user)}
+        className="
+          inline-flex
+          size-8
+          items-center
+          justify-center
+          rounded-md
+          text-muted-foreground
+          transition-colors
+          hover:bg-secondary
+          hover:text-foreground
+          focus:outline-none
+          focus:ring-2
+          focus:ring-ring
+        "
+      >
+        <Eye className="size-4" />
+      </button>
+
+      {/* Edit */}
+      <button
+        type="button"
+        title="Edit User"
+        onClick={() => onEdit(user)}
+        className="
+          inline-flex
+          size-8
+          items-center
+          justify-center
+          rounded-md
+          text-muted-foreground
+          transition-colors
+          hover:bg-secondary
+          hover:text-foreground
+          focus:outline-none
+          focus:ring-2
+          focus:ring-ring
+        "
+      >
+        <Pencil className="size-4" />
+      </button>
+
+      {/* Delete */}
+      <button
+        type="button"
+        title="Delete User"
+        onClick={() => onDelete(user)}
+        className="
+          inline-flex
+          size-8
+          items-center
+          justify-center
+          rounded-md
+          text-muted-foreground
+          transition-colors
+          hover:bg-destructive/10
+          hover:text-destructive
+          focus:outline-none
+          focus:ring-2
+          focus:ring-ring
+        "
+      >
+        <Trash2 className="size-4" />
+      </button>
+    </div>
+  );
+}
+
+/* ========================================================= */
+/* LOADING STATE                                              */
+/* ========================================================= */
 
 function LoadingState() {
   return (
@@ -267,14 +500,16 @@ function LoadingState() {
 
       <p className="font-medium">Loading users...</p>
 
-      <p className="text-sm text-muted-foreground">Fetching users from the server.</p>
+      <p className="text-sm text-muted-foreground">
+        Fetching users from the server.
+      </p>
     </div>
   );
 }
 
-/* -------------------------------- */
-/* Empty                             */
-/* -------------------------------- */
+/* ========================================================= */
+/* EMPTY STATE                                                */
+/* ========================================================= */
 
 function EmptyState({ searching }: { searching: boolean }) {
   return (
@@ -292,12 +527,19 @@ function EmptyState({ searching }: { searching: boolean }) {
   );
 }
 
-/* -------------------------------- */
-/* User Status                       */
-/* -------------------------------- */
+/* ========================================================= */
+/* USER STATUS                                                */
+/* ========================================================= */
 
-function UserStatusBadge({ status, active }: { status: string; active?: boolean }) {
-  const isActive = active === true || status === "OPERATIVE" || status === "ACTIVE";
+function UserStatusBadge({
+  status,
+  active,
+}: {
+  status: string;
+  active?: boolean;
+}) {
+  const isActive =
+    active === true || status === "OPERATIVE" || status === "ACTIVE";
 
   return (
     <span
