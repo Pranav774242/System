@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getAccessToken } from "@/lib/admin-store";
+import { API_ENDPOINTS } from "@/lib/api-endpoints";
 
 /* ========================================================= */
 /* TYPES                                                      */
@@ -64,24 +65,26 @@ type Props = {
 /* API                                                        */
 /* ========================================================= */
 
-// PUT /api/v1/users/{id}
-const API_BASE = "https://los-backend-355v.onrender.com/api/v1/users";
-
 async function updateUser(id: number, payload: Record<string, unknown>) {
   const token = getAccessToken();
   if (!token) throw new Error("Unauthorized / session expired");
 
-  const response = await fetch(`${API_BASE}/${encodeURIComponent(String(id))}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+  const response = await fetch(
+    `${API_ENDPOINTS.legacyUsers}/${encodeURIComponent(String(id))}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
     },
-    body: JSON.stringify(payload),
-  });
+  );
 
-  if (response.status === 401) throw new Error("Unauthorized / session expired");
-  if (response.status === 403) throw new Error("You do not have permission to edit this user");
+  if (response.status === 401)
+    throw new Error("Unauthorized / session expired");
+  if (response.status === 403)
+    throw new Error("You do not have permission to edit this user");
 
   let body: { success?: boolean; message?: string } | null = null;
   try {
@@ -91,7 +94,9 @@ async function updateUser(id: number, payload: Record<string, unknown>) {
   }
 
   if (!response.ok || body?.success === false) {
-    throw new Error(body?.message || `Unable to update user (${response.status})`);
+    throw new Error(
+      body?.message || `Unable to update user (${response.status})`,
+    );
   }
 
   return body;
@@ -185,12 +190,20 @@ function ToggleRow({
 /* COMPONENT                                                  */
 /* ========================================================= */
 
-export function UserEditDialog({ open, onOpenChange, user, organizationId, onSaved }: Props) {
+export function UserEditDialog({
+  open,
+  onOpenChange,
+  user,
+  organizationId,
+  onSaved,
+}: Props) {
   const [form, setForm] = useState<FormState>(() => toForm(user));
-  const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
-    const [saving, setSaving] = useState(false);
-    
-    console.log(organizationId, "organizationId in UserEditDialog");
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof FormState, string>>
+  >({});
+  const [saving, setSaving] = useState(false);
+
+  console.log(organizationId, "organizationId in UserEditDialog");
 
   // Reset the form to the latest user data every time the popup opens
   useEffect(() => {
@@ -220,7 +233,8 @@ export function UserEditDialog({ open, onOpenChange, user, organizationId, onSav
 
     if (form.inactive_session_timeout) {
       const n = Number(form.inactive_session_timeout);
-      if (!Number.isInteger(n) || n < 60) next.inactive_session_timeout = "Minimum 60 seconds";
+      if (!Number.isInteger(n) || n < 60)
+        next.inactive_session_timeout = "Minimum 60 seconds";
     }
 
     setErrors(next);
@@ -235,7 +249,7 @@ export function UserEditDialog({ open, onOpenChange, user, organizationId, onSav
       first_name: form.first_name.trim(),
       middle_name: form.middle_name.trim(),
       last_name: form.last_name.trim(),
-        email: form.email.trim(),
+      email: form.email.trim(),
       organization_id: organizationId, // Include organizationId in the payload
       mobile: form.mobile.trim(),
       gender: form.gender || undefined,
@@ -247,9 +261,7 @@ export function UserEditDialog({ open, onOpenChange, user, organizationId, onSav
       inactive_session_timeout: form.inactive_session_timeout
         ? Number(form.inactive_session_timeout)
         : undefined,
-      };
-      
-      console.log(payload, "payload in UserEditDialog");
+    };
 
     try {
       setSaving(true);
@@ -269,7 +281,9 @@ export function UserEditDialog({ open, onOpenChange, user, organizationId, onSav
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Edit user</DialogTitle>
-          <DialogDescription>Update personal details and login settings.</DialogDescription>
+          <DialogDescription>
+            Update personal details and login settings.
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6" noValidate>
@@ -316,7 +330,9 @@ export function UserEditDialog({ open, onOpenChange, user, organizationId, onSav
                   maxLength={10}
                   className={inputClass}
                   value={form.mobile}
-                  onChange={(e) => set("mobile", e.target.value.replace(/\D/g, ""))}
+                  onChange={(e) =>
+                    set("mobile", e.target.value.replace(/\D/g, ""))
+                  }
                 />
               </Field>
               <Field label="Gender">
@@ -383,7 +399,10 @@ export function UserEditDialog({ open, onOpenChange, user, organizationId, onSav
                   className={inputClass}
                   value={form.inactive_session_timeout}
                   onChange={(e) =>
-                    set("inactive_session_timeout", e.target.value.replace(/\D/g, ""))
+                    set(
+                      "inactive_session_timeout",
+                      e.target.value.replace(/\D/g, ""),
+                    )
                   }
                 />
               </Field>

@@ -18,6 +18,7 @@ import {
 import { UserEditDialog } from "@/components/UserEditDialog";
 import { Button } from "@/components/ui/button";
 import { getAccessToken } from "@/lib/admin-store";
+import { API_ENDPOINTS } from "@/lib/api-endpoints";
 
 export const Route = createFileRoute("/users/detail")({
   head: () => ({
@@ -93,14 +94,13 @@ type DetailUser = {
 /* API (single call, lives in this page)                      */
 /* ========================================================= */
 
-const API_BASE =
-  "https://los-backend-355v.onrender.com/api/v1/administration/users";
+const API_BASE = API_ENDPOINTS.users;
 const STORAGE_KEY = "user-detail-ids";
+const inFlightUserDetails = new Map<string, Promise<DetailUser | null>>();
 
 async function fetchUserDetail(
   userId: string,
   organizationId: string,
-  signal?: AbortSignal,
 ): Promise<DetailUser | null> {
   const token = getAccessToken();
 
@@ -108,49 +108,63 @@ async function fetchUserDetail(
     throw new Error("Unauthorized / session expired");
   }
 
+  const requestKey = `${token}:${organizationId}:${userId}`;
+  const pendingRequest = inFlightUserDetails.get(requestKey);
+  if (pendingRequest) return pendingRequest;
+
   // GET /api/v1/administration/users/{userId}?organizationId={organizationId}
   const url = `${API_BASE}/${encodeURIComponent(userId)}?organizationId=${encodeURIComponent(
     organizationId,
   )}`;
 
-  const response = await fetch(url, {
-    method: "GET",
-    signal, // <-- restored
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const request = (async () => {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-  if (response.status === 401)
-    throw new Error("Unauthorized / session expired");
-  if (response.status === 403)
-    throw new Error("You do not have permission to view this user");
-  if (response.status === 404) return null;
+    if (response.status === 401)
+      throw new Error("Unauthorized / session expired");
+    if (response.status === 403)
+      throw new Error("You do not have permission to view this user");
+    if (response.status === 404) return null;
 
-  if (!response.ok) {
-    let message = "";
-    try {
-      const body = await response.json();
-      if (typeof body?.message === "string") message = body.message;
-    } catch {
-      // ignore invalid JSON
+    if (!response.ok) {
+      let message = "";
+      try {
+        const body = await response.json();
+        if (typeof body?.message === "string") message = body.message;
+      } catch {
+        // ignore invalid JSON
+      }
+      throw new Error(message || `Unable to load user (${response.status})`);
     }
-    throw new Error(message || `Unable to load user (${response.status})`);
+
+    const result = await response.json();
+
+    if (result?.success === false) {
+      throw new Error(result.message || "Unable to load user");
+    }
+
+    // Supports { data: {...} }, { data: [{...}] } or a plain user object
+    const data = result?.data ?? result;
+
+    if (Array.isArray(data)) return data[0] ?? null;
+
+    return data ?? null;
+  })();
+
+  inFlightUserDetails.set(requestKey, request);
+  try {
+    return await request;
+  } finally {
+    if (inFlightUserDetails.get(requestKey) === request) {
+      inFlightUserDetails.delete(requestKey);
+    }
   }
-
-  const result = await response.json();
-
-  if (result?.success === false) {
-    throw new Error(result.message || "Unable to load user");
-  }
-
-  // Supports { data: {...} }, { data: [{...}] } or a plain user object
-  const data = result?.data ?? result;
-
-  if (Array.isArray(data)) return data[0] ?? null;
-
-  return data ?? null;
 }
 
 /* ========================================================= */
@@ -243,7 +257,7 @@ function UserDetailPage() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    const controller = new AbortController();
+    let cancelled = false;
 
     async function loadUser() {
       try {
@@ -274,8 +288,9 @@ function UserDetailPage() {
         const data = await fetchUserDetail(
           String(userId),
           String(organizationId),
-          controller.signal,
         );
+
+        if (cancelled) return;
 
         if (!data) {
           setError("The requested user could not be found.");
@@ -284,18 +299,20 @@ function UserDetailPage() {
 
         setUser(data);
       } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
+        if (cancelled) return;
 
         console.error("Failed to load user:", err);
         setError(err instanceof Error ? err.message : "Unable to load user.");
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     loadUser();
 
-    return () => controller.abort();
+    return () => {
+      cancelled = true;
+    };
   }, [userId, organizationId, refreshKey]);
 
   /* ---------------- Loading ---------------- */

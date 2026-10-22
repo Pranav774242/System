@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { postAdminJson } from "@/lib/admin-api";
+import { API_ENDPOINTS } from "@/lib/api-endpoints";
 
 import {
   Sheet,
@@ -698,12 +699,7 @@ export function TenantFormDrawer({
           country: "India",
         };
 
-        console.log("CREATE BANK REQUEST:", apiPayload);
-
-        await postAdminJson(
-          "https://los-backend-355v.onrender.com/api/v1/administration/banks/onboard",
-          apiPayload,
-        );
+        await postAdminJson(API_ENDPOINTS.bankOnboard, apiPayload);
       }
 
       /* -------------------------------------------------------------------- */

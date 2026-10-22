@@ -60,10 +60,10 @@ function LookupManagementPage() {
     console.log("Popup Submitted:", data);
 
     /*
-    * For now we are only printing the data.
-    *
-    * Later your API call can be placed here.
-    */
+     * For now we are only printing the data.
+     *
+     * Later your API call can be placed here.
+     */
 
     const newLookup: LookupItem = {
       id: lookupData.length + 1,
@@ -133,7 +133,7 @@ function LookupManagementPage() {
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 {/* Lookup Code */}
                 {/*
-                  */}
+                 */}
                 <div className="space-y-2">
                   <label
                     htmlFor="lookupSearch"

@@ -1,4 +1,8 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  useLocation,
+  useNavigate,
+} from "@tanstack/react-router";
 import {
   Eye,
   MoreHorizontal,
@@ -11,6 +15,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { AppShell } from "@/components/AppShell";
 import { Input } from "@/components/ui/input";
+import { getStoredBankUserContext } from "@/lib/bank-user-context";
 
 import {
   getUsers,
@@ -42,33 +47,61 @@ export const Route = createFileRoute("/users/")({
 
 function UsersPage() {
   const navigate = useNavigate();
+  const routeOrganizationId = useLocation({
+    select: (location) =>
+      (location.state as { organizationId?: string | number } | undefined)
+        ?.organizationId,
+  });
 
   const [users, setUsers] = useState<ApiUser[]>([]);
+  const [organizationId, setOrganizationId] = useState("");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    loadUsers();
-  }, []);
+    const storedContext = getStoredBankUserContext();
+    setOrganizationId(
+      routeOrganizationId != null
+        ? String(routeOrganizationId)
+        : (storedContext?.organizationId ?? ""),
+    );
+  }, [routeOrganizationId]);
 
-  async function loadUsers() {
-    try {
-      setLoading(true);
-      setError("");
+  useEffect(() => {
+    let cancelled = false;
 
-      const data = await getUsers();
-      console.log("Fetched users:", data);
-
-      setUsers(data);
-    } catch (error) {
-      console.error("Failed to load users:", error);
-
-      setError(error instanceof Error ? error.message : "Unable to load users");
-    } finally {
+    if (!organizationId) {
+      setUsers([]);
+      setError("Select a bank first to view its users.");
       setLoading(false);
+      return;
     }
-  }
+
+    const loadUsers = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const data = await getUsers(organizationId);
+        if (!cancelled) setUsers(data);
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load users:", error);
+          setError(
+            error instanceof Error ? error.message : "Unable to load users",
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void loadUsers();
+    return () => {
+      cancelled = true;
+    };
+  }, [organizationId]);
 
   /* ------------------------------------------------------- */
   /* Filter users                                             */

@@ -77,15 +77,6 @@ export function AppShell({
 
   const handleNavigation = () => {
     setMobileMenuOpen(false);
-    const navigation = [
-  // existing items...
-
-  {
-    label: "Activity Log",
-    href: "/activity-log",
-    icon: Activity,
-  },
-];
   };
 
   return (
@@ -106,7 +97,9 @@ export function AppShell({
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">Allianza LOS</p>
 
-              <p className="truncate text-xs text-sidebar-foreground/60">System Administrator</p>
+              <p className="truncate text-xs text-sidebar-foreground/60">
+                System Administrator
+              </p>
               {/* <p className="truncate text-sm font-semibold">Banking LOS</p> */}
               {/* <p className="truncate text-xs text-sidebar-foreground/60">System Administrator</p> */}
             </div>
@@ -131,7 +124,10 @@ export function AppShell({
                 )}
               >
                 <Icon
-                  className={cn("size-5 shrink-0", active && "text-sidebar-primary")}
+                  className={cn(
+                    "size-5 shrink-0",
+                    active && "text-sidebar-primary",
+                  )}
                   strokeWidth={2}
                 />
 
@@ -183,7 +179,9 @@ export function AppShell({
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">Allianza LOS</p>
 
-              <p className="truncate text-xs text-sidebar-foreground/60">System Administrator</p>
+              <p className="truncate text-xs text-sidebar-foreground/60">
+                System Administrator
+              </p>
             </div>
           </div>
 
@@ -215,7 +213,10 @@ export function AppShell({
                 )}
               >
                 <Icon
-                  className={cn("size-5 shrink-0", active && "text-sidebar-primary")}
+                  className={cn(
+                    "size-5 shrink-0",
+                    active && "text-sidebar-primary",
+                  )}
                   strokeWidth={2}
                 />
 
@@ -255,10 +256,14 @@ export function AppShell({
 
           {/* Page Title */}
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-base font-semibold tracking-tight sm:text-lg">{title}</h1>
+            <h1 className="truncate text-base font-semibold tracking-tight sm:text-lg">
+              {title}
+            </h1>
 
             {subtitle && (
-              <p className="hidden truncate text-xs text-muted-foreground sm:block">{subtitle}</p>
+              <p className="hidden truncate text-xs text-muted-foreground sm:block">
+                {subtitle}
+              </p>
             )}
           </div>
 
@@ -273,7 +278,11 @@ export function AppShell({
               aria-label="Toggle theme"
               title="Toggle theme"
             >
-              {theme === "dark" ? <Sun className="size-5" /> : <Moon className="size-5" />}
+              {theme === "dark" ? (
+                <Sun className="size-5" />
+              ) : (
+                <Moon className="size-5" />
+              )}
             </Button>
 
             <DropdownMenu>
@@ -286,7 +295,9 @@ export function AppShell({
                     {adminInitials}
                   </span>
 
-                  <span className="hidden text-sm font-medium sm:inline">{adminName}</span>
+                  <span className="hidden text-sm font-medium sm:inline">
+                    {adminName}
+                  </span>
                 </button>
               </DropdownMenuTrigger>
 
@@ -294,7 +305,9 @@ export function AppShell({
                 <DropdownMenuLabel>
                   <p className="text-sm font-medium">{adminName}</p>
 
-                  <p className="text-xs font-normal text-muted-foreground">System Administrator</p>
+                  <p className="text-xs font-normal text-muted-foreground">
+                    System Administrator
+                  </p>
                 </DropdownMenuLabel>
 
                 <DropdownMenuSeparator />
@@ -316,7 +329,9 @@ export function AppShell({
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 px-3 py-5 sm:px-4 sm:py-6 md:px-8 md:py-8">{children}</main>
+        <main className="min-w-0 flex-1 px-3 py-5 sm:px-4 sm:py-6 md:px-8 md:py-8">
+          {children}
+        </main>
       </div>
     </div>
   );

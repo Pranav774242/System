@@ -46,9 +46,6 @@ async function dummyCreateLookupTypeApi(data: LookupTypeForm) {
   console.log("Method:");
   console.log("POST");
 
-  console.log("Request Payload:");
-  console.log(data);
-
   console.log("Role sent as number:", data.role);
   console.log("Designation sent as number:", data.designation);
   console.log("Status sent as number:", data.status);
@@ -152,9 +149,6 @@ export function LookupTypePopup({
     console.log("Role Number:", data.role);
     console.log("Designation Number:", data.designation);
     console.log("Status Number:", data.status);
-
-    console.log("Complete Payload:");
-    console.log(JSON.stringify(data, null, 2));
 
     /* =========================
        Dummy API Hit
@@ -394,9 +388,7 @@ export function LookupTypePopup({
                 value={role}
                 onChange={(event) =>
                   setRole(
-                    event.target.value === ""
-                      ? ""
-                      : Number(event.target.value),
+                    event.target.value === "" ? "" : Number(event.target.value),
                   )
                 }
                 className="
@@ -449,9 +441,7 @@ export function LookupTypePopup({
                 value={designation}
                 onChange={(event) =>
                   setDesignation(
-                    event.target.value === ""
-                      ? ""
-                      : Number(event.target.value),
+                    event.target.value === "" ? "" : Number(event.target.value),
                   )
                 }
                 className="
@@ -504,9 +494,7 @@ export function LookupTypePopup({
                 value={status}
                 onChange={(event) =>
                   setStatus(
-                    event.target.value === ""
-                      ? ""
-                      : Number(event.target.value),
+                    event.target.value === "" ? "" : Number(event.target.value),
                   )
                 }
                 className="

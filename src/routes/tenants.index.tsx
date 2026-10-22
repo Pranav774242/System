@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowUpDown,
   MoreHorizontal,
@@ -15,9 +15,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TenantFormDrawer } from "@/components/TenantFormDrawer";
-import { mapOrganizationToTenant } from "@/lib/organization-mapper";
-
-import { useAdminStore, getAccessToken, type Tenant } from "@/lib/admin-store";
+import { useAdminStore, type Tenant } from "@/lib/admin-store";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,240 +78,18 @@ type SortKey =
   | "cin"
   | "status";
 
-type BankTenant = Tenant & {
-  pkid?: number;
-  bankCode?: string;
-  legalName?: string;
-  panNo?: string;
-  gstNo?: string;
-  licenseNo?: string;
-  logoUrl?: string;
-};
+type BankTenant = Tenant;
 
 const PAGE_SIZE = 10;
-
-/* -------------------------------------------------------------------------- */
-/* BACKEND ORGANIZATION RESPONSE                                              */
-/* -------------------------------------------------------------------------- */
-
-type OrganizationApiResponse = {
-  id?: string;
-  pkid?: number;
-
-  bank_code?: string;
-  bankCode?: string;
-
-  bank_name?: string;
-  bankName?: string;
-
-  bank_type?: string;
-  bankType?: string;
-
-  name?: string;
-  type?: string;
-
-  institution_name?: string;
-  institution_type?: string;
-
-  license_no?: string;
-  license_number?: string;
-  licenseNo?: string;
-
-  registration_number?: string;
-  registration_id?: string;
-  registrationId?: string;
-
-  regulatory_authority?: string;
-  regulatory_authority_id?: string;
-  regulatoryAuthorityId?: string;
-
-  direct_clg_member?: string;
-  direct_member_iftas?: string;
-
-  micr_code?: string;
-  micr_number?: string;
-
-  ifsc_code?: string;
-
-  number_of_branches?: number;
-  no_of_branches?: number;
-
-  sponsor_bank_for_clg?: string;
-  sponsor_bank_for_iftas?: string;
-
-  pan_no?: string;
-  pan_number?: string;
-  pan?: string;
-
-  gst_no?: string;
-  gst_number?: string;
-  gstNo?: string;
-  gst?: string;
-
-  // cin?: string;
-  // CIN?: string;
-  // cin_no?: string;
-  // cin_number?: string;
-
-  regulatory_status?: string;
-  status?: string;
-
-  country?: string;
-  state?: string;
-  city?: string;
-  pin_code?: string;
-
-  registered_address?: string;
-  corporate_address?: string;
-
-  contact_email?: string;
-  contact_phone?: string;
-
-  website?: string;
-  logo_url?: string;
-
-  legal_name?: string;
-  short_name?: string;
-
-  address_type?: string;
-  unit_gala_name_no?: string;
-  street_road?: string;
-  landmark?: string;
-
-  created_at?: string;
-  updated_at?: string;
-
-  db_name?: string;
-  db_host?: string;
-  db_port?: number;
-
-  branches?: unknown[];
-};
-
-/* -------------------------------------------------------------------------- */
-/* HELPERS                                                                    */
-/* -------------------------------------------------------------------------- */
-
-function getBankCode(organization: OrganizationApiResponse): string {
-  return organization.bank_code ?? organization.bankCode ?? "";
-}
-
-function getBankName(organization: OrganizationApiResponse): string {
-  return (
-    organization.bank_name ??
-    organization.bankName ??
-    organization.institution_name ??
-    organization.name ??
-    ""
-  );
-}
-
-function getBankType(organization: OrganizationApiResponse): string {
-  return (
-    organization.bank_type ??
-    organization.institution_type ??
-    organization.bankType ??
-    organization.type ??
-    ""
-  );
-}
-
-function getLicenseNumber(organization: OrganizationApiResponse): string {
-  return (
-    organization.license_no ??
-    organization.license_number ??
-    organization.licenseNo ??
-    ""
-  );
-}
-
-function getRegistrationNumber(organization: OrganizationApiResponse): string {
-  return (
-    organization.registration_id ??
-    organization.registrationId ??
-    organization.registration_number ??
-    ""
-  );
-}
-
-function getPanNumber(organization: OrganizationApiResponse): string {
-  return (
-    organization.pan_no ?? organization.pan_number ?? organization.pan ?? ""
-  );
-}
-
-function getGstNumber(organization: OrganizationApiResponse): string {
-  return (
-    organization.gst_no ??
-    organization.gstNo ??
-    organization.gst_number ??
-    organization.gst ??
-    ""
-  );
-}
-
-// function getCINNumber(organization: OrganizationApiResponse): string {
-//   return (
-//     organization.CIN ?? organization.cin_no ?? organization.cin_number ?? organization.cin ?? ""
-//   );
-// }
-
-/* -------------------------------------------------------------------------- */
-/* NORMALIZE BANK TENANT                                                       */
-/* -------------------------------------------------------------------------- */
-
-function normalizeBankTenant(
-  organization: OrganizationApiResponse,
-): BankTenant {
-  const mapped = mapOrganizationToTenant(organization) as BankTenant;
-
-  const bankCode = getBankCode(organization);
-  const bankName = getBankName(organization);
-  const bankType = getBankType(organization);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const registrationNumber = getRegistrationNumber(organization);
-  const licenseNumber = getLicenseNumber(organization);
-  const panNumber = getPanNumber(organization);
-  const gstNumber = getGstNumber(organization);
-  // const cinNumber = getCINNumber(organization);
-
-  return {
-    ...mapped,
-
-    /* Keep the backend primary key so "View Users" can pass it on. */
-    pkid: organization.pkid ?? mapped.pkid,
-
-    bankCode,
-
-    instituteName: bankName || mapped.instituteName || "",
-
-    instituteType: bankType.toUpperCase() === "NBFC" ? "NBFC" : "BANK",
-
-    licenseNo: licenseNumber,
-    panNo: panNumber,
-    gstNo: gstNumber,
-    // cin: cinNumber || mapped.cin || "",
-
-    legalName: organization.legal_name ?? "",
-
-    organization: bankName || mapped.organization || "",
-    firstName: bankName || mapped.firstName || "",
-    employeeId: licenseNumber || mapped.employeeId || "",
-    email: organization.contact_email ?? mapped.email ?? "",
-    mobile: organization.contact_phone ?? mapped.mobile ?? "",
-  };
-}
 
 /* -------------------------------------------------------------------------- */
 /* BANK MANAGEMENT PAGE                                                       */
 /* -------------------------------------------------------------------------- */
 
 function TenantsPage() {
-  const { tenants, createTenant } = useAdminStore();
+  const { tenants, tenantsLoading, createTenant } = useAdminStore();
 
   const navigate = useNavigate();
-
-  const [apiTenants, setApiTenants] = useState<BankTenant[]>([]);
 
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All");
@@ -327,127 +103,7 @@ function TenantsPage() {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const [loaded, setLoaded] = useState(false);
-  const [loadingOrganizations, setLoadingOrganizations] = useState(false);
-
-  const organizationRequestId = useRef(0);
-
-  /* ------------------------------------------------------------------------ */
-  /* GET ORGANIZATIONS API                                                     */
-  /* ------------------------------------------------------------------------ */
-
-  const loadOrganizations = useCallback(async () => {
-    const requestId = ++organizationRequestId.current;
-
-    const token = getAccessToken();
-
-    if (!token) {
-      toast.error("Session expired. Please login again.");
-      setLoadingOrganizations(false);
-      return;
-    }
-
-    try {
-      setLoadingOrganizations(true);
-
-      const response = await fetch(
-        "https://los-backend-355v.onrender.com/api/v1/administration/organizations",
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        },
-      );
-
-      const responseText = await response.text();
-
-      let responseData: unknown = null;
-
-      try {
-        responseData = responseText ? JSON.parse(responseText) : null;
-      } catch (error) {
-        console.error("Invalid organizations API response:", error);
-
-        throw new Error("Invalid organizations API response.", {
-          cause: error,
-        });
-      }
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Unauthorized. Your session has expired.");
-        }
-
-        if (response.status === 403) {
-          throw new Error("You do not have permission to view banks.");
-        }
-
-        throw new Error(`Failed to load banks (${response.status}).`);
-      }
-
-      let organizations: OrganizationApiResponse[] = [];
-
-      if (Array.isArray(responseData)) {
-        organizations = responseData as OrganizationApiResponse[];
-      } else if (responseData && typeof responseData === "object") {
-        const body = responseData as {
-          data?: unknown;
-          organizations?: unknown;
-        };
-
-        if (Array.isArray(body.data)) {
-          organizations = body.data as OrganizationApiResponse[];
-        } else if (Array.isArray(body.organizations)) {
-          organizations = body.organizations as OrganizationApiResponse[];
-        }
-      }
-
-      console.log("Organizations received from API:", organizations);
-
-      const mappedTenants = organizations.map(normalizeBankTenant);
-
-      console.log("Banks mapped for table:", mappedTenants);
-
-      if (requestId === organizationRequestId.current) {
-        setApiTenants(mappedTenants);
-      }
-
-      return mappedTenants;
-    } catch (error) {
-      if (requestId !== organizationRequestId.current) {
-        return undefined;
-      }
-
-      console.error("Failed to load organizations:", error);
-
-      toast.error(
-        error instanceof Error ? error.message : "Failed to load banks.",
-      );
-
-      return undefined;
-    } finally {
-      if (requestId === organizationRequestId.current) {
-        setLoadingOrganizations(false);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadOrganizations();
-  }, [loadOrganizations]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoaded(true);
-    }, 450);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  const displayTenants: BankTenant[] =
-    apiTenants.length > 0 ? apiTenants : (tenants as BankTenant[]);
+  const displayTenants = tenants as BankTenant[];
 
   useEffect(() => {
     setPage(1);
@@ -616,7 +272,7 @@ function TenantsPage() {
 
         {/* TABLE */}
         <div className="surface-card animate-rise overflow-hidden">
-          {!loaded || loadingOrganizations ? (
+          {tenantsLoading ? (
             <div className="space-y-3 p-5">
               {Array.from({ length: 8 }).map((_, index) => (
                 <Skeleton key={index} className="h-11 w-full" />
@@ -661,7 +317,6 @@ function TenantsPage() {
                           </button>
                         ) : (
                           column.label
-                          
                         )}
                       </th>
                     ))}
@@ -787,7 +442,7 @@ function TenantsPage() {
           )}
 
           {/* PAGINATION */}
-          {loaded && !loadingOrganizations && pageRows.length > 0 && (
+          {!tenantsLoading && pageRows.length > 0 && (
             <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
               <p className="text-muted-foreground">
                 Showing {(page - 1) * PAGE_SIZE + 1}–
@@ -827,19 +482,7 @@ function TenantsPage() {
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
         onSubmit={async (input) => {
-          const createdTenant = createTenant(input);
-
-          const refreshedBanks = await loadOrganizations();
-
-          if (
-            !refreshedBanks?.some((bank) => bank.bankCode === input.bankCode)
-          ) {
-            setApiTenants((currentBanks) =>
-              currentBanks.some((bank) => bank.bankCode === input.bankCode)
-                ? currentBanks
-                : [createdTenant as BankTenant, ...currentBanks],
-            );
-          }
+          createTenant(input);
         }}
       />
     </AppShell>

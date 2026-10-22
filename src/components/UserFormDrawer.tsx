@@ -22,6 +22,7 @@ import { Switch } from "@/components/ui/switch";
 
 import { useAdminStore, type Tenant, type UserInput } from "@/lib/admin-store";
 import { postAdminJson } from "@/lib/admin-api";
+import { API_ENDPOINTS } from "@/lib/api-endpoints";
 
 type AddUserForm = {
   employee_id: string;
@@ -114,7 +115,10 @@ const BRANCH_OPTIONS = [
   { label: "Branch 004", value: 4 },
 ];
 
-function validateForm(form: AddUserForm, bankPkid: number | undefined): FormErrors {
+function validateForm(
+  form: AddUserForm,
+  bankPkid: number | undefined,
+): FormErrors {
   const errors: FormErrors = {};
 
   if (bankPkid == null) {
@@ -177,8 +181,12 @@ function validateForm(form: AddUserForm, bankPkid: number | undefined): FormErro
     errors.role = "Role is required";
   }
 
-  if (!form.failed_login_attempts.trim() || !/^\d+$/.test(form.failed_login_attempts)) {
-    errors.failed_login_attempts = "Enter a valid number of failed login attempts";
+  if (
+    !form.failed_login_attempts.trim() ||
+    !/^\d+$/.test(form.failed_login_attempts)
+  ) {
+    errors.failed_login_attempts =
+      "Enter a valid number of failed login attempts";
   }
 
   if (!form.login_branch) {
@@ -311,15 +319,10 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
 
       no_of_bad_logins: Number(form.failed_login_attempts),
     };
-    console.log("Create User Payload:", payload);
-
     setBusy(true);
 
     try {
-      await postAdminJson(
-        "https://los-backend-355v.onrender.com/api/v1/administration/user-management/users",
-        payload,
-      );
+      await postAdminJson(API_ENDPOINTS.userManagementUsers, payload);
 
       toast.success("User created successfully");
       setForm(emptyForm);
@@ -328,7 +331,9 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
     } catch (error) {
       console.error("Create user API error:", error);
 
-      toast.error(error instanceof Error ? error.message : "Unable to create user");
+      toast.error(
+        error instanceof Error ? error.message : "Unable to create user",
+      );
     } finally {
       setBusy(false);
     }
@@ -340,7 +345,9 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
         <SheetHeader className="border-b border-border px-6 py-5">
           <SheetTitle>Add User</SheetTitle>
 
-          <SheetDescription>Create a user for the LOS administration team.</SheetDescription>
+          <SheetDescription>
+            Create a user for the LOS administration team.
+          </SheetDescription>
         </SheetHeader>
 
         <div className="flex-1 space-y-7 px-6 py-6">
@@ -349,7 +356,11 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
             <SectionHeading>Account Details</SectionHeading>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Employee ID" required error={fieldError("employee_id")}>
+              <Field
+                label="Employee ID"
+                required
+                error={fieldError("employee_id")}
+              >
                 <Input
                   value={form.employee_id}
                   onChange={(event) => set("employee_id", event.target.value)}
@@ -414,7 +425,11 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
                 />
               </Field> */}
 
-              <Field label="First Name" required error={fieldError("firstName")}>
+              <Field
+                label="First Name"
+                required
+                error={fieldError("firstName")}
+              >
                 <Input
                   value={form.firstName}
                   onChange={(event) => set("firstName", event.target.value)}
@@ -444,13 +459,22 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
                   inputMode="tel"
                   value={form.mobile}
                   onChange={(event) =>
-                    set("mobile", event.target.value.replace(/[^\d+]/g, "").replace(/(?!^)\+/g, ""))
+                    set(
+                      "mobile",
+                      event.target.value
+                        .replace(/[^\d+]/g, "")
+                        .replace(/(?!^)\+/g, ""),
+                    )
                   }
                   placeholder="+919876543210"
                 />
               </Field>
 
-              <Field label="Date of Birth" required error={fieldError("date_of_birth")}>
+              <Field
+                label="Date of Birth"
+                required
+                error={fieldError("date_of_birth")}
+              >
                 <Input
                   type="date"
                   value={form.date_of_birth}
@@ -461,7 +485,9 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
               <Field label="Gender" required error={fieldError("gender")}>
                 <Select
                   value={form.gender}
-                  onValueChange={(value) => set("gender", value as AddUserForm["gender"])}
+                  onValueChange={(value) =>
+                    set("gender", value as AddUserForm["gender"])
+                  }
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select gender" />
@@ -484,7 +510,11 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
             <SectionHeading>Organization Details</SectionHeading>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Designation" required error={fieldError("designation")}>
+              <Field
+                label="Designation"
+                required
+                error={fieldError("designation")}
+              >
                 <Select
                   value={form.designation}
                   onValueChange={(value) => set("designation", value)}
@@ -504,7 +534,10 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
               </Field>
 
               <Field label="User Role" required error={fieldError("role")}>
-                <Select value={form.role} onValueChange={(value) => set("role", value)}>
+                <Select
+                  value={form.role}
+                  onValueChange={(value) => set("role", value)}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
@@ -522,7 +555,9 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
               <Field label="Status" required error={fieldError("status")}>
                 <Select
                   value={form.status}
-                  onValueChange={(value) => set("status", value as AddUserForm["status"])}
+                  onValueChange={(value) =>
+                    set("status", value as AddUserForm["status"])
+                  }
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue />
@@ -538,14 +573,20 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
                 </Select>
               </Field>
 
-              <Field label="No. of Bad Login" required error={fieldError("failed_login_attempts")}>
+              <Field
+                label="No. of Bad Login"
+                required
+                error={fieldError("failed_login_attempts")}
+              >
                 <Input
                   type="number"
                   min="0"
                   step="1"
                   inputMode="numeric"
                   value={form.failed_login_attempts}
-                  onChange={(event) => set("failed_login_attempts", event.target.value)}
+                  onChange={(event) =>
+                    set("failed_login_attempts", event.target.value)
+                  }
                   placeholder="0"
                 />
               </Field>
@@ -560,10 +601,16 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
               <BooleanField
                 label="Allow MultiBranch"
                 checked={form.multi_branch_enabled}
-                onCheckedChange={(checked) => set("multi_branch_enabled", checked)}
+                onCheckedChange={(checked) =>
+                  set("multi_branch_enabled", checked)
+                }
               />
 
-              <Field label="Login Branch" required error={fieldError("login_branch")}>
+              <Field
+                label="Login Branch"
+                required
+                error={fieldError("login_branch")}
+              >
                 <select
                   value={form.login_branch}
                   onChange={(e) =>
@@ -591,7 +638,11 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
             <SectionHeading>Login Settings</SectionHeading>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Login Time" required error={fieldError("login_time")}>
+              <Field
+                label="Login Time"
+                required
+                error={fieldError("login_time")}
+              >
                 <Input
                   type="time"
                   value={form.login_time}
@@ -599,7 +650,11 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
                 />
               </Field>
 
-              <Field label="Logout Time" required error={fieldError("logout_time")}>
+              <Field
+                label="Logout Time"
+                required
+                error={fieldError("logout_time")}
+              >
                 <Input
                   type="time"
                   value={form.logout_time}
@@ -610,13 +665,17 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
               <BooleanField
                 label="Allow Login on Holidays"
                 checked={form.holiday_login_allowed}
-                onCheckedChange={(checked) => set("holiday_login_allowed", checked)}
+                onCheckedChange={(checked) =>
+                  set("holiday_login_allowed", checked)
+                }
               />
 
               <BooleanField
                 label="Allow 2FA Authentication"
                 checked={form.two_factor_enabled}
-                onCheckedChange={(checked) => set("two_factor_enabled", checked)}
+                onCheckedChange={(checked) =>
+                  set("two_factor_enabled", checked)
+                }
               />
             </div>
           </section>

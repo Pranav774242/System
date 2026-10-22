@@ -27,6 +27,7 @@ import { TenantFormDrawer } from "@/components/TenantFormDrawer";
 import { UserFormDrawer } from "@/components/UserFormDrawer";
 
 import { getAccessToken, useAdminStore, type Tenant } from "@/lib/admin-store";
+import { API_ENDPOINTS } from "@/lib/api-endpoints";
 
 import {
   mapOrganizationToTenant,
@@ -110,13 +111,11 @@ type RawOrganization = OrganizationApiResponse & {
 /* CONSTANTS                                                                  */
 /* -------------------------------------------------------------------------- */
 
-const API_BASE_URL = "https://los-backend-355v.onrender.com";
+const ORGANIZATION_GET_URL = API_ENDPOINTS.organizations;
 
-const ORGANIZATION_GET_URL = `${API_BASE_URL}/api/v1/administration/organizations`;
+const BANK_UPDATE_URL = API_ENDPOINTS.banks;
 
-const BANK_UPDATE_URL = `${API_BASE_URL}/api/v1/administration/banks`;
-
-const USERS_URL = `${API_BASE_URL}/api/v1/administration/user-management/users`;
+const USERS_URL = API_ENDPOINTS.userManagementUsers;
 
 /* -------------------------------------------------------------------------- */
 /* HELPERS                                                                    */
@@ -692,8 +691,6 @@ function TenantDetailsPage() {
           tenant,
           rawBank ?? undefined,
         );
-
-        console.log("Bank update payload:", payload);
 
         await updateBank(bankId, payload);
 

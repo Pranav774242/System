@@ -1,4 +1,3 @@
-
 import {
   createFileRoute,
   Link,
@@ -23,6 +22,12 @@ import { AppShell } from "@/components/AppShell";
 import { UserFormDrawer } from "@/components/UserFormDrawer";
 import { StatusBadge } from "@/components/StatusBadge";
 import { getAccessToken } from "@/lib/admin-store";
+import { API_ENDPOINTS } from "@/lib/api-endpoints";
+import {
+  getStoredBankUserContext,
+  storeBankUserContext,
+  type BankUserContext,
+} from "@/lib/bank-user-context";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,13 +63,7 @@ export const Route = createFileRoute("/bank-users")({
  * The selected bank is passed through router state (not the URL).
  * sessionStorage keeps it available if the page is refreshed.
  */
-const CONTEXT_KEY = "bank-users-context";
-
-function useOrgContext(): {
-  organizationId: string;
-  bankName?: string;
-  organizationCode?: string;
-} {
+function useOrgContext(): BankUserContext {
   const state = useLocation({ select: (l) => l.state }) as {
     organizationId?: string;
     bankName?: string;
@@ -78,20 +77,15 @@ function useOrgContext(): {
         bankName: state.bankName,
         organizationCode: state.organizationCode,
       };
-      try {
-        sessionStorage.setItem(CONTEXT_KEY, JSON.stringify(ctx));
-      } catch {
-        /* ignore */
-      }
+      storeBankUserContext({
+        ...ctx,
+        organizationId: String(ctx.organizationId),
+      });
       return ctx;
     }
 
-    try {
-      const saved = sessionStorage.getItem(CONTEXT_KEY);
-      if (saved) return JSON.parse(saved);
-    } catch {
-      /* ignore */
-    }
+    const saved = getStoredBankUserContext();
+    if (saved) return saved;
 
     return {
       organizationId: "",
@@ -121,8 +115,7 @@ type BankUser = {
 
 const PAGE_SIZE = 10;
 
-const USERS_API_BASE =
-  "https://los-backend-355v.onrender.com/api/v1/administration/users";
+const USERS_API_BASE = API_ENDPOINTS.users;
 
 /* -------------------------------------------------------------------------- */
 /* HELPERS — tolerant mapping of the users API response                       */
@@ -354,8 +347,6 @@ function BankUsersPage() {
         console.error("Invalid users API response:", parseError);
         throw new Error("Invalid users API response.", { cause: parseError });
       }
-
-      console.log("API response:", responseData);
 
       if (!response.ok) {
         if (response.status === 401) {

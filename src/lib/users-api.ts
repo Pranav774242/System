@@ -1,7 +1,5 @@
 import { getAccessToken } from "@/lib/admin-store";
-
-export const USERS_API_URL =
-  "https://los-backend-355v.onrender.com/api/v1/administration/users?organizationId=27";
+import { API_ENDPOINTS } from "@/lib/api-endpoints";
 
 export type ApiUser = {
   id: number;
@@ -77,7 +75,7 @@ type UsersResponse = {
   data?: ApiUser[];
 };
 
-async function getAuthHeaders(): Promise<HeadersInit> {
+function getAuthHeaders(): HeadersInit {
   const token = getAccessToken();
 
   if (!token) {
@@ -90,12 +88,17 @@ async function getAuthHeaders(): Promise<HeadersInit> {
   };
 }
 
-export async function getUsers(): Promise<ApiUser[]> {
-  const headers = await getAuthHeaders();
+export async function getUsers(organizationId: string): Promise<ApiUser[]> {
+  if (!organizationId.trim()) {
+    throw new Error("Select a bank before loading users");
+  }
 
-  const response = await fetch(USERS_API_URL, {
+  const url = new URL(API_ENDPOINTS.users);
+  url.searchParams.set("organizationId", organizationId);
+
+  const response = await fetch(url, {
     method: "GET",
-    headers,  
+    headers: getAuthHeaders(),
   });
 
   if (response.status === 401) {
@@ -135,26 +138,6 @@ export async function getUsers(): Promise<ApiUser[]> {
   return Array.isArray(result.data) ? result.data : [];
 }
 
-export async function getUserById(
-  userId: string,
-): Promise<ApiUser | null> {
-  const users = await getUsers();
-
-  const id = Number(userId);
-
-  if (!Number.isFinite(id)) {
-    return null;
-  }
-
-  return (
-    users.find(
-      (user) =>
-        user.id === id ||
-        user.pkid === id,
-    ) || null
-  );
-}
-
 export function getUserName(user: ApiUser): string {
   return (
     user.fullName ||
@@ -185,64 +168,4 @@ export function getUserStatus(user: ApiUser): string {
   );
 }
 
-export function getUserBranch(user: ApiUser): string {
-  return (
-    user.login_branch_name ||
-    user.login_branch ||
-    "—"
-  );
-}
-
-export function getUserDateOfBirth(
-  user: ApiUser,
-): string {
-  return (
-    user.date_of_birth ||
-    user.dob ||
-    user.DOB ||
-    "—"
-  );
-}
-
-export function formatUserDate(
-  value?: string,
-): string {
-  if (!value) {
-    return "—";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-export function formatUserDateTime(
-  value?: string,
-): string {
-  if (!value) {
-    return "—";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 

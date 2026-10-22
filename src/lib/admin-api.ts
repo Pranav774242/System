@@ -1,8 +1,5 @@
 import { getAccessToken } from "@/lib/admin-store";
 
-const API_BASE_URL =
-  "https://los-backend-355v.onrender.com";
-
 /**
  * Returns a clean access token without the "Bearer " prefix.
  */
@@ -107,24 +104,6 @@ export async function postAdminJson<
   const cleanToken =
     getCleanAccessToken();
 
-  console.log("POST URL:", url);
-
-  /*
-   * Never print the actual token in console.
-   * Only print whether a token exists and its length.
-   */
-  console.log(
-    "POST auth token present:",
-    Boolean(cleanToken),
-    "length:",
-    cleanToken.length,
-  );
-
-  console.log(
-    "POST payload:",
-    payload,
-  );
-
   let response: Response;
 
   try {
@@ -162,16 +141,6 @@ export async function postAdminJson<
 
   const responseData =
     await parseResponse(response);
-
-  console.log(
-    "POST status:",
-    response.status,
-  );
-
-  console.log(
-    "POST response:",
-    responseData,
-  );
 
   /**
    * 401 means the current access token
@@ -212,94 +181,3 @@ export async function postAdminJson<
   return responseData as TResponse;
 }
 
-/**
- * GET JSON request for authenticated admin APIs.
- */
-export async function getAdminJson<
-  TResponse = unknown,
->(
-  url: string,
-): Promise<TResponse> {
-  const cleanToken =
-    getCleanAccessToken();
-
-  console.log("GET URL:", url);
-
-  console.log(
-    "GET auth token present:",
-    Boolean(cleanToken),
-    "length:",
-    cleanToken.length,
-  );
-
-  let response: Response;
-
-  try {
-    response = await fetch(url, {
-      method: "GET",
-
-      headers: {
-        Accept:
-          "application/json",
-
-        Authorization:
-          `Bearer ${cleanToken}`,
-      },
-    });
-  } catch (error) {
-    console.error(
-      "Network error while calling GET API:",
-      error,
-    );
-
-    throw new Error(
-      "Unable to connect to the backend server.",
-      {
-        cause: error,
-      },
-    );
-  }
-
-  const responseData =
-    await parseResponse(response);
-
-  console.log(
-    "GET status:",
-    response.status,
-  );
-
-  console.log(
-    "GET response:",
-    responseData,
-  );
-
-  if (response.status === 401) {
-    console.error(
-      "401 Unauthorized: backend rejected the access token.",
-    );
-
-    try {
-      window.localStorage.removeItem(
-        "accessToken",
-      );
-    } catch {
-      // Ignore localStorage errors.
-    }
-
-    throw new Error(
-      "Your login session is invalid or expired. Please login again.",
-    );
-  }
-
-  if (!response.ok) {
-    const message =
-      getErrorMessage(
-        responseData,
-        response.status,
-      );
-
-    throw new Error(message);
-  }
-
-  return responseData as TResponse;
-}
