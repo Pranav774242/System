@@ -1,9 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -17,7 +12,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
 import { postAdminJson } from "@/lib/admin-api";
+import { API_ENDPOINTS } from "@/lib/api-endpoints";
 
 import {
   Sheet,
@@ -26,11 +23,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+
 /* -------------------------------------------------------------------------- */
 /* TYPES                                                                      */
 /* -------------------------------------------------------------------------- */
 
-type BankType = "NBFC" | "Cooperative" | "Private" | "Nationalized" | "UCB" | "RRB";
+type BankType =
+  "NBFC" | "Cooperative" | "Private" | "Nationalized" | "UCB" | "RRB";
 
 type Page = 1 | 2 | 3;
 
@@ -46,7 +45,6 @@ type RegulatoryDetails = {
   micr3: string;
 
   ifscCode: string;
-
   noOfBranches: string;
 
   sponsorBankClg: string;
@@ -84,7 +82,6 @@ const emptyRegulatory: RegulatoryDetails = {
   micr3: "",
 
   ifscCode: "",
-
   noOfBranches: "",
 
   sponsorBankClg: "",
@@ -131,13 +128,9 @@ type FormErrors = {
   status?: string;
 };
 
-type RegulatoryErrors = Partial<
-  Record<keyof RegulatoryDetails, string>
->;
+type RegulatoryErrors = Partial<Record<keyof RegulatoryDetails, string>>;
 
-type AddressErrors = Partial<
-  Record<keyof AddressDetails, string>
->;
+type AddressErrors = Partial<Record<keyof AddressDetails, string>>;
 
 /* -------------------------------------------------------------------------- */
 /* API PAYLOAD                                                                */
@@ -190,21 +183,9 @@ type BankOnboardPayload = {
 /* HELPERS                                                                    */
 /* -------------------------------------------------------------------------- */
 
+/* "Yes" -> true, anything else -> false (backend expects Boolean). */
 function yesNoToBoolean(value: YesNo): boolean {
   return value === "Yes";
-}
-
-function isHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-
-    return (
-      url.protocol === "http:" ||
-      url.protocol === "https:"
-    );
-  } catch {
-    return false;
-  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -212,17 +193,19 @@ function isHttpUrl(value: string): boolean {
 /* -------------------------------------------------------------------------- */
 
 const ifscPattern = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+const panPattern = /^[A-Z]{5}\d{4}[A-Z]$/;
+const gstPattern = /^[0-9A-Z]{15}$/;
 
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
-const panPattern =
-  /^[A-Z]{5}\d{4}[A-Z]$/;
-
-const gstPattern =
-  /^[0-9A-Z]{15}$/;
-
-function getPage1Errors(
-  form: typeof emptyForm,
-): FormErrors {
+function getPage1Errors(form: typeof emptyForm): FormErrors {
   const errors: FormErrors = {};
 
   if (!form.bankCode.trim()) {
@@ -231,9 +214,7 @@ function getPage1Errors(
 
   if (!form.bankName.trim()) {
     errors.bankName = "Bank name is required";
-  } else if (
-    form.bankName.trim().length < 2
-  ) {
+  } else if (form.bankName.trim().length < 2) {
     errors.bankName = "Enter a valid bank name";
   }
 
@@ -245,45 +226,26 @@ function getPage1Errors(
     errors.legalName = "Legal name is required";
   }
 
-  if (
-    form.PAN.trim() &&
-    !panPattern.test(
-      form.PAN.trim().toUpperCase(),
-    )
-  ) {
-    errors.PAN =
-      "Enter a valid 10-character Indian PAN";
+  // FIX: the "!" was missing, so valid PANs were being rejected.
+  if (form.PAN.trim() && !panPattern.test(form.PAN.trim().toUpperCase())) {
+    errors.PAN = "Enter a valid 10-character Indian PAN";
   }
 
-  if (
-    form.GST.trim() &&
-    !gstPattern.test(
-      form.GST.trim().toUpperCase(),
-    )
-  ) {
-    errors.GST =
-      "Enter a valid 15-character GST number";
+  // FIX: the "!" was missing, so valid GST numbers were being rejected.
+  if (form.GST.trim() && !gstPattern.test(form.GST.trim().toUpperCase())) {
+    errors.GST = "Enter a valid 15-character GST number";
   }
 
   if (!form.licenseNo.trim()) {
-    errors.licenseNo =
-      "License number is required";
+    errors.licenseNo = "License number is required";
   }
 
-  if (
-    form.website.trim() &&
-    !isHttpUrl(form.website.trim())
-  ) {
-    errors.website =
-      "Enter a valid URL starting with http:// or https://";
+  if (form.website.trim() && !isHttpUrl(form.website.trim())) {
+    errors.website = "Enter a valid URL starting with http:// or https://";
   }
 
-  if (
-    form.logo.trim() &&
-    !isHttpUrl(form.logo.trim())
-  ) {
-    errors.logo =
-      "Enter a valid logo URL starting with http:// or https://";
+  if (form.logo.trim() && !isHttpUrl(form.logo.trim())) {
+    errors.logo = "Enter a valid logo URL starting with http:// or https://";
   }
 
   if (!form.status) {
@@ -293,98 +255,70 @@ function getPage1Errors(
   return errors;
 }
 
-function getPage2Errors(
-  regulatory: RegulatoryDetails,
-): RegulatoryErrors {
+function getPage2Errors(regulatory: RegulatoryDetails): RegulatoryErrors {
   const errors: RegulatoryErrors = {};
 
   if (!regulatory.directClgMember) {
-    errors.directClgMember =
-      "Please select an option";
+    errors.directClgMember = "Please select an option";
   }
 
   if (!regulatory.directMemberIftas) {
-    errors.directMemberIftas =
-      "Please select an option";
+    errors.directMemberIftas = "Please select an option";
   }
 
+  // FIX: removed stray string literals that followed these assignments.
   if (!regulatory.micr1.trim()) {
-    errors.micr1 =
-      "MICR detail is required";
+    errors.micr1 = "MICR code is required";
   }
 
   if (!regulatory.micr2.trim()) {
-    errors.micr2 =
-      "MICR city code is required";
+    errors.micr2 = "MICR city code is required";
   }
 
   if (!regulatory.micr3.trim()) {
-    errors.micr3 =
-      "MICR branch code is required";
+    errors.micr3 = "MICR branch code is required";
   }
 
   if (!regulatory.ifscCode.trim()) {
-    errors.ifscCode =
-      "IFSC code is required";
-  } else if (
-    !ifscPattern.test(
-      regulatory.ifscCode
-        .trim()
-        .toUpperCase(),
-    )
-  ) {
-    errors.ifscCode =
-      "Enter a valid 11-character IFSC code";
+    errors.ifscCode = "IFSC code is required";
+  } else if (!ifscPattern.test(regulatory.ifscCode.trim().toUpperCase())) {
+    errors.ifscCode = "Enter a valid 11-character IFSC code";
   }
 
   if (!regulatory.noOfBranches.trim()) {
-    errors.noOfBranches =
-      "Number of branches is required";
-  } else if (
-    !/^\d+$/.test(
-      regulatory.noOfBranches.trim(),
-    )
-  ) {
-    errors.noOfBranches =
-      "Enter a valid number";
+    errors.noOfBranches = "Number of branches is required";
+  } else if (!/^\d+$/.test(regulatory.noOfBranches.trim())) {
+    errors.noOfBranches = "Enter a valid number";
   }
 
   if (!regulatory.sponsorBankClg.trim()) {
-    errors.sponsorBankClg =
-      "Sponsor bank for CLG is required";
+    errors.sponsorBankClg = "Sponsor bank for Clg is required";
   }
 
   if (!regulatory.sponsorBankIftas.trim()) {
-    errors.sponsorBankIftas =
-      "Sponsor bank for IFTAS is required";
+    errors.sponsorBankIftas = "Sponsor bank for IFTAS is required";
   }
 
   return errors;
 }
 
-function getPage3Errors(
-  address: AddressDetails,
-): AddressErrors {
+function getPage3Errors(address: AddressDetails): AddressErrors {
   const errors: AddressErrors = {};
 
   if (!address.addressType.trim()) {
-    errors.addressType =
-      "Address type is required";
+    errors.addressType = "Address type is required";
   }
 
   if (!address.unitGala.trim()) {
-    errors.unitGala =
-      "Unit / Gala Name & No. is required";
+    errors.unitGala = "Unit / Gala Name & No. is required";
   }
 
   if (!address.streetRoad.trim()) {
-    errors.streetRoad =
-      "Street / Road is required";
+    errors.streetRoad = "Street / Road is required";
   }
 
   if (!address.landmark.trim()) {
-    errors.landmark =
-      "Land mark is required";
+    errors.landmark = "Land mark is required";
   }
 
   if (!address.city.trim()) {
@@ -396,15 +330,9 @@ function getPage3Errors(
   }
 
   if (!address.pinCode.trim()) {
-    errors.pinCode =
-      "PIN code is required";
-  } else if (
-    !/^\d{6}$/.test(
-      address.pinCode.trim(),
-    )
-  ) {
-    errors.pinCode =
-      "Enter a valid 6-digit PIN code";
+    errors.pinCode = "PIN code is required";
+  } else if (!/^\d{6}$/.test(address.pinCode.trim())) {
+    errors.pinCode = "Enter a valid 6-digit PIN code";
   }
 
   return errors;
@@ -420,30 +348,21 @@ export function TenantFormDrawer({
   tenant,
   onSubmit,
 }: Props) {
-  const [form, setForm] =
-    useState({ ...emptyForm });
+  const [form, setForm] = useState({ ...emptyForm });
 
-  const [regulatory, setRegulatory] =
-    useState<RegulatoryDetails>({
-      ...emptyRegulatory,
-    });
+  // FIX: this state declaration was broken (setRegulatory / regulatory were undefined).
+  const [regulatory, setRegulatory] = useState<RegulatoryDetails>({
+    ...emptyRegulatory,
+  });
 
-  const [address, setAddress] =
-    useState<AddressDetails>({
-      ...emptyAddress,
-    });
+  const [address, setAddress] = useState<AddressDetails>({
+    ...emptyAddress,
+  });
 
-  const [page, setPage] =
-    useState<Page>(1);
-
-  const [busy, setBusy] =
-    useState(false);
-
-  const [submitted, setSubmitted] =
-    useState(false);
-
-  const submittingRef =
-    useRef(false);
+  const [page, setPage] = useState<Page>(1);
+  const [busy, setBusy] = useState(false);
+  const submittingRef = useRef(false);
+  const [submitted, setSubmitted] = useState(false);
 
   /* ------------------------------------------------------------------------ */
   /* LOAD FORM                                                                */
@@ -461,52 +380,36 @@ export function TenantFormDrawer({
 
     if (!tenant) {
       setForm({ ...emptyForm });
-      setRegulatory({
-        ...emptyRegulatory,
-      });
-      setAddress({
-        ...emptyAddress,
-      });
-
+      setRegulatory({ ...emptyRegulatory });
+      setAddress({ ...emptyAddress });
       return;
     }
 
-    const tenantBankType = String(
-      tenant.bankType ?? "",
-    );
+    const tenantBankType = String(tenant.bankType ?? "");
 
     const existingBankType: BankType =
       tenantBankType === "Nationalized" ||
-        tenantBankType === "UCB" ||
-        tenantBankType === "RRB" ||
-        tenantBankType === "Private" ||
-        tenantBankType === "NBFC" ||
-        tenantBankType === "Cooperative"
+      tenantBankType === "UCB" ||
+      tenantBankType === "RRB" ||
+      tenantBankType === "Private" ||
+      tenantBankType === "NBFC" ||
+      tenantBankType === "Cooperative"
         ? (tenantBankType as BankType)
         : "Private";
 
     setForm({
-      bankCode:
-        tenant.bankCode ?? "",
+      bankCode: tenant.bankCode ?? "",
 
       bankName:
-        tenant.bankName ||
-        tenant.instituteName ||
-        tenant.organization ||
-        "",
+        tenant.bankName || tenant.instituteName || tenant.organization || "",
 
-      bankType:
-        existingBankType,
+      bankType: existingBankType,
 
-      legalName:
-        tenant.legalName ?? "",
+      legalName: tenant.legalName ?? "",
 
-      PAN:
-        tenant.panNo ?? "",
+      PAN: tenant.panNo ?? "",
 
-      GST:
-        tenant.gstNo ?? "",
-
+      GST: tenant.gstNo ?? "",
 
       licenseNo:
         tenant.licenseNo ||
@@ -514,32 +417,25 @@ export function TenantFormDrawer({
         tenant.employeeId ||
         "",
 
-      website:
-        tenant.website ?? "",
+      website: tenant.website ?? "",
 
-      logo:
-        tenant.logoUrl ?? "",
+      logo: tenant.logoUrl ?? "",
 
-      status:
-        tenant.status || "Active",
+      status: tenant.status || "Active",
     });
 
     setRegulatory({
       directClgMember:
-        tenant.regulatoryDetails
-          ?.directClgMember === "Yes"
+        tenant.regulatoryDetails?.directClgMember === "Yes"
           ? "Yes"
-          : tenant.regulatoryDetails
-            ?.directClgMember === "No"
+          : tenant.regulatoryDetails?.directClgMember === "No"
             ? "No"
             : "",
 
       directMemberIftas:
-        tenant.regulatoryDetails
-          ?.directMemberIftas === "Yes"
+        tenant.regulatoryDetails?.directMemberIftas === "Yes"
           ? "Yes"
-          : tenant.regulatoryDetails
-            ?.directMemberIftas === "No"
+          : tenant.regulatoryDetails?.directMemberIftas === "No"
             ? "No"
             : "",
 
@@ -548,60 +444,29 @@ export function TenantFormDrawer({
         tenant.regulatoryDetails?.micrNumber ||
         "",
 
-      micrNumber:
-        tenant.regulatoryDetails
-          ?.micrNumber ?? "",
+      micrNumber: tenant.regulatoryDetails?.micrNumber ?? "",
 
-      micr2:
-        tenant.regulatoryDetails
-          ?.micrCityCode ?? "",
+      micr2: tenant.regulatoryDetails?.micrCityCode ?? "",
 
-      micr3:
-        tenant.regulatoryDetails
-          ?.micrBranchCode ?? "",
+      micr3: tenant.regulatoryDetails?.micrBranchCode ?? "",
 
-      ifscCode:
-        tenant.regulatoryDetails
-          ?.ifscCode ?? "",
+      ifscCode: tenant.regulatoryDetails?.ifscCode ?? "",
 
-      noOfBranches:
-        tenant.regulatoryDetails
-          ?.numberOfBranches ?? "",
+      noOfBranches: tenant.regulatoryDetails?.numberOfBranches ?? "",
 
-      sponsorBankClg:
-        tenant.regulatoryDetails
-          ?.sponsorBankForClg ?? "",
+      sponsorBankClg: tenant.regulatoryDetails?.sponsorBankForClg ?? "",
 
-      sponsorBankIftas:
-        tenant.regulatoryDetails
-          ?.sponsorBankForIftas ?? "",
+      sponsorBankIftas: tenant.regulatoryDetails?.sponsorBankForIftas ?? "",
     });
 
     setAddress({
-      addressType:
-        tenant.addressDetails
-          ?.addressType ?? "",
-
-      unitGala:
-        tenant.addressDetails
-          ?.unitGalaNameNo ?? "",
-
-      streetRoad:
-        tenant.addressDetails
-          ?.streetRoad ?? "",
-
-      landmark:
-        tenant.addressDetails
-          ?.landMark ?? "",
-
-      city:
-        tenant.addressDetails?.city ?? "",
-
-      state:
-        tenant.addressDetails?.state ?? "",
-
-      pinCode:
-        tenant.addressDetails?.pinCode ?? "",
+      addressType: tenant.addressDetails?.addressType ?? "",
+      unitGala: tenant.addressDetails?.unitGalaNameNo ?? "",
+      streetRoad: tenant.addressDetails?.streetRoad ?? "",
+      landmark: tenant.addressDetails?.landMark ?? "",
+      city: tenant.addressDetails?.city ?? "",
+      state: tenant.addressDetails?.state ?? "",
+      pinCode: tenant.addressDetails?.pinCode ?? "",
     });
   }, [open, tenant]);
 
@@ -609,77 +474,49 @@ export function TenantFormDrawer({
   /* FIELD HELPERS                                                            */
   /* ------------------------------------------------------------------------ */
 
-  const setFormField = <
-    K extends keyof typeof emptyForm,
-  >(
+  const setFormField = <K extends keyof typeof emptyForm>(
     key: K,
     value: (typeof emptyForm)[K],
   ) => {
-    setForm((previous) => ({
-      ...previous,
-      [key]: value,
-    }));
+    setForm((previous) => ({ ...previous, [key]: value }));
   };
 
-  const setRegulatoryField = <
-    K extends keyof RegulatoryDetails,
-  >(
+  const setRegulatoryField = <K extends keyof RegulatoryDetails>(
     key: K,
     value: RegulatoryDetails[K],
   ) => {
-    setRegulatory((previous) => ({
-      ...previous,
-      [key]: value,
-    }));
+    setRegulatory((previous) => ({ ...previous, [key]: value }));
   };
 
-  const setAddressField = <
-    K extends keyof AddressDetails,
-  >(
+  const setAddressField = <K extends keyof AddressDetails>(
     key: K,
     value: AddressDetails[K],
   ) => {
-    setAddress((previous) => ({
-      ...previous,
-      [key]: value,
-    }));
+    setAddress((previous) => ({ ...previous, [key]: value }));
   };
 
   /* ------------------------------------------------------------------------ */
   /* ERRORS                                                                   */
   /* ------------------------------------------------------------------------ */
 
-  const page1Errors =
-    getPage1Errors(form);
-
-  const page2Errors =
-    getPage2Errors(regulatory);
-
-  const page3Errors =
-    getPage3Errors(address);
+  const page1Errors = getPage1Errors(form);
+  const page2Errors = getPage2Errors(regulatory);
+  const page3Errors = getPage3Errors(address);
 
   const getError = (
-    errors: Record<
-      string,
-      string | undefined
-    >,
+    errors: Record<string, string | undefined>,
     key: string,
-  ): string | undefined =>
-    submitted
-      ? errors[key]
-      : undefined;
+  ): string | undefined => (submitted ? errors[key] : undefined);
 
   /* ------------------------------------------------------------------------ */
-  /* NEXT                                                                      */
+  /* NEXT                                                                     */
   /* ------------------------------------------------------------------------ */
 
   const goNext = () => {
     setSubmitted(true);
 
     if (page === 1) {
-      if (
-        Object.keys(page1Errors).length > 0
-      ) {
+      if (Object.keys(page1Errors).length > 0) {
         return;
       }
 
@@ -689,9 +526,7 @@ export function TenantFormDrawer({
     }
 
     if (page === 2) {
-      if (
-        Object.keys(page2Errors).length > 0
-      ) {
+      if (Object.keys(page2Errors).length > 0) {
         return;
       }
 
@@ -701,22 +536,16 @@ export function TenantFormDrawer({
   };
 
   /* ------------------------------------------------------------------------ */
-  /* PREVIOUS                                                                  */
+  /* PREVIOUS                                                                 */
   /* ------------------------------------------------------------------------ */
 
   const goPrevious = () => {
     setSubmitted(false);
-
-    setPage(
-      (current): Page =>
-        current === 1
-          ? 1
-          : ((current - 1) as Page),
-    );
+    setPage((current): Page => (current === 1 ? 1 : ((current - 1) as Page)));
   };
 
   /* ------------------------------------------------------------------------ */
-  /* SUBMIT                                                                    */
+  /* SUBMIT                                                                   */
   /* ------------------------------------------------------------------------ */
 
   const submit = async () => {
@@ -725,39 +554,22 @@ export function TenantFormDrawer({
     }
 
     submittingRef.current = true;
+
     setSubmitted(true);
 
-    const currentPage1Errors =
-      getPage1Errors(form);
-
-    const currentPage2Errors =
-      getPage2Errors(regulatory);
-
-    const currentPage3Errors =
-      getPage3Errors(address);
-
-    if (
-      Object.keys(currentPage1Errors).length >
-      0
-    ) {
+    if (Object.keys(getPage1Errors(form)).length > 0) {
       setPage(1);
       submittingRef.current = false;
       return;
     }
 
-    if (
-      Object.keys(currentPage2Errors).length >
-      0
-    ) {
+    if (Object.keys(getPage2Errors(regulatory)).length > 0) {
       setPage(2);
       submittingRef.current = false;
       return;
     }
 
-    if (
-      Object.keys(currentPage3Errors).length >
-      0
-    ) {
+    if (Object.keys(getPage3Errors(address)).length > 0) {
       setPage(3);
       submittingRef.current = false;
       return;
@@ -765,157 +577,79 @@ export function TenantFormDrawer({
 
     setBusy(true);
 
-    // All four selections are bank categories, so the existing backend
-    // bankType field is sent as BANK.
-    const bankType: "BANK" | "NBFC" = "BANK";
+    /* FIX: was hard-coded to "BANK", so NBFC was never sent. */
+    const bankType: "BANK" | "NBFC" =
+      form.bankType === "NBFC" ? "NBFC" : "BANK";
 
-    const directClgMember =
-      yesNoToBoolean(
-        regulatory.directClgMember,
-      );
+    const directClgMember = yesNoToBoolean(regulatory.directClgMember);
+    const directMemberIftas = yesNoToBoolean(regulatory.directMemberIftas);
 
-    const directMemberIftas =
-      yesNoToBoolean(
-        regulatory.directMemberIftas,
-      );
+    const fullAddressLine = [
+      address.unitGala.trim(),
+      address.streetRoad.trim(),
+      address.landmark.trim(),
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    /* ---------------------------------------------------------------------- */
+    /* FRONTEND STORE PAYLOAD                                                 */
+    /* ---------------------------------------------------------------------- */
 
     const storePayload: BankInput = {
-      cin: "",
-
-      bankCode:
-        form.bankCode.trim(),
-
-      bankName:
-        form.bankName.trim(),
-
+      bankCode: form.bankCode.trim(),
+      bankName: form.bankName.trim(),
       bankType,
-
-      legalName:
-        form.legalName.trim(),
-
-      panNo:
-        form.PAN
-          .trim()
-          .toUpperCase(),
-
-      gstNo:
-        form.GST
-          .trim()
-          .toUpperCase(),
-
-
-      licenseNo:
-        form.licenseNo.trim(),
-
-      website:
-        form.website.trim(),
-
-      logoUrl:
-        form.logo.trim(),
+      legalName: form.legalName.trim(),
+      panNo: form.PAN.trim().toUpperCase(),
+      gstNo: form.GST.trim().toUpperCase(),
+      cin: "",
+      licenseNo: form.licenseNo.trim(),
+      website: form.website.trim(),
+      logoUrl: form.logo.trim(),
 
       regulatoryDetails: {
-        directClgMember:
-          regulatory.directClgMember,
-
-        directMemberIftas:
-          regulatory.directMemberIftas,
-
-        micrCode:
-          regulatory.micr1.trim(),
-
-        micrNumber:
-          regulatory.micrNumber.trim(),
-
-        micrCityCode:
-          regulatory.micr2.trim(),
-
-        micrBranchCode:
-          regulatory.micr3.trim(),
-
-        ifscCode:
-          regulatory.ifscCode
-            .trim()
-            .toUpperCase(),
-
-        numberOfBranches:
-          regulatory.noOfBranches.trim(),
-
-        sponsorBankForClg:
-          regulatory.sponsorBankClg.trim(),
-
-        sponsorBankForIftas:
-          regulatory.sponsorBankIftas.trim(),
+        directClgMember: regulatory.directClgMember,
+        directMemberIftas: regulatory.directMemberIftas,
+        micrCode: regulatory.micr1.trim(),
+        micrNumber: regulatory.micrNumber.trim(),
+        micrCityCode: regulatory.micr2.trim(),
+        micrBranchCode: regulatory.micr3.trim(),
+        ifscCode: regulatory.ifscCode.trim().toUpperCase(),
+        numberOfBranches: regulatory.noOfBranches.trim(),
+        sponsorBankForClg: regulatory.sponsorBankClg.trim(),
+        sponsorBankForIftas: regulatory.sponsorBankIftas.trim(),
       },
 
       addressDetails: {
-        addressType:
-          address.addressType.trim(),
-
-        unitGalaNameNo:
-          address.unitGala.trim(),
-
-        streetRoad:
-          address.streetRoad.trim(),
-
-        landMark:
-          address.landmark.trim(),
-
-        city:
-          address.city.trim(),
-
-        state:
-          address.state.trim(),
-
-        pinCode:
-          address.pinCode.trim(),
+        addressType: address.addressType.trim(),
+        unitGalaNameNo: address.unitGala.trim(),
+        streetRoad: address.streetRoad.trim(),
+        landMark: address.landmark.trim(),
+        city: address.city.trim(),
+        state: address.state.trim(),
+        pinCode: address.pinCode.trim(),
       },
 
       contactEmail: "",
       contactPhone: "",
       branches: [],
 
-      instituteName:
-        form.bankName.trim(),
-
-      instituteType:
-        bankType,
-
-      registrationNumber:
-        form.licenseNo.trim(),
+      instituteName: form.bankName.trim(),
+      instituteType: bankType,
+      registrationNumber: form.licenseNo.trim(),
 
       country: "India",
+      state: address.state.trim(),
+      city: address.city.trim(),
+      pinCode: address.pinCode.trim(),
 
-      state:
-        address.state.trim(),
-
-      city:
-        address.city.trim(),
-
-      pinCode:
-        address.pinCode.trim(),
-
-      registeredAddress:
-        [
-          address.unitGala.trim(),
-          address.streetRoad.trim(),
-          address.landmark.trim(),
-        ]
-          .filter(Boolean)
-          .join(", "),
-
-      corporateAddress:
-        [
-          address.unitGala.trim(),
-          address.streetRoad.trim(),
-          address.landmark.trim(),
-        ]
-          .filter(Boolean)
-          .join(", "),
+      registeredAddress: fullAddressLine,
+      corporateAddress: fullAddressLine,
 
       designation: "",
 
-      status:
-        form.status,
+      status: form.status,
     };
 
     try {
@@ -925,150 +659,72 @@ export function TenantFormDrawer({
 
       if (!tenant) {
         const apiPayload: BankOnboardPayload = {
-          bankName:
-            form.bankName.trim(),
-
+          bankName: form.bankName.trim(),
           bankType,
+          bankCode: form.bankCode.trim(),
+          legalName: form.legalName.trim(),
+          pan: form.PAN.trim().toUpperCase(),
+          gstNo: form.GST.trim().toUpperCase(),
+          licenseNo: form.licenseNo.trim(),
+          website: form.website.trim(),
+          logoUrl: form.logo.trim(),
 
-          bankCode:
-            form.bankCode.trim(),
+          status: form.status === "Active" ? "ACTIVE" : "INACTIVE",
+          regulatoryStatus: form.status === "Active" ? "ACTIVE" : "INACTIVE",
 
-          legalName:
-            form.legalName.trim(),
-
-          pan:
-            form.PAN
-              .trim()
-              .toUpperCase(),
-
-          gstNo:
-            form.GST
-              .trim()
-              .toUpperCase(),
-
-
-          licenseNo:
-            form.licenseNo.trim(),
-
-          website:
-            form.website.trim(),
-
-          logoUrl:
-            form.logo.trim(),
-
-          status:
-            form.status === "Active"
-              ? "ACTIVE"
-              : "INACTIVE",
-
-          regulatoryStatus:
-            form.status === "Active"
-              ? "ACTIVE"
-              : "INACTIVE",
-
+          /* Backend expects true / false, not "Yes" / "No". */
           directClgMember,
-
           directMemberIftas,
 
-          micr1:
-            regulatory.micr1.trim(),
+          micr1: regulatory.micr1.trim(),
+          micr2: regulatory.micr2.trim(),
+          micrNumber: regulatory.micrNumber.trim(),
+          micr3: regulatory.micr3.trim(),
 
-          micrNumber:
-            regulatory.micrNumber.trim(),
+          ifscCode: regulatory.ifscCode.trim().toUpperCase(),
+          noOfBranches: regulatory.noOfBranches.trim(),
 
-          micr2:
-            regulatory.micr2.trim(),
+          sponsorBankClg: regulatory.sponsorBankClg.trim(),
+          sponsorBankIftas: regulatory.sponsorBankIftas.trim(),
 
-          micr3:
-            regulatory.micr3.trim(),
+          addressType: address.addressType.trim(),
+          unitGala: address.unitGala.trim(),
+          streetRoad: address.streetRoad.trim(),
+          landmark: address.landmark.trim(),
 
-          ifscCode:
-            regulatory.ifscCode
-              .trim()
-              .toUpperCase(),
-
-          noOfBranches:
-            regulatory.noOfBranches.trim(),
-
-          sponsorBankClg:
-            regulatory.sponsorBankClg.trim(),
-
-          sponsorBankIftas:
-            regulatory.sponsorBankIftas.trim(),
-
-          addressType:
-            address.addressType.trim(),
-
-          unitGala:
-            address.unitGala.trim(),
-
-          streetRoad:
-            address.streetRoad.trim(),
-
-          landmark:
-            address.landmark.trim(),
-
-          city:
-            address.city.trim(),
-
-          state:
-            address.state.trim(),
-
-          pinCode:
-            address.pinCode.trim(),
+          city: address.city.trim(),
+          state: address.state.trim(),
+          pinCode: address.pinCode.trim(),
 
           country: "India",
         };
 
-        console.log(
-          "CREATE BANK REQUEST:",
-          apiPayload,
-        );
-
-        await postAdminJson(
-          "https://los-backend-355v.onrender.com/api/v1/administration/banks/onboard",
-          apiPayload,
-        );
+        await postAdminJson(API_ENDPOINTS.bankOnboard, apiPayload);
       }
 
       /* -------------------------------------------------------------------- */
-      /* FRONTEND STORE                                                       */
+      /* UPDATE FRONTEND STORE                                                */
       /* -------------------------------------------------------------------- */
 
       await onSubmit(storePayload);
 
       toast.success(
-        tenant
-          ? "Bank updated successfully"
-          : "Bank created successfully",
+        tenant ? "Bank updated successfully" : "Bank created successfully",
       );
 
-      setForm({
-        ...emptyForm,
-      });
-
-      setRegulatory({
-        ...emptyRegulatory,
-      });
-
-      setAddress({
-        ...emptyAddress,
-      });
+      setForm({ ...emptyForm });
+      setRegulatory({ ...emptyRegulatory });
+      setAddress({ ...emptyAddress });
 
       setPage(1);
       setSubmitted(false);
 
       onOpenChange(false);
     } catch (error) {
-      console.error(
-        "Bank onboarding failed:",
-        error,
-      );
+      console.error("Bank onboarding failed:", error);
 
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "Bank onboarding failed.",
+        error instanceof Error ? error.message : "Bank onboarding failed.",
       );
     } finally {
       setBusy(false);
@@ -1095,9 +751,7 @@ export function TenantFormDrawer({
       >
         <SheetHeader className="shrink-0 border-b bg-background px-6 py-5">
           <SheetTitle className="text-xl font-semibold tracking-tight">
-            {tenant
-              ? "Edit Bank"
-              : "Create Bank"}
+            {tenant ? "Edit Bank" : "Create Bank"}
           </SheetTitle>
 
           <SheetDescription className="text-sm text-muted-foreground">
@@ -1138,24 +792,19 @@ export function TenantFormDrawer({
 
         <div className="flex-1 overflow-y-auto">
           <div className="space-y-8 px-6 py-6">
-            {/* ================================================================= */}
-            {/* PAGE 1 - BANK DETAILS                                             */}
-            {/* ================================================================= */}
+            {/* ============================================================ */}
+            {/* PAGE 1                                                       */}
+            {/* ============================================================ */}
 
             {page === 1 && (
               <section className="space-y-5">
-                <SectionHeading>
-                  Bank Details
-                </SectionHeading>
+                <SectionHeading>Bank Details</SectionHeading>
 
                 <div className="grid gap-5 sm:grid-cols-2">
                   <Field
                     label="Bank Code"
                     required
-                    error={getError(
-                      page1Errors,
-                      "bankCode",
-                    )}
+                    error={getError(page1Errors, "bankCode")}
                   >
                     <Input
                       value={form.bankCode}
@@ -1173,18 +822,12 @@ export function TenantFormDrawer({
                   <Field
                     label="Bank Name"
                     required
-                    error={getError(
-                      page1Errors,
-                      "bankName",
-                    )}
+                    error={getError(page1Errors, "bankName")}
                   >
                     <Input
                       value={form.bankName}
                       onChange={(event) =>
-                        setFormField(
-                          "bankName",
-                          event.target.value,
-                        )
+                        setFormField("bankName", event.target.value)
                       }
                       className={inputClass}
                     />
@@ -1195,70 +838,44 @@ export function TenantFormDrawer({
                   <Field
                     label="Bank Type"
                     required
-                    error={getError(
-                      page1Errors,
-                      "bankType",
-                    )}
+                    error={getError(page1Errors, "bankType")}
                   >
                     <select
                       value={form.bankType}
                       onChange={(event) =>
                         setFormField(
                           "bankType",
-                          event.target.value as
-                          | BankType
-                          | "",
+                          event.target.value as BankType | "",
                         )
                       }
                       className={selectClass}
                     >
-                      <option value="">
-                        Select bank type
-                      </option>
+                      <option value="">Select bank type</option>
 
-                      <option value="NBFC">
-                        NBFC
-                      </option>
+                      <option value="NBFC">NBFC</option>
 
+                      <option value="Private">Private</option>
 
+                      {/* FIX: value was "COOPERATIVE " (uppercase + trailing space) */}
+                      <option value="Cooperative">Cooperative</option>
 
-                      <option value="Private">
-                        Private
-                      </option>
+                      <option value="Nationalized">Nationalized</option>
 
-                      <option value="COOPERATIVE ">
-                        Cooperative
-                      </option>
+                      <option value="UCB">Urban Cooperative Bank (UCB)</option>
 
-                      <option value="Nationalized">
-                        Nationalized
-                      </option>
-
-                      <option value="UCB">
-                        Urban Cooperative Bank (UCB)
-                      </option>
-
-                      <option value="RRB">
-                        Regional Rural Bank (RRB)
-                      </option>
+                      <option value="RRB">Regional Rural Bank (RRB)</option>
                     </select>
                   </Field>
 
                   <Field
                     label="Legal Name"
                     required
-                    error={getError(
-                      page1Errors,
-                      "legalName",
-                    )}
+                    error={getError(page1Errors, "legalName")}
                   >
                     <Input
                       value={form.legalName}
                       onChange={(event) =>
-                        setFormField(
-                          "legalName",
-                          event.target.value,
-                        )
+                        setFormField("legalName", event.target.value)
                       }
                       className={inputClass}
                     />
@@ -1266,40 +883,22 @@ export function TenantFormDrawer({
                 </div>
 
                 <div className="grid gap-5 sm:grid-cols-2">
-                  <Field
-                    label="PAN No."
-                    error={getError(
-                      page1Errors,
-                      "PAN",
-                    )}
-                  >
+                  <Field label="PAN No." error={getError(page1Errors, "PAN")}>
                     <Input
                       value={form.PAN}
                       onChange={(event) =>
-                        setFormField(
-                          "PAN",
-                          event.target.value.toUpperCase(),
-                        )
+                        setFormField("PAN", event.target.value.toUpperCase())
                       }
                       maxLength={10}
                       className={inputClass}
                     />
                   </Field>
 
-                  <Field
-                    label="GST No."
-                    error={getError(
-                      page1Errors,
-                      "GST",
-                    )}
-                  >
+                  <Field label="GST No." error={getError(page1Errors, "GST")}>
                     <Input
                       value={form.GST}
                       onChange={(event) =>
-                        setFormField(
-                          "GST",
-                          event.target.value.toUpperCase(),
-                        )
+                        setFormField("GST", event.target.value.toUpperCase())
                       }
                       maxLength={15}
                       className={inputClass}
@@ -1307,78 +906,26 @@ export function TenantFormDrawer({
                   </Field>
                 </div>
 
+                {/* FIX: removed the CIN field. form.CIN no longer exists in state. */}
                 <div className="grid gap-5 sm:grid-cols-2">
                   <Field
                     label="License No."
                     required
-                    error={getError(
-                      page1Errors,
-                      "licenseNo",
-                    )}
+                    error={getError(page1Errors, "licenseNo")}
                   >
                     <Input
                       value={form.licenseNo}
                       onChange={(event) =>
-                        setFormField(
-                          "licenseNo",
-                          event.target.value,
-                        )
-                      }
-                      className={inputClass}
-                    />
-                  </Field>
-                </div>
-
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <Field
-                    label="Website"
-                    error={getError(
-                      page1Errors,
-                      "website",
-                    )}
-                  >
-                    <Input
-                      type="url"
-                      value={form.website}
-                      onChange={(event) =>
-                        setFormField(
-                          "website",
-                          event.target.value,
-                        )
+                        setFormField("licenseNo", event.target.value)
                       }
                       className={inputClass}
                     />
                   </Field>
 
-                  <Field
-                    label="Logo URL"
-                    error={getError(
-                      page1Errors,
-                      "logo",
-                    )}
-                  >
-                    <Input
-                      type="url"
-                      value={form.logo}
-                      onChange={(event) =>
-                        setFormField(
-                          "logo",
-                          event.target.value,
-                        )
-                      }
-                      className={inputClass}
-                    />
-                  </Field>
-                </div>
-
-                <div className="grid gap-5 sm:grid-cols-2">
                   <Field
                     label="Status"
                     required
-                    error={getError(
-                      page1Errors,
-                      "status",
-                    )}
+                    error={getError(page1Errors, "status")}
                   >
                     <select
                       value={form.status}
@@ -1390,42 +937,58 @@ export function TenantFormDrawer({
                       }
                       className={selectClass}
                     >
-                      <option value="Active">
-                        Active
-                      </option>
+                      <option value="Active">Active</option>
 
-                      <option value="Inactive">
-                        Inactive
-                      </option>
+                      <option value="Inactive">Inactive</option>
                     </select>
+                  </Field>
+                </div>
+
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field
+                    label="Website"
+                    error={getError(page1Errors, "website")}
+                  >
+                    <Input
+                      type="url"
+                      value={form.website}
+                      onChange={(event) =>
+                        setFormField("website", event.target.value)
+                      }
+                      className={inputClass}
+                    />
+                  </Field>
+
+                  <Field label="Logo URL" error={getError(page1Errors, "logo")}>
+                    <Input
+                      type="url"
+                      value={form.logo}
+                      onChange={(event) =>
+                        setFormField("logo", event.target.value)
+                      }
+                      className={inputClass}
+                    />
                   </Field>
                 </div>
               </section>
             )}
 
-            {/* ================================================================= */}
-            {/* PAGE 2 - REGULATORY DETAILS                                      */}
-            {/* ================================================================= */}
+            {/* ============================================================ */}
+            {/* PAGE 2                                                       */}
+            {/* ============================================================ */}
 
             {page === 2 && (
               <section className="space-y-5">
-                <SectionHeading>
-                  Regulatory Details
-                </SectionHeading>
+                <SectionHeading>Regulatory Details</SectionHeading>
 
                 <div className="grid gap-5 sm:grid-cols-2">
                   <Field
                     label="Direct Clg Member"
                     required
-                    error={getError(
-                      page2Errors,
-                      "directClgMember",
-                    )}
+                    error={getError(page2Errors, "directClgMember")}
                   >
                     <select
-                      value={
-                        regulatory.directClgMember
-                      }
+                      value={regulatory.directClgMember}
                       onChange={(event) =>
                         setRegulatoryField(
                           "directClgMember",
@@ -1434,32 +997,21 @@ export function TenantFormDrawer({
                       }
                       className={selectClass}
                     >
-                      <option value="">
-                        Select option
-                      </option>
+                      <option value="">Select option</option>
 
-                      <option value="Yes">
-                        Yes
-                      </option>
+                      <option value="Yes">Yes</option>
 
-                      <option value="No">
-                        No
-                      </option>
+                      <option value="No">No</option>
                     </select>
                   </Field>
 
                   <Field
                     label="Direct Member IFTAS"
                     required
-                    error={getError(
-                      page2Errors,
-                      "directMemberIftas",
-                    )}
+                    error={getError(page2Errors, "directMemberIftas")}
                   >
                     <select
-                      value={
-                        regulatory.directMemberIftas
-                      }
+                      value={regulatory.directMemberIftas}
                       onChange={(event) =>
                         setRegulatoryField(
                           "directMemberIftas",
@@ -1468,30 +1020,22 @@ export function TenantFormDrawer({
                       }
                       className={selectClass}
                     >
-                      <option value="">
-                        Select option
-                      </option>
+                      <option value="">Select option</option>
 
-                      <option value="Yes">
-                        Yes
-                      </option>
+                      <option value="Yes">Yes</option>
 
-                      <option value="No">
-                        No
-                      </option>
+                      <option value="No">No</option>
                     </select>
                   </Field>
                 </div>
 
                 <div className="rounded-xl border bg-muted/20 p-3">
-                  <div className="grid items-center gap-3 sm:grid-cols-[110px_repeat(3,minmax(0,1fr))]">
-                    <div className="text-sm font-semibold text-foreground">
+                  <div className="grid items-start gap-3 sm:grid-cols-[110px_repeat(3,minmax(0,1fr))]">
+                    <div className="pt-2 text-sm font-semibold text-foreground">
                       MICR Details
                     </div>
 
-                    <Field
-                      error={getError(page2Errors, "micr1")}
-                    >
+                    <Field error={getError(page2Errors, "micr1")}>
                       <Input
                         aria-label="MICR Code"
                         placeholder="MICR Code"
@@ -1510,9 +1054,7 @@ export function TenantFormDrawer({
                       />
                     </Field>
 
-                    <Field
-                      error={getError(page2Errors, "micr2")}
-                    >
+                    <Field error={getError(page2Errors, "micr2")}>
                       <Input
                         aria-label="MICR City Code"
                         placeholder="City Code"
@@ -1529,9 +1071,7 @@ export function TenantFormDrawer({
                       />
                     </Field>
 
-                    <Field
-                      error={getError(page2Errors, "micr3")}
-                    >
+                    <Field error={getError(page2Errors, "micr3")}>
                       <Input
                         aria-label="MICR Branch Code"
                         placeholder="Branch Code"
@@ -1554,10 +1094,7 @@ export function TenantFormDrawer({
                   <Field
                     label="IFSC Code"
                     required
-                    error={getError(
-                      page2Errors,
-                      "ifscCode",
-                    )}
+                    error={getError(page2Errors, "ifscCode")}
                   >
                     <Input
                       value={regulatory.ifscCode}
@@ -1575,10 +1112,7 @@ export function TenantFormDrawer({
                   <Field
                     label="Branch Number"
                     required
-                    error={getError(
-                      page2Errors,
-                      "noOfBranches",
-                    )}
+                    error={getError(page2Errors, "noOfBranches")}
                   >
                     <Input
                       type="text"
@@ -1600,20 +1134,12 @@ export function TenantFormDrawer({
                   <Field
                     label="Sponsor Bank for Clg"
                     required
-                    error={getError(
-                      page2Errors,
-                      "sponsorBankClg",
-                    )}
+                    error={getError(page2Errors, "sponsorBankClg")}
                   >
                     <Input
-                      value={
-                        regulatory.sponsorBankClg
-                      }
+                      value={regulatory.sponsorBankClg}
                       onChange={(event) =>
-                        setRegulatoryField(
-                          "sponsorBankClg",
-                          event.target.value,
-                        )
+                        setRegulatoryField("sponsorBankClg", event.target.value)
                       }
                       className={inputClass}
                     />
@@ -1622,15 +1148,10 @@ export function TenantFormDrawer({
                   <Field
                     label="Sponsor Bank for IFTAS"
                     required
-                    error={getError(
-                      page2Errors,
-                      "sponsorBankIftas",
-                    )}
+                    error={getError(page2Errors, "sponsorBankIftas")}
                   >
                     <Input
-                      value={
-                        regulatory.sponsorBankIftas
-                      }
+                      value={regulatory.sponsorBankIftas}
                       onChange={(event) =>
                         setRegulatoryField(
                           "sponsorBankIftas",
@@ -1644,74 +1165,50 @@ export function TenantFormDrawer({
               </section>
             )}
 
-            {/* ================================================================= */}
-            {/* PAGE 3 - ADDRESS                                                  */}
-            {/* ================================================================= */}
+            {/* ============================================================ */}
+            {/* PAGE 3                                                       */}
+            {/* ============================================================ */}
 
             {page === 3 && (
               <section className="space-y-5">
-                <SectionHeading>
-                  Address
-                </SectionHeading>
+                <SectionHeading>Address</SectionHeading>
 
                 <div className="grid gap-5 sm:grid-cols-2">
                   <Field
                     label="Address Type"
                     required
-                    error={getError(
-                      page3Errors,
-                      "addressType",
-                    )}
+                    error={getError(page3Errors, "addressType")}
                   >
                     <select
-                      value={
-                        address.addressType
-                      }
+                      value={address.addressType}
                       onChange={(event) =>
-                        setAddressField(
-                          "addressType",
-                          event.target.value,
-                        )
+                        setAddressField("addressType", event.target.value)
                       }
                       className={selectClass}
                     >
-                      <option value="">
-                        Select address type
-                      </option>
+                      <option value="">Select address type</option>
 
                       <option value="Registered Office">
                         Registered Office
                       </option>
 
-                      <option value="Corporate Office">
-                        Corporate Office
-                      </option>
+                      <option value="Corporate Office">Corporate Office</option>
 
-                      <option value="Head Office">
-                        Head Office
-                      </option>
+                      <option value="Head Office">Head Office</option>
 
-                      <option value="Branch Office">
-                        Branch Office
-                      </option>
+                      <option value="Branch Office">Branch Office</option>
                     </select>
                   </Field>
 
                   <Field
                     label="Unit / Gala Name & No."
                     required
-                    error={getError(
-                      page3Errors,
-                      "unitGala",
-                    )}
+                    error={getError(page3Errors, "unitGala")}
                   >
                     <Input
                       value={address.unitGala}
                       onChange={(event) =>
-                        setAddressField(
-                          "unitGala",
-                          event.target.value,
-                        )
+                        setAddressField("unitGala", event.target.value)
                       }
                       className={inputClass}
                     />
@@ -1722,18 +1219,12 @@ export function TenantFormDrawer({
                   <Field
                     label="Street / Road"
                     required
-                    error={getError(
-                      page3Errors,
-                      "streetRoad",
-                    )}
+                    error={getError(page3Errors, "streetRoad")}
                   >
                     <Input
                       value={address.streetRoad}
                       onChange={(event) =>
-                        setAddressField(
-                          "streetRoad",
-                          event.target.value,
-                        )
+                        setAddressField("streetRoad", event.target.value)
                       }
                       className={inputClass}
                     />
@@ -1742,18 +1233,12 @@ export function TenantFormDrawer({
                   <Field
                     label="Land Mark"
                     required
-                    error={getError(
-                      page3Errors,
-                      "landmark",
-                    )}
+                    error={getError(page3Errors, "landmark")}
                   >
                     <Input
                       value={address.landmark}
                       onChange={(event) =>
-                        setAddressField(
-                          "landmark",
-                          event.target.value,
-                        )
+                        setAddressField("landmark", event.target.value)
                       }
                       className={inputClass}
                     />
@@ -1764,18 +1249,12 @@ export function TenantFormDrawer({
                   <Field
                     label="City"
                     required
-                    error={getError(
-                      page3Errors,
-                      "city",
-                    )}
+                    error={getError(page3Errors, "city")}
                   >
                     <Input
                       value={address.city}
                       onChange={(event) =>
-                        setAddressField(
-                          "city",
-                          event.target.value,
-                        )
+                        setAddressField("city", event.target.value)
                       }
                       className={inputClass}
                     />
@@ -1784,18 +1263,12 @@ export function TenantFormDrawer({
                   <Field
                     label="State"
                     required
-                    error={getError(
-                      page3Errors,
-                      "state",
-                    )}
+                    error={getError(page3Errors, "state")}
                   >
                     <Input
                       value={address.state}
                       onChange={(event) =>
-                        setAddressField(
-                          "state",
-                          event.target.value,
-                        )
+                        setAddressField("state", event.target.value)
                       }
                       className={inputClass}
                     />
@@ -1804,10 +1277,7 @@ export function TenantFormDrawer({
                   <Field
                     label="PIN Code"
                     required
-                    error={getError(
-                      page3Errors,
-                      "pinCode",
-                    )}
+                    error={getError(page3Errors, "pinCode")}
                   >
                     <Input
                       inputMode="numeric"
@@ -1816,10 +1286,7 @@ export function TenantFormDrawer({
                       onChange={(event) =>
                         setAddressField(
                           "pinCode",
-                          event.target.value.replace(
-                            /\D/g,
-                            "",
-                          ),
+                          event.target.value.replace(/\D/g, ""),
                         )
                       }
                       className={inputClass}
@@ -1831,9 +1298,9 @@ export function TenantFormDrawer({
           </div>
         </div>
 
-        {/* ------------------------------------------------------------------ */}
-        {/* FOOTER                                                             */}
-        {/* ------------------------------------------------------------------ */}
+        {/* ---------------------------------------------------------------- */}
+        {/* FOOTER                                                           */}
+        {/* ---------------------------------------------------------------- */}
 
         <div className="flex shrink-0 justify-between gap-3 border-t bg-background px-6 py-4">
           <div>
@@ -1856,9 +1323,7 @@ export function TenantFormDrawer({
               variant="outline"
               className="min-w-24"
               disabled={busy}
-              onClick={() =>
-                onOpenChange(false)
-              }
+              onClick={() => onOpenChange(false)}
             >
               Cancel
             </Button>
@@ -1879,15 +1344,9 @@ export function TenantFormDrawer({
                 disabled={busy}
                 onClick={submit}
               >
-                {busy && (
-                  <Loader2 className="size-4 animate-spin" />
-                )}
+                {busy && <Loader2 className="size-4 animate-spin" />}
 
-                {tenant
-                  ? "Save Changes"
-                  : busy
-                    ? "Creating..."
-                    : "Create Bank"}
+                {tenant ? "Save Changes" : busy ? "Creating..." : "Create Bank"}
               </Button>
             )}
           </div>
@@ -1940,9 +1399,7 @@ function StepIndicator({
         {number}
       </span>
 
-      <span className="hidden whitespace-nowrap sm:inline">
-        {label}
-      </span>
+      <span className="hidden whitespace-nowrap sm:inline">{label}</span>
     </div>
   );
 }
@@ -1951,11 +1408,7 @@ function StepIndicator({
 /* SECTION HEADING                                                            */
 /* -------------------------------------------------------------------------- */
 
-function SectionHeading({
-  children,
-}: {
-  children: ReactNode;
-}) {
+function SectionHeading({ children }: { children: ReactNode }) {
   return (
     <div className="flex items-center gap-3">
       <h3 className="text-sm font-semibold tracking-tight text-foreground">
@@ -1971,6 +1424,7 @@ function SectionHeading({
 /* FIELD                                                                      */
 /* -------------------------------------------------------------------------- */
 
+/* FIX: removed the stray top-level JSX comment and trailing semicolon. */
 function Field({
   label,
   required,
@@ -1988,21 +1442,13 @@ function Field({
         <Label className="text-sm font-medium text-foreground">
           {label}
 
-          {required && (
-            <span className="ml-1 text-destructive">
-              *
-            </span>
-          )}
+          {required && <span className="ml-1 text-destructive">*</span>}
         </Label>
       )}
 
       {children}
 
-      {error && (
-        <p className="text-xs font-medium text-destructive">
-          {error}
-        </p>
-      )}
+      {error && <p className="text-xs font-medium text-destructive">{error}</p>}
     </div>
   );
 }

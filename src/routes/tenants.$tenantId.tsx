@@ -1,7 +1,4 @@
-import {
-  createFileRoute,
-  useNavigate,
-} from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
 import {
   useCallback,
@@ -29,11 +26,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { TenantFormDrawer } from "@/components/TenantFormDrawer";
 import { UserFormDrawer } from "@/components/UserFormDrawer";
 
-import {
-  getAccessToken,
-  useAdminStore,
-  type Tenant,
-} from "@/lib/admin-store";
+import { getAccessToken, useAdminStore, type Tenant } from "@/lib/admin-store";
+import { API_ENDPOINTS } from "@/lib/api-endpoints";
 
 import {
   mapOrganizationToTenant,
@@ -46,9 +40,7 @@ import { Button } from "@/components/ui/button";
 /* ROUTE                                                                      */
 /* -------------------------------------------------------------------------- */
 
-export const Route = createFileRoute(
-  "/tenants/$tenantId",
-)({
+export const Route = createFileRoute("/tenants/$tenantId")({
   component: TenantDetailsPage,
 });
 
@@ -56,14 +48,9 @@ export const Route = createFileRoute(
 /* TYPES                                                                      */
 /* -------------------------------------------------------------------------- */
 
-type TenantFormSubmit =
-  Parameters<
-    NonNullable<
-      ComponentProps<
-        typeof TenantFormDrawer
-      >["onSubmit"]
-    >
-  >[0];
+type TenantFormSubmit = Parameters<
+  NonNullable<ComponentProps<typeof TenantFormDrawer>["onSubmit"]>
+>[0];
 
 type UserRecord = {
   id?: string | number;
@@ -93,65 +80,49 @@ type UserRecord = {
   organizationId?: string | number;
 };
 
-type RawOrganization =
-  OrganizationApiResponse & {
-    registration_id?: string | null;
+type RawOrganization = OrganizationApiResponse & {
+  registration_id?: string | null;
 
-    country?: string | null;
+  country?: string | null;
 
-    registered_address?: string | null;
-    corporate_address?: string | null;
+  registered_address?: string | null;
+  corporate_address?: string | null;
 
-    direct_clg_member?: string | null;
-    direct_member_iftas?: string | null;
+  direct_clg_member?: string | null;
+  direct_member_iftas?: string | null;
 
-    micr_code?: string | null;
-    micr_number?: string | null;
+  micr_code?: string | null;
+  micr_number?: string | null;
 
-    micr_city_code?: string | null;
-    micr_branch_code?: string | null;
+  micr_city_code?: string | null;
+  micr_branch_code?: string | null;
 
-    ifsc_code?: string | null;
+  ifsc_code?: string | null;
 
-    number_of_branches?:
-      | string
-      | number
-      | null;
+  number_of_branches?: string | number | null;
 
-    no_of_branches?:
-      | string
-      | number
-      | null;
+  no_of_branches?: string | number | null;
 
-    sponsor_bank_for_clg?: string | null;
-    sponsor_bank_for_iftas?: string | null;
-  };
+  sponsor_bank_for_clg?: string | null;
+  sponsor_bank_for_iftas?: string | null;
+};
 
 /* -------------------------------------------------------------------------- */
 /* CONSTANTS                                                                  */
 /* -------------------------------------------------------------------------- */
 
-const API_BASE_URL =
-  "https://los-backend-355v.onrender.com";
+const ORGANIZATION_GET_URL = API_ENDPOINTS.organizations;
 
-const ORGANIZATION_GET_URL =
-  `${API_BASE_URL}/api/v1/administration/organizations`;
+const BANK_UPDATE_URL = API_ENDPOINTS.banks;
 
-const BANK_UPDATE_URL =
-  `${API_BASE_URL}/api/v1/administration/banks`;
-
-const USERS_URL =
-  `${API_BASE_URL}/api/v1/administration/user-management/users`;
+const USERS_URL = API_ENDPOINTS.userManagementUsers;
 
 /* -------------------------------------------------------------------------- */
 /* HELPERS                                                                    */
 /* -------------------------------------------------------------------------- */
 
 function getValue(
-  source:
-    | Record<string, unknown>
-    | null
-    | undefined,
+  source: Record<string, unknown> | null | undefined,
   ...keys: string[]
 ): unknown {
   if (!source) {
@@ -161,11 +132,7 @@ function getValue(
   for (const key of keys) {
     const value = source[key];
 
-    if (
-      value !== null &&
-      value !== undefined &&
-      String(value).trim() !== ""
-    ) {
+    if (value !== null && value !== undefined && String(value).trim() !== "") {
       return value;
     }
   }
@@ -173,69 +140,45 @@ function getValue(
   return undefined;
 }
 
-function asString(
-  value: unknown,
-): string {
-  if (
-    value === null ||
-    value === undefined
-  ) {
+function asString(value: unknown): string {
+  if (value === null || value === undefined) {
     return "";
   }
 
   return String(value);
 }
 
-function isRecord(
-  value: unknown,
-): value is Record<string, unknown> {
-  return (
-    typeof value === "object" &&
-    value !== null
-  );
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 function getNestedRecord(
-  source:
-    | Record<string, unknown>
-    | undefined,
+  source: Record<string, unknown> | undefined,
   key: string,
 ): Record<string, unknown> | undefined {
   const value = source?.[key];
 
-  return isRecord(value)
-    ? value
-    : undefined;
+  return isRecord(value) ? value : undefined;
 }
 
 /* -------------------------------------------------------------------------- */
 /* RESPONSE UNWRAPPER                                                         */
 /* -------------------------------------------------------------------------- */
 
-function unwrapOrganization(
-  body: unknown,
-  pkid: number,
-): RawOrganization {
+function unwrapOrganization(body: unknown, pkid: number): RawOrganization {
   if (!isRecord(body)) {
-    throw new Error(
-      "Invalid bank details response.",
-    );
+    throw new Error("Invalid bank details response.");
   }
 
   const data = body["data"];
 
   if (isRecord(data)) {
-    const organization =
-      data["organization"];
+    const organization = data["organization"];
 
     if (isRecord(organization)) {
       return {
         ...(organization as RawOrganization),
-        pkid: Number(
-          organization["pkid"] ??
-            organization["id"] ??
-            pkid,
-        ),
+        pkid: Number(organization["pkid"] ?? organization["id"] ?? pkid),
       };
     }
 
@@ -244,35 +187,22 @@ function unwrapOrganization(
     if (isRecord(bank)) {
       return {
         ...(bank as RawOrganization),
-        pkid: Number(
-          bank["pkid"] ??
-            bank["id"] ??
-            pkid,
-        ),
+        pkid: Number(bank["pkid"] ?? bank["id"] ?? pkid),
       };
     }
 
     return {
       ...(data as RawOrganization),
-      pkid: Number(
-        data["pkid"] ??
-          data["id"] ??
-          pkid,
-      ),
+      pkid: Number(data["pkid"] ?? data["id"] ?? pkid),
     };
   }
 
-  const organization =
-    body["organization"];
+  const organization = body["organization"];
 
   if (isRecord(organization)) {
     return {
       ...(organization as RawOrganization),
-      pkid: Number(
-        organization["pkid"] ??
-          organization["id"] ??
-          pkid,
-      ),
+      pkid: Number(organization["pkid"] ?? organization["id"] ?? pkid),
     };
   }
 
@@ -281,11 +211,7 @@ function unwrapOrganization(
   if (isRecord(bank)) {
     return {
       ...(bank as RawOrganization),
-      pkid: Number(
-        bank["pkid"] ??
-          bank["id"] ??
-          pkid,
-      ),
+      pkid: Number(bank["pkid"] ?? bank["id"] ?? pkid),
     };
   }
 
@@ -304,158 +230,66 @@ function buildBankUpdatePayload(
   currentTenant: Tenant,
   currentRaw?: RawOrganization,
 ) {
-  const source =
-    input as unknown as Record<
-      string,
-      unknown
-    >;
+  const source = input as unknown as Record<string, unknown>;
 
-  const regulatory =
-    currentTenant.regulatoryDetails;
+  const regulatory = currentTenant.regulatoryDetails;
 
-  const raw =
-    currentRaw as
-      | Record<string, unknown>
-      | undefined;
+  const raw = currentRaw as Record<string, unknown> | undefined;
 
-  const nested =
-    getNestedRecord(
-      raw,
-      "regulatory_details",
-    );
+  const nested = getNestedRecord(raw, "regulatory_details");
 
   const statusValue =
-    getValue(
-      source,
-      "status",
-    ) ??
-    currentTenant.status ??
-    "Active";
+    getValue(source, "status") ?? currentTenant.status ?? "Active";
 
   const normalizedStatus =
-    asString(
-      statusValue,
-    ).toUpperCase() ===
-    "INACTIVE"
-      ? "INACTIVE"
-      : "ACTIVE";
+    asString(statusValue).toUpperCase() === "INACTIVE" ? "INACTIVE" : "ACTIVE";
 
   return {
     /* -------------------------------------------------------------------- */
     /* BANK DETAILS                                                         */
     /* -------------------------------------------------------------------- */
 
-    bank_code:
-      getValue(
-        source,
-        "bankCode",
-      ) ??
-      currentTenant.bankCode ??
-      "",
+    bank_code: getValue(source, "bankCode") ?? currentTenant.bankCode ?? "",
 
     bank_name:
-      getValue(
-        source,
-        "bankName",
-        "instituteName",
-      ) ??
+      getValue(source, "bankName", "instituteName") ??
       currentTenant.bankName ??
       currentTenant.instituteName ??
       "",
 
     bank_type:
-      getValue(
-        source,
-        "bankType",
-        "instituteType",
-      ) ??
+      getValue(source, "bankType", "instituteType") ??
       currentTenant.bankType ??
       "BANK",
 
-    legal_name:
-      getValue(
-        source,
-        "legalName",
-      ) ??
-      currentTenant.legalName ??
-      "",
+    legal_name: getValue(source, "legalName") ?? currentTenant.legalName ?? "",
 
-    pan_no:
-      getValue(
-        source,
-        "panNo",
-        "PAN",
-      ) ??
-      currentTenant.panNo ??
-      "",
+    pan_no: getValue(source, "panNo", "PAN") ?? currentTenant.panNo ?? "",
 
-    gst_no:
-      getValue(
-        source,
-        "gstNo",
-        "GST",
-      ) ??
-      currentTenant.gstNo ??
-      "",
+    gst_no: getValue(source, "gstNo", "GST") ?? currentTenant.gstNo ?? "",
 
     license_no:
-      getValue(
-        source,
-        "licenseNo",
-        "registrationNumber",
-      ) ??
+      getValue(source, "licenseNo", "registrationNumber") ??
       currentTenant.licenseNo ??
       currentTenant.registrationNumber ??
       "",
 
-    registration_number:
-      currentTenant.registrationNumber ??
-      "",
+    registration_number: currentTenant.registrationNumber ?? "",
 
-    cin:
-      getValue(
-        source,
-        "cin",
-        "CIN",
-      ) ??
-      currentTenant.cin ??
-      "",
+    cin: getValue(source, "cin", "CIN") ?? currentTenant.cin ?? "",
 
-    website:
-      getValue(
-        source,
-        "website",
-      ) ??
-      currentTenant.website ??
-      "",
+    website: getValue(source, "website") ?? currentTenant.website ?? "",
 
     logo_url:
-      getValue(
-        source,
-        "logoUrl",
-        "logo",
-      ) ??
-      currentTenant.logoUrl ??
-      "",
+      getValue(source, "logoUrl", "logo") ?? currentTenant.logoUrl ?? "",
 
-    status:
-      normalizedStatus,
+    status: normalizedStatus,
 
     contact_email:
-      getValue(
-        source,
-        "contactEmail",
-      ) ??
-      currentTenant.contactEmail ??
-      "",
+      getValue(source, "contactEmail") ?? currentTenant.contactEmail ?? "",
 
     contact_phone:
-      getValue(
-        source,
-        "contactPhone",
-      ) ??
-      currentTenant.contactPhone ??
-      "",
+      getValue(source, "contactPhone") ?? currentTenant.contactPhone ?? "",
 
     /* -------------------------------------------------------------------- */
     /* REGULATORY DETAILS                                                   */
@@ -463,52 +297,31 @@ function buildBankUpdatePayload(
 
     direct_clg_member:
       regulatory?.directClgMember ??
-      asString(
-        raw?.["direct_clg_member"] ??
-          nested?.["direct_clg_member"],
-      ),
+      asString(raw?.["direct_clg_member"] ?? nested?.["direct_clg_member"]),
 
     direct_member_iftas:
       regulatory?.directMemberIftas ??
-      asString(
-        raw?.["direct_member_iftas"] ??
-          nested?.["direct_member_iftas"],
-      ),
+      asString(raw?.["direct_member_iftas"] ?? nested?.["direct_member_iftas"]),
 
     micr_code:
       regulatory?.micrCode ??
-      asString(
-        raw?.["micr_code"] ??
-          nested?.["micr_code"],
-      ),
+      asString(raw?.["micr_code"] ?? nested?.["micr_code"]),
 
     micr_number:
       regulatory?.micrNumber ??
-      asString(
-        raw?.["micr_number"] ??
-          nested?.["micr_number"],
-      ),
+      asString(raw?.["micr_number"] ?? nested?.["micr_number"]),
 
     micr_city_code:
       regulatory?.micrCityCode ??
-      asString(
-        raw?.["micr_city_code"] ??
-          nested?.["micr_city_code"],
-      ),
+      asString(raw?.["micr_city_code"] ?? nested?.["micr_city_code"]),
 
     micr_branch_code:
       regulatory?.micrBranchCode ??
-      asString(
-        raw?.["micr_branch_code"] ??
-          nested?.["micr_branch_code"],
-      ),
+      asString(raw?.["micr_branch_code"] ?? nested?.["micr_branch_code"]),
 
     ifsc_code:
       regulatory?.ifscCode ??
-      asString(
-        raw?.["ifsc_code"] ??
-          nested?.["ifsc_code"],
-      ),
+      asString(raw?.["ifsc_code"] ?? nested?.["ifsc_code"]),
 
     number_of_branches:
       regulatory?.numberOfBranches ??
@@ -522,15 +335,13 @@ function buildBankUpdatePayload(
     sponsor_bank_for_clg:
       regulatory?.sponsorBankForClg ??
       asString(
-        raw?.["sponsor_bank_for_clg"] ??
-          nested?.["sponsor_bank_for_clg"],
+        raw?.["sponsor_bank_for_clg"] ?? nested?.["sponsor_bank_for_clg"],
       ),
 
     sponsor_bank_for_iftas:
       regulatory?.sponsorBankForIftas ??
       asString(
-        raw?.["sponsor_bank_for_iftas"] ??
-          nested?.["sponsor_bank_for_iftas"],
+        raw?.["sponsor_bank_for_iftas"] ?? nested?.["sponsor_bank_for_iftas"],
       ),
 
     /* -------------------------------------------------------------------- */
@@ -538,69 +349,33 @@ function buildBankUpdatePayload(
     /* -------------------------------------------------------------------- */
 
     address_type:
-      currentTenant.addressDetails
-        ?.addressType ??
-      asString(
-        raw?.["address_type"],
-      ),
+      currentTenant.addressDetails?.addressType ??
+      asString(raw?.["address_type"]),
 
     unit_gala_name_no:
-      currentTenant.addressDetails
-        ?.unitGalaNameNo ??
-      asString(
-        raw?.["unit_gala_name_no"],
-      ),
+      currentTenant.addressDetails?.unitGalaNameNo ??
+      asString(raw?.["unit_gala_name_no"]),
 
     street_road:
-      currentTenant.addressDetails
-        ?.streetRoad ??
-      asString(
-        raw?.["street_road"],
-      ),
+      currentTenant.addressDetails?.streetRoad ??
+      asString(raw?.["street_road"]),
 
     land_mark:
-      currentTenant.addressDetails
-        ?.landMark ??
-      asString(
-        raw?.["land_mark"] ??
-          raw?.["landmark"],
-      ),
+      currentTenant.addressDetails?.landMark ??
+      asString(raw?.["land_mark"] ?? raw?.["landmark"]),
 
-    city:
-      currentTenant.addressDetails
-        ?.city ??
-      asString(
-        raw?.["city"],
-      ),
+    city: currentTenant.addressDetails?.city ?? asString(raw?.["city"]),
 
-    state:
-      currentTenant.addressDetails
-        ?.state ??
-      asString(
-        raw?.["state"],
-      ),
+    state: currentTenant.addressDetails?.state ?? asString(raw?.["state"]),
 
     pin_code:
-      currentTenant.addressDetails
-        ?.pinCode ??
-      asString(
-        raw?.["pin_code"],
-      ),
+      currentTenant.addressDetails?.pinCode ?? asString(raw?.["pin_code"]),
 
-    country:
-      asString(
-        raw?.["country"],
-      ),
+    country: asString(raw?.["country"]),
 
-    registered_address:
-      asString(
-        raw?.["registered_address"],
-      ),
+    registered_address: asString(raw?.["registered_address"]),
 
-    corporate_address:
-      asString(
-        raw?.["corporate_address"],
-      ),
+    corporate_address: asString(raw?.["corporate_address"]),
   };
 }
 
@@ -608,42 +383,28 @@ function buildBankUpdatePayload(
 /* UPDATE BANK API                                                            */
 /* -------------------------------------------------------------------------- */
 
-async function updateBank(
-  bankId: number,
-  payload: unknown,
-): Promise<unknown> {
-  const token =
-    getAccessToken();
+async function updateBank(bankId: number, payload: unknown): Promise<unknown> {
+  const token = getAccessToken();
 
   if (!token) {
-    throw new Error(
-      "Session expired. Please login again.",
-    );
+    throw new Error("Session expired. Please login again.");
   }
 
-  const url =
-    `${BANK_UPDATE_URL}/${bankId}`;
+  const url = `${BANK_UPDATE_URL}/${bankId}`;
 
-  const sendRequest = async (
-    method: "PUT" | "PATCH",
-  ) => {
-    const response =
-      await fetch(url, {
-        method,
+  const sendRequest = async (method: "PUT" | "PATCH") => {
+    const response = await fetch(url, {
+      method,
 
-        headers: {
-          Authorization:
-            `Bearer ${token}`,
-          "Content-Type":
-            "application/json",
-        },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
 
-        body:
-          JSON.stringify(payload),
-      });
+      body: JSON.stringify(payload),
+    });
 
-    const text =
-      await response.text();
+    const text = await response.text();
 
     let data: unknown = null;
 
@@ -661,27 +422,19 @@ async function updateBank(
     };
   };
 
-  let result =
-    await sendRequest("PUT");
+  let result = await sendRequest("PUT");
 
-  if (
-    result.response.status === 405
-  ) {
-    result =
-      await sendRequest("PATCH");
+  if (result.response.status === 405) {
+    result = await sendRequest("PATCH");
   }
 
   if (!result.response.ok) {
-    const message =
-      isRecord(result.data)
-        ? asString(
-            result.data["message"],
-          )
-        : "";
+    const message = isRecord(result.data)
+      ? asString(result.data["message"])
+      : "";
 
     throw new Error(
-      message ||
-        `Bank update failed with status ${result.response.status}.`,
+      message || `Bank update failed with status ${result.response.status}.`,
     );
   }
 
@@ -693,219 +446,141 @@ async function updateBank(
 /* -------------------------------------------------------------------------- */
 
 function TenantDetailsPage() {
-  const navigate =
-    useNavigate();
+  const navigate = useNavigate();
 
-  const {
-    updateTenant,
-  } = useAdminStore();
+  const { updateTenant } = useAdminStore();
 
-  const params =
-    Route.useParams();
+  const params = Route.useParams();
 
-  const tenantId =
-    params.tenantId;
+  const tenantId = params.tenantId;
 
-  const [tenant, setTenant] =
-    useState<Tenant | null>(null);
+  const [tenant, setTenant] = useState<Tenant | null>(null);
 
-  const [rawBank, setRawBank] =
-    useState<RawOrganization | null>(
-      null,
-    );
+  const [rawBank, setRawBank] = useState<RawOrganization | null>(null);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const [editOpen, setEditOpen] =
-    useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
-  const [
-    userDrawerOpen,
-    setUserDrawerOpen,
-  ] = useState(false);
+  const [userDrawerOpen, setUserDrawerOpen] = useState(false);
 
-  const [users, setUsers] =
-    useState<UserRecord[]>([]);
+  const [users, setUsers] = useState<UserRecord[]>([]);
 
-  const [
-    loadingUsers,
-    setLoadingUsers,
-  ] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
   /* ---------------------------------------------------------------------- */
   /* LOAD BANK DETAILS                                                      */
   /* ---------------------------------------------------------------------- */
 
-  const loadBankDetails =
-    useCallback(async () => {
-      const token =
-        getAccessToken();
+  const loadBankDetails = useCallback(async () => {
+    const token = getAccessToken();
 
-      if (!token) {
-        toast.error(
-          "Session expired. Please login again.",
-        );
+    if (!token) {
+      toast.error("Session expired. Please login again.");
 
-        setLoading(false);
-        return;
-      }
+      setLoading(false);
+      return;
+    }
 
-      const parsedId =
-        Number(tenantId);
+    const parsedId = Number(tenantId);
 
-      if (
-        !Number.isFinite(parsedId)
-      ) {
-        toast.error(
-          "Invalid bank ID.",
-        );
+    if (!Number.isFinite(parsedId)) {
+      toast.error("Invalid bank ID.");
 
-        setLoading(false);
-        return;
-      }
+      setLoading(false);
+      return;
+    }
 
-      try {
-        setLoading(true);
+    try {
+      setLoading(true);
 
-        const response =
-          await fetch(
-            `${ORGANIZATION_GET_URL}/${parsedId}`,
-            {
-              method: "GET",
+      const response = await fetch(`${ORGANIZATION_GET_URL}/${parsedId}`, {
+        method: "GET",
 
-              headers: {
-                Authorization:
-                  `Bearer ${token}`,
-                "Content-Type":
-                  "application/json",
-              },
-            },
-          );
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-        const text =
-          await response.text();
+      const text = await response.text();
 
-        let body: unknown = null;
+      let body: unknown = null;
 
-        if (text) {
-          try {
-            body = JSON.parse(text);
-          } catch {
-            body = null;
-          }
+      if (text) {
+        try {
+          body = JSON.parse(text);
+        } catch {
+          body = null;
         }
-
-        if (!response.ok) {
-          const message =
-            isRecord(body)
-              ? asString(
-                  body["message"],
-                )
-              : "";
-
-          throw new Error(
-            message ||
-              `Failed to load bank details (${response.status}).`,
-          );
-        }
-
-        const raw =
-          unwrapOrganization(
-            body,
-            parsedId,
-          );
-
-        const mapped =
-          mapOrganizationToTenant(
-            raw,
-          );
-
-        setRawBank(raw);
-        setTenant(mapped);
-
-        updateTenant(
-          mapped.id,
-          {
-            bankCode:
-              mapped.bankCode,
-
-            bankName:
-              mapped.bankName,
-
-            bankType:
-              mapped.bankType,
-
-            legalName:
-              mapped.legalName,
-
-            panNo:
-              mapped.panNo,
-
-            gstNo:
-              mapped.gstNo,
-
-            cin:
-              mapped.cin,
-
-            licenseNo:
-              mapped.licenseNo,
-
-            website:
-              mapped.website,
-
-            logoUrl:
-              mapped.logoUrl,
-
-            regulatoryDetails:
-              mapped.regulatoryDetails,
-
-            addressDetails:
-              mapped.addressDetails,
-
-            contactEmail:
-              mapped.contactEmail,
-
-            contactPhone:
-              mapped.contactPhone,
-
-            branches:
-              mapped.branches,
-
-            instituteName:
-              mapped.instituteName,
-
-            instituteType:
-              mapped.instituteType,
-
-            registrationNumber:
-              mapped.registrationNumber,
-
-            status:
-              mapped.status,
-
-            designation:
-              mapped.designation,
-          },
-        );
-      } catch (error) {
-        console.error(
-          "Failed to load bank details:",
-          error,
-        );
-
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Failed to load bank details.",
-        );
-      } finally {
-        setLoading(false);
       }
-    }, [
-      tenantId,
-      updateTenant,
-    ]);
+
+      if (!response.ok) {
+        const message = isRecord(body) ? asString(body["message"]) : "";
+
+        throw new Error(
+          message || `Failed to load bank details (${response.status}).`,
+        );
+      }
+
+      const raw = unwrapOrganization(body, parsedId);
+
+      const mapped = mapOrganizationToTenant(raw);
+
+      setRawBank(raw);
+      setTenant(mapped);
+
+      updateTenant(mapped.id, {
+        bankCode: mapped.bankCode,
+
+        bankName: mapped.bankName,
+
+        bankType: mapped.bankType,
+
+        legalName: mapped.legalName,
+
+        panNo: mapped.panNo,
+
+        gstNo: mapped.gstNo,
+
+        cin: mapped.cin,
+
+        licenseNo: mapped.licenseNo,
+
+        website: mapped.website,
+
+        logoUrl: mapped.logoUrl,
+
+        regulatoryDetails: mapped.regulatoryDetails,
+
+        addressDetails: mapped.addressDetails,
+
+        contactEmail: mapped.contactEmail,
+
+        contactPhone: mapped.contactPhone,
+
+        branches: mapped.branches,
+
+        instituteName: mapped.instituteName,
+
+        instituteType: mapped.instituteType,
+
+        registrationNumber: mapped.registrationNumber,
+
+        status: mapped.status,
+
+        designation: mapped.designation,
+      });
+    } catch (error) {
+      console.error("Failed to load bank details:", error);
+
+      toast.error(
+        error instanceof Error ? error.message : "Failed to load bank details.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [tenantId, updateTenant]);
 
   useEffect(() => {
     void loadBankDetails();
@@ -915,50 +590,126 @@ function TenantDetailsPage() {
   /* LOAD USERS                                                             */
   /* ---------------------------------------------------------------------- */
 
-  const loadUsers =
-    useCallback(async () => {
-      const token =
-        getAccessToken();
+  const loadUsers = useCallback(async () => {
+    const token = getAccessToken();
 
-      if (!token) {
+    if (!token) {
+      return;
+    }
+
+    const bankId = Number(tenantId);
+
+    if (!Number.isFinite(bankId)) {
+      return;
+    }
+
+    try {
+      setLoadingUsers(true);
+
+      const response = await fetch(USERS_URL, {
+        method: "GET",
+
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const text = await response.text();
+
+      if (!response.ok) {
+        throw new Error(`Failed to load users (${response.status}).`);
+      }
+
+      let body: unknown = null;
+
+      if (text) {
+        try {
+          body = JSON.parse(text);
+        } catch {
+          body = null;
+        }
+      }
+
+      let list: unknown = body;
+
+      if (isRecord(body) && Array.isArray(body["data"])) {
+        list = body["data"];
+      }
+
+      if (!Array.isArray(list)) {
+        setUsers([]);
         return;
       }
 
-      const bankId =
-        Number(tenantId);
+      const bankUsers = list.filter((item): item is UserRecord => {
+        if (!isRecord(item)) {
+          return false;
+        }
 
-      if (
-        !Number.isFinite(bankId)
-      ) {
+        const organizationId =
+          item["organization_id"] ?? item["organizationId"];
+
+        return String(organizationId ?? "") === String(bankId);
+      });
+
+      setUsers(bankUsers);
+    } catch (error) {
+      console.error("Failed to load users:", error);
+
+      setUsers([]);
+    } finally {
+      setLoadingUsers(false);
+    }
+  }, [tenantId]);
+
+  useEffect(() => {
+    void loadUsers();
+  }, [loadUsers]);
+
+  /* ---------------------------------------------------------------------- */
+  /* EDIT BANK                                                              */
+  /* ---------------------------------------------------------------------- */
+
+  const handleBankUpdate = useCallback(
+    async (input: TenantFormSubmit) => {
+      if (!tenant) {
+        return;
+      }
+
+      const bankId = Number(tenant.pkid ?? tenant.id);
+
+      if (!Number.isFinite(bankId)) {
+        toast.error("Bank ID is invalid.");
+
         return;
       }
 
       try {
-        setLoadingUsers(true);
+        const payload = buildBankUpdatePayload(
+          input,
+          tenant,
+          rawBank ?? undefined,
+        );
 
-        const response =
-          await fetch(
-            USERS_URL,
-            {
-              method: "GET",
+        await updateBank(bankId, payload);
 
-              headers: {
-                Authorization:
-                  `Bearer ${token}`,
-                "Content-Type":
-                  "application/json",
-              },
-            },
-          );
+        const token = getAccessToken();
 
-        const text =
-          await response.text();
-
-        if (!response.ok) {
-          throw new Error(
-            `Failed to load users (${response.status}).`,
-          );
+        if (!token) {
+          throw new Error("Session expired. Please login again.");
         }
+
+        const response = await fetch(`${ORGANIZATION_GET_URL}/${bankId}`, {
+          method: "GET",
+
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        const text = await response.text();
 
         let body: unknown = null;
 
@@ -970,304 +721,101 @@ function TenantDetailsPage() {
           }
         }
 
-        let list: unknown = body;
-
-        if (
-          isRecord(body) &&
-          Array.isArray(body["data"])
-        ) {
-          list = body["data"];
-        }
-
-        if (
-          !Array.isArray(list)
-        ) {
-          setUsers([]);
-          return;
-        }
-
-        const bankUsers =
-          list.filter(
-            (item): item is UserRecord => {
-              if (!isRecord(item)) {
-                return false;
-              }
-
-              const organizationId =
-                item[
-                  "organization_id"
-                ] ??
-                item[
-                  "organizationId"
-                ];
-
-              return (
-                String(
-                  organizationId ?? "",
-                ) ===
-                String(bankId)
-              );
-            },
+        if (!response.ok) {
+          throw new Error(
+            `Bank was updated but refreshed details could not be loaded (${response.status}).`,
           );
+        }
 
-        setUsers(bankUsers);
+        const refreshedRaw = unwrapOrganization(body, bankId);
+
+        const refreshedTenant = mapOrganizationToTenant(refreshedRaw);
+
+        setRawBank(refreshedRaw);
+
+        setTenant(refreshedTenant);
+
+        updateTenant(refreshedTenant.id, {
+          bankCode: refreshedTenant.bankCode,
+
+          bankName: refreshedTenant.bankName,
+
+          bankType: refreshedTenant.bankType,
+
+          legalName: refreshedTenant.legalName,
+
+          panNo: refreshedTenant.panNo,
+
+          gstNo: refreshedTenant.gstNo,
+
+          cin: refreshedTenant.cin,
+
+          licenseNo: refreshedTenant.licenseNo,
+
+          website: refreshedTenant.website,
+
+          logoUrl: refreshedTenant.logoUrl,
+
+          regulatoryDetails: refreshedTenant.regulatoryDetails,
+
+          addressDetails: refreshedTenant.addressDetails,
+
+          contactEmail: refreshedTenant.contactEmail,
+
+          contactPhone: refreshedTenant.contactPhone,
+
+          branches: refreshedTenant.branches,
+
+          instituteName: refreshedTenant.instituteName,
+
+          instituteType: refreshedTenant.instituteType,
+
+          registrationNumber: refreshedTenant.registrationNumber,
+
+          status: refreshedTenant.status,
+
+          designation: refreshedTenant.designation,
+        });
+
+        setEditOpen(false);
+
+        toast.success("Bank details updated successfully.");
       } catch (error) {
-        console.error(
-          "Failed to load users:",
-          error,
+        console.error("Bank update failed:", error);
+
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to update bank details.",
         );
 
-        setUsers([]);
-      } finally {
-        setLoadingUsers(false);
+        throw error;
       }
-    }, [tenantId]);
-
-  useEffect(() => {
-    void loadUsers();
-  }, [loadUsers]);
-
-  /* ---------------------------------------------------------------------- */
-  /* EDIT BANK                                                              */
-  /* ---------------------------------------------------------------------- */
-
-  const handleBankUpdate =
-    useCallback(
-      async (
-        input: TenantFormSubmit,
-      ) => {
-        if (!tenant) {
-          return;
-        }
-
-        const bankId =
-          Number(
-            tenant.pkid ??
-              tenant.id,
-          );
-
-        if (
-          !Number.isFinite(bankId)
-        ) {
-          toast.error(
-            "Bank ID is invalid.",
-          );
-
-          return;
-        }
-
-        try {
-          const payload =
-            buildBankUpdatePayload(
-              input,
-              tenant,
-              rawBank ?? undefined,
-            );
-
-          console.log(
-            "Bank update payload:",
-            payload,
-          );
-
-          await updateBank(
-            bankId,
-            payload,
-          );
-
-          const token =
-            getAccessToken();
-
-          if (!token) {
-            throw new Error(
-              "Session expired. Please login again.",
-            );
-          }
-
-          const response =
-            await fetch(
-              `${ORGANIZATION_GET_URL}/${bankId}`,
-              {
-                method: "GET",
-
-                headers: {
-                  Authorization:
-                    `Bearer ${token}`,
-                  "Content-Type":
-                    "application/json",
-                },
-              },
-            );
-
-          const text =
-            await response.text();
-
-          let body: unknown = null;
-
-          if (text) {
-            try {
-              body = JSON.parse(text);
-            } catch {
-              body = null;
-            }
-          }
-
-          if (!response.ok) {
-            throw new Error(
-              `Bank was updated but refreshed details could not be loaded (${response.status}).`,
-            );
-          }
-
-          const refreshedRaw =
-            unwrapOrganization(
-              body,
-              bankId,
-            );
-
-          const refreshedTenant =
-            mapOrganizationToTenant(
-              refreshedRaw,
-            );
-
-          setRawBank(
-            refreshedRaw,
-          );
-
-          setTenant(
-            refreshedTenant,
-          );
-
-          updateTenant(
-            refreshedTenant.id,
-            {
-              bankCode:
-                refreshedTenant.bankCode,
-
-              bankName:
-                refreshedTenant.bankName,
-
-              bankType:
-                refreshedTenant.bankType,
-
-              legalName:
-                refreshedTenant.legalName,
-
-              panNo:
-                refreshedTenant.panNo,
-
-              gstNo:
-                refreshedTenant.gstNo,
-
-              cin:
-                refreshedTenant.cin,
-
-              licenseNo:
-                refreshedTenant.licenseNo,
-
-              website:
-                refreshedTenant.website,
-
-              logoUrl:
-                refreshedTenant.logoUrl,
-
-              regulatoryDetails:
-                refreshedTenant.regulatoryDetails,
-
-              addressDetails:
-                refreshedTenant.addressDetails,
-
-              contactEmail:
-                refreshedTenant.contactEmail,
-
-              contactPhone:
-                refreshedTenant.contactPhone,
-
-              branches:
-                refreshedTenant.branches,
-
-              instituteName:
-                refreshedTenant.instituteName,
-
-              instituteType:
-                refreshedTenant.instituteType,
-
-              registrationNumber:
-                refreshedTenant.registrationNumber,
-
-              status:
-                refreshedTenant.status,
-
-              designation:
-                refreshedTenant.designation,
-            },
-          );
-
-          setEditOpen(false);
-
-          toast.success(
-            "Bank details updated successfully.",
-          );
-        } catch (error) {
-          console.error(
-            "Bank update failed:",
-            error,
-          );
-
-          toast.error(
-            error instanceof Error
-              ? error.message
-              : "Failed to update bank details.",
-          );
-
-          throw error;
-        }
-      },
-      [
-        tenant,
-        rawBank,
-        updateTenant,
-      ],
-    );
+    },
+    [tenant, rawBank, updateTenant],
+  );
 
   /* ---------------------------------------------------------------------- */
   /* DISPLAY VALUES                                                         */
   /* ---------------------------------------------------------------------- */
 
-  const regulatory =
-    tenant?.regulatoryDetails;
+  const regulatory = tenant?.regulatoryDetails;
 
-  const address =
-    tenant?.addressDetails;
+  const address = tenant?.addressDetails;
 
-  const country =
-    rawBank?.country ?? "-";
+  const country = rawBank?.country ?? "-";
 
-  const registeredAddress =
-    rawBank?.registered_address ??
-    "-";
+  const registeredAddress = rawBank?.registered_address ?? "-";
 
-  const corporateAddress =
-    rawBank?.corporate_address ??
-    "-";
+  const corporateAddress = rawBank?.corporate_address ?? "-";
 
-  const micrNumber =
-    regulatory?.micrNumber ||
-    rawBank?.micr_number ||
-    "-";
+  const micrNumber = regulatory?.micrNumber || rawBank?.micr_number || "-";
 
-  const bankId =
-    tenant?.pkid ??
-    Number(tenantId);
+  const bankId = tenant?.pkid ?? Number(tenantId);
 
-  const pageTitle =
-    tenant?.bankName ||
-    tenant?.instituteName ||
-    "Bank Details";
+  const pageTitle = tenant?.bankName || tenant?.instituteName || "Bank Details";
 
-  const usersCount =
-    useMemo(
-      () => users.length,
-      [users],
-    );
+  const usersCount = useMemo(() => users.length, [users]);
 
   /* ---------------------------------------------------------------------- */
   /* LOADING                                                                */
@@ -1294,9 +842,7 @@ function TenantDetailsPage() {
       <AppShell title={pageTitle}>
         <div className="p-6">
           <div className="rounded-xl border bg-white p-8">
-            <p className="mb-4 text-lg font-semibold">
-              Bank not found
-            </p>
+            <p className="mb-4 text-lg font-semibold">Bank not found</p>
 
             <Button
               onClick={() =>
@@ -1346,24 +892,14 @@ function TenantDetailsPage() {
                   {pageTitle}
                 </h1>
 
-                <StatusBadge
-                  status={
-                    tenant.status
-                  }
-                />
+                <StatusBadge status={tenant.status} />
               </div>
 
-              <p className="mt-1 text-sm text-slate-500">
-                Bank ID: {bankId}
-              </p>
+              <p className="mt-1 text-sm text-slate-500">Bank ID: {bankId}</p>
             </div>
           </div>
 
-          <Button
-            onClick={() =>
-              setEditOpen(true)
-            }
-          >
+          <Button onClick={() => setEditOpen(true)}>
             <Edit className="mr-2 h-4 w-4" />
             Edit Bank
           </Button>
@@ -1381,55 +917,24 @@ function TenantDetailsPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-5 p-6 md:grid-cols-2 lg:grid-cols-3">
-            <DetailItem
-              label="Bank Code"
-              value={
-                tenant.bankCode
-              }
-            />
+            <DetailItem label="Bank Code" value={tenant.bankCode} />
 
             <DetailItem
               label="Bank Name"
-              value={
-                tenant.bankName ||
-                tenant.instituteName
-              }
+              value={tenant.bankName || tenant.instituteName}
             />
 
-            <DetailItem
-              label="Bank Type"
-              value={
-                tenant.bankType
-              }
-            />
+            <DetailItem label="Bank Type" value={tenant.bankType} />
 
-            <DetailItem
-              label="Legal Name"
-              value={
-                tenant.legalName
-              }
-            />
+            <DetailItem label="Legal Name" value={tenant.legalName} />
 
-            <DetailItem
-              label="PAN No."
-              value={
-                tenant.panNo
-              }
-            />
+            <DetailItem label="PAN No." value={tenant.panNo} />
 
-            <DetailItem
-              label="GST No."
-              value={
-                tenant.gstNo
-              }
-            />
+            <DetailItem label="GST No." value={tenant.gstNo} />
 
             <DetailItem
               label="License No."
-              value={
-                tenant.licenseNo ||
-                tenant.registrationNumber
-              }
+              value={tenant.licenseNo || tenant.registrationNumber}
             />
 
             {/* <DetailItem
@@ -1439,12 +944,7 @@ function TenantDetailsPage() {
               }
             /> */}
 
-            <DetailItem
-              label="Website"
-              value={
-                tenant.website
-              }
-            />
+            <DetailItem label="Website" value={tenant.website} />
 
             {/* <DetailItem
               label="Contact Email"
@@ -1466,12 +966,7 @@ function TenantDetailsPage() {
               }
             /> */}
 
-            <DetailItem
-              label="Status"
-              value={
-                tenant.status
-              }
-            />
+            <DetailItem label="Status" value={tenant.status} />
           </div>
         </section>
 
@@ -1489,72 +984,43 @@ function TenantDetailsPage() {
           <div className="grid grid-cols-1 gap-5 p-6 md:grid-cols-2 lg:grid-cols-3">
             <DetailItem
               label="Direct CLG Member"
-              value={
-                regulatory?.directClgMember
-              }
+              value={regulatory?.directClgMember}
             />
 
             <DetailItem
               label="Direct Member IFTAS"
-              value={
-                regulatory?.directMemberIftas
-              }
+              value={regulatory?.directMemberIftas}
             />
 
-            <DetailItem
-              label="MICR Code"
-              value={
-                regulatory?.micrCode
-              }
-            />
+            <DetailItem label="MICR Code" value={regulatory?.micrCode} />
 
-            <DetailItem
-              label="MICR Number"
-              value={
-                micrNumber
-              }
-            />
+            <DetailItem label="MICR Number" value={micrNumber} />
 
             <DetailItem
               label="MICR City Code"
-              value={
-                regulatory?.micrCityCode
-              }
+              value={regulatory?.micrCityCode}
             />
 
             <DetailItem
               label="MICR Branch Code"
-              value={
-                regulatory?.micrBranchCode
-              }
+              value={regulatory?.micrBranchCode}
             />
 
-            <DetailItem
-              label="IFSC Code"
-              value={
-                regulatory?.ifscCode
-              }
-            />
+            <DetailItem label="IFSC Code" value={regulatory?.ifscCode} />
 
             <DetailItem
               label="Number of Branches"
-              value={
-                regulatory?.numberOfBranches
-              }
+              value={regulatory?.numberOfBranches}
             />
 
             <DetailItem
               label="Sponsor Bank for CLG"
-              value={
-                regulatory?.sponsorBankForClg
-              }
+              value={regulatory?.sponsorBankForClg}
             />
 
             <DetailItem
               label="Sponsor Bank for IFTAS"
-              value={
-                regulatory?.sponsorBankForIftas
-              }
+              value={regulatory?.sponsorBankForIftas}
             />
           </div>
         </section>
@@ -1571,75 +1037,28 @@ function TenantDetailsPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-5 p-6 md:grid-cols-2 lg:grid-cols-3">
-            <DetailItem
-              label="Address Type"
-              value={
-                address?.addressType
-              }
-            />
+            <DetailItem label="Address Type" value={address?.addressType} />
 
             <DetailItem
               label="Unit / Gala Name & No."
-              value={
-                address?.unitGalaNameNo
-              }
+              value={address?.unitGalaNameNo}
             />
 
-            <DetailItem
-              label="Street / Road"
-              value={
-                address?.streetRoad
-              }
-            />
+            <DetailItem label="Street / Road" value={address?.streetRoad} />
 
-            <DetailItem
-              label="Land Mark"
-              value={
-                address?.landMark
-              }
-            />
+            <DetailItem label="Land Mark" value={address?.landMark} />
 
-            <DetailItem
-              label="City"
-              value={
-                address?.city
-              }
-            />
+            <DetailItem label="City" value={address?.city} />
 
-            <DetailItem
-              label="State"
-              value={
-                address?.state
-              }
-            />
+            <DetailItem label="State" value={address?.state} />
 
-            <DetailItem
-              label="PIN Code"
-              value={
-                address?.pinCode
-              }
-            />
+            <DetailItem label="PIN Code" value={address?.pinCode} />
 
-            <DetailItem
-              label="Country"
-              value={
-                country
-              }
-            />
+            <DetailItem label="Country" value={country} />
 
-            <DetailItem
-              label="Registered Address"
-              value={
-                registeredAddress
-              }
-            />
+            <DetailItem label="Registered Address" value={registeredAddress} />
 
-            <DetailItem
-              label="Corporate Address"
-              value={
-                corporateAddress
-              }
-            />
+            <DetailItem label="Corporate Address" value={corporateAddress} />
           </div>
         </section>
 
@@ -1650,127 +1069,86 @@ function TenantDetailsPage() {
         <section className="rounded-xl border bg-white shadow-sm">
           <div className="flex items-center justify-between border-b px-6 py-4">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">
-                Users
-              </h2>
+              <h2 className="text-lg font-semibold text-slate-900">Users</h2>
 
               <p className="text-sm text-slate-500">
                 {usersCount} user
-                {usersCount === 1
-                  ? ""
-                  : "s"} associated with this bank
+                {usersCount === 1 ? "" : "s"} associated with this bank
               </p>
             </div>
 
-            <Button
-              onClick={() =>
-                setUserDrawerOpen(
-                  true,
-                )
-              }
-            >
+            <Button onClick={() => setUserDrawerOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Add User
             </Button>
           </div>
 
           {loadingUsers ? (
-            <div className="p-6 text-sm text-slate-500">
-              Loading users...
-            </div>
+            <div className="p-6 text-sm text-slate-500">Loading users...</div>
           ) : users.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-10 text-center">
               <User className="mb-3 h-10 w-10 text-slate-300" />
 
-              <p className="mb-1 font-medium text-slate-700">
-                No users found
-              </p>
+              <p className="mb-1 font-medium text-slate-700">No users found</p>
 
               <p className="mb-4 text-sm text-slate-500">
                 Add a user to this bank.
               </p>
 
-              <Button
-                onClick={() =>
-                  setUserDrawerOpen(
-                    true,
-                  )
-                }
-              >
+              <Button onClick={() => setUserDrawerOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add User
               </Button>
             </div>
           ) : (
             <div className="divide-y">
-              {users.map(
-                (
-                  user,
-                  index,
-                ) => {
-                  const firstName =
-                    user.first_name ??
-                    user.firstName ??
-                    "";
+              {users.map((user, index) => {
+                const firstName = user.first_name ?? user.firstName ?? "";
 
-                  const lastName =
-                    user.last_name ??
-                    user.lastName ??
-                    "";
+                const lastName = user.last_name ?? user.lastName ?? "";
 
-                  const name =
-                    user.name ||
-                    `${firstName} ${lastName}`.trim() ||
-                    "Unnamed User";
+                const name =
+                  user.name ||
+                  `${firstName} ${lastName}`.trim() ||
+                  "Unnamed User";
 
-                  return (
-                    <div
-                      key={String(
-                        user.id ??
-                          user.pkid ??
-                          index,
-                      )}
-                      className="flex items-center justify-between px-6 py-4"
-                    >
-                      <div>
-                        <p className="font-medium text-slate-900">
-                          {name}
-                        </p>
+                return (
+                  <div
+                    key={String(user.id ?? user.pkid ?? index)}
+                    className="flex items-center justify-between px-6 py-4"
+                  >
+                    <div>
+                      <p className="font-medium text-slate-900">{name}</p>
 
-                        <div className="mt-1 flex flex-wrap gap-4 text-sm text-slate-500">
-                          {user.email && (
-                            <span className="flex items-center gap-1">
-                              <Mail className="h-3.5 w-3.5" />
-                              {user.email}
-                            </span>
-                          )}
+                      <div className="mt-1 flex flex-wrap gap-4 text-sm text-slate-500">
+                        {user.email && (
+                          <span className="flex items-center gap-1">
+                            <Mail className="h-3.5 w-3.5" />
+                            {user.email}
+                          </span>
+                        )}
 
-                          {(user.mobile ||
-                            user.phone) && (
-                            <span className="flex items-center gap-1">
-                              <Phone className="h-3.5 w-3.5" />
-                              {user.mobile ||
-                                user.phone}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-slate-700">
-                          {user.designation ||
-                            "-"}
-                        </p>
-
-                        <p className="mt-1 text-xs text-slate-500">
-                          {user.status ||
-                            "Active"}
-                        </p>
+                        {(user.mobile || user.phone) && (
+                          <span className="flex items-center gap-1">
+                            <Phone className="h-3.5 w-3.5" />
+                            {user.mobile || user.phone}
+                          </span>
+                        )}
                       </div>
                     </div>
-                  );
-                },
-              )}
+
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-slate-700">
+                        {user.designation || "-"}
+                      </p>
+
+                      <p className="mt-1 text-xs text-slate-500">
+                        {user.status || "Active"}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>
@@ -1782,13 +1160,9 @@ function TenantDetailsPage() {
 
       <TenantFormDrawer
         open={editOpen}
-        onOpenChange={
-          setEditOpen
-        }
+        onOpenChange={setEditOpen}
         tenant={tenant}
-        onSubmit={
-          handleBankUpdate
-        }
+        onSubmit={handleBankUpdate}
       />
 
       {/* ------------------------------------------------------------------ */}
@@ -1799,9 +1173,7 @@ function TenantDetailsPage() {
         open={userDrawerOpen}
         bank={tenant}
         onOpenChange={(nextOpen) => {
-          setUserDrawerOpen(
-            nextOpen,
-          );
+          setUserDrawerOpen(nextOpen);
 
           if (!nextOpen) {
             void loadUsers();
@@ -1826,9 +1198,7 @@ function DetailItem({
   icon?: ReactNode;
 }) {
   const display =
-    value === null ||
-    value === undefined ||
-    String(value).trim() === ""
+    value === null || value === undefined || String(value).trim() === ""
       ? "-"
       : String(value);
 
@@ -1839,15 +1209,9 @@ function DetailItem({
       </p>
 
       <div className="flex items-center gap-2 text-sm font-medium text-slate-800">
-        {icon && (
-          <span className="text-slate-400">
-            {icon}
-          </span>
-        )}
+        {icon && <span className="text-slate-400">{icon}</span>}
 
-        <span className="break-words">
-          {display}
-        </span>
+        <span className="break-words">{display}</span>
       </div>
     </div>
   );

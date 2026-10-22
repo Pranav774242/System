@@ -1,22 +1,21 @@
 import {
   createFileRoute,
+  useLocation,
   useNavigate,
 } from "@tanstack/react-router";
-
 import {
+  Eye,
+  MoreHorizontal,
+  Pencil,
   Search,
+  Trash2,
   Users,
 } from "lucide-react";
-
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { AppShell } from "@/components/AppShell";
-
 import { Input } from "@/components/ui/input";
+import { getStoredBankUserContext } from "@/lib/bank-user-context";
 
 import {
   getUsers,
@@ -30,13 +29,11 @@ export const Route = createFileRoute("/users/")({
   head: () => ({
     meta: [
       {
-        title:
-          "User Management — System Administrator Panel",
+        title: "User Management — System Administrator Panel",
       },
       {
         name: "description",
-        content:
-          "View and manage users on the Allianza LOS platform.",
+        content: "View and manage users on the Banking LOS platform.",
       },
     ],
   }),
@@ -44,49 +41,74 @@ export const Route = createFileRoute("/users/")({
   component: UsersPage,
 });
 
+/* ========================================================= */
+/* USERS PAGE                                                 */
+/* ========================================================= */
+
 function UsersPage() {
   const navigate = useNavigate();
+  const routeOrganizationId = useLocation({
+    select: (location) =>
+      (location.state as { organizationId?: string | number } | undefined)
+        ?.organizationId,
+  });
 
   const [users, setUsers] = useState<ApiUser[]>([]);
+  const [organizationId, setOrganizationId] = useState("");
   const [query, setQuery] = useState("");
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    loadUsers();
-  }, []);
+    const storedContext = getStoredBankUserContext();
+    setOrganizationId(
+      routeOrganizationId != null
+        ? String(routeOrganizationId)
+        : (storedContext?.organizationId ?? ""),
+    );
+  }, [routeOrganizationId]);
 
-  async function loadUsers() {
-    try {
-      setLoading(true);
-      setError("");
+  useEffect(() => {
+    let cancelled = false;
 
-      const data = await getUsers();
-
-      setUsers(data);
-    } catch (error) {
-      console.error(
-        "Failed to load users:",
-        error,
-      );
-
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Unable to load users",
-      );
-    } finally {
+    if (!organizationId) {
+      setUsers([]);
+      setError("Select a bank first to view its users.");
       setLoading(false);
+      return;
     }
-  }
+
+    const loadUsers = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const data = await getUsers(organizationId);
+        if (!cancelled) setUsers(data);
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load users:", error);
+          setError(
+            error instanceof Error ? error.message : "Unable to load users",
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void loadUsers();
+    return () => {
+      cancelled = true;
+    };
+  }, [organizationId]);
+
+  /* ------------------------------------------------------- */
+  /* Filter users                                             */
+  /* ------------------------------------------------------- */
 
   const rows = useMemo(() => {
-    const value =
-      query.trim().toLowerCase();
+    const value = query.trim().toLowerCase();
 
     if (!value) {
       return users;
@@ -119,14 +141,90 @@ function UsersPage() {
     );
   }, [users, query]);
 
+  /* ------------------------------------------------------- */
+  /* View user                                                */
+  /* ------------------------------------------------------- */
+
+  function handleViewUser(user: ApiUser) {
+    console.log("=================================");
+    console.log("VIEW USER");
+    console.log("Sending User ID:", user.id);
+    console.log("Sending Organization ID:", user.organization_id);
+    console.log("=================================");
+
+    navigate({
+      to: "/users/detail",
+      state: {
+        userId: user.id,
+        organizationId: user.organization_id,
+      },
+    });
+  }
+
+  /* ------------------------------------------------------- */
+  /* Edit user                                                */
+  /* ------------------------------------------------------- */
+
+  function handleEditUser(user: ApiUser) {
+    console.log("=================================");
+    console.log("EDIT USER");
+    console.log("Sending User ID:", user.id);
+    console.log("Sending Organization ID:", user.organization_id);
+    console.log("=================================");
+
+    navigate({
+      to: "/users/edit",
+      state: {
+        userId: user.id,
+        organizationId: user.organization_id,
+      },
+    });
+  }
+
+  /* ------------------------------------------------------- */
+  /* Delete user                                              */
+  /* ------------------------------------------------------- */
+
+  function handleDeleteUser(user: ApiUser) {
+    console.log("=================================");
+    console.log("DELETE USER");
+    console.log("User ID:", user.id);
+    console.log("Organization ID:", user.organization_id);
+    console.log("=================================");
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${getUserName(user)}?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    /*
+     * Add your DELETE API here.
+     *
+     * Example:
+     *
+     * await deleteUser(user.id, user.organization_id);
+     *
+     * Then reload users:
+     *
+     * await loadUsers();
+     */
+
+    console.log("Delete confirmed for user:", user.id);
+  }
+
   return (
     <AppShell
       title="User Management"
       subtitle={`${users.length} users added to the platform`}
     >
       <div className="space-y-4">
+        {/* ================================================= */}
+        {/* SEARCH                                            */}
+        {/* ================================================= */}
 
-        {/* Search */}
         <div className="relative w-full max-w-xl">
           <Search
             className="
@@ -142,13 +240,14 @@ function UsersPage() {
             className="pl-9"
             placeholder="Search by employee number, name, email or role"
             value={query}
-            onChange={(event) =>
-              setQuery(event.target.value)
-            }
+            onChange={(event) => setQuery(event.target.value)}
           />
         </div>
 
-        {/* Error */}
+        {/* ================================================= */}
+        {/* ERROR                                             */}
+        {/* ================================================= */}
+
         {error && (
           <div
             className="
@@ -166,34 +265,30 @@ function UsersPage() {
           </div>
         )}
 
-        {/* Table */}
-        <div className="surface-card animate-rise overflow-hidden">
+        {/* ================================================= */}
+        {/* TABLE                                             */}
+        {/* ================================================= */}
 
+        <div className="surface-card animate-rise overflow-hidden">
           {loading ? (
             <LoadingState />
           ) : rows.length === 0 ? (
-            <EmptyState
-              searching={Boolean(query)}
-            />
+            <EmptyState searching={Boolean(query)} />
           ) : (
             <div className="w-full overflow-x-auto">
-
-              <table className="w-full min-w-[1450px] text-sm">
+              <table className="w-full min-w-[1550px] text-sm">
+                {/* ========================================= */}
+                {/* TABLE HEADER                               */}
+                {/* ========================================= */}
 
                 <thead className="bg-secondary/50">
-
                   <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
-
                     <th className="whitespace-nowrap px-4 py-3 font-medium">
                       Employee Number
                     </th>
 
-                    {/* <th className="whitespace-nowrap px-4 py-3 font-medium">
-                      Bank ID
-                    </th> */}
-
                     <th className="whitespace-nowrap px-4 py-3 font-medium">
-                      Email
+                      Bank ID
                     </th>
 
                     <th className="whitespace-nowrap px-4 py-3 font-medium">
@@ -201,15 +296,7 @@ function UsersPage() {
                     </th>
 
                     <th className="whitespace-nowrap px-4 py-3 font-medium">
-                      Date of Birth
-                    </th>
-
-                    <th className="whitespace-nowrap px-4 py-3 font-medium">
                       Mobile Number
-                    </th>
-
-                    <th className="whitespace-nowrap px-4 py-3 font-medium">
-                      Gender
                     </th>
 
                     <th className="whitespace-nowrap px-4 py-3 font-medium">
@@ -228,26 +315,22 @@ function UsersPage() {
                       Login Branch
                     </th>
 
+                    {/* NEW */}
+                    <th className="w-[90px] whitespace-nowrap px-4 py-3 text-center font-medium">
+                      Action
+                    </th>
                   </tr>
-
                 </thead>
 
+                {/* ========================================= */}
+                {/* TABLE BODY                                 */}
+                {/* ========================================= */}
+
                 <tbody>
-
                   {rows.map((user) => (
-
                     <tr
                       key={user.id}
-                      onClick={() =>
-                        navigate({
-                          to: "/users/$userId",
-                          params: {
-                            userId: String(
-                              user.id,
-                            ),
-                          },
-                        })
-                      }
+                      onClick={() => handleViewUser(user)}
                       className="
                         cursor-pointer
                         border-t
@@ -256,96 +339,187 @@ function UsersPage() {
                         hover:bg-secondary/60
                       "
                     >
-
+                      {/* Employee Number */}
                       <td className="whitespace-nowrap px-4 py-3 font-medium">
                         {user.emp_no || "—"}
                       </td>
 
-                      {/* <td className="whitespace-nowrap px-4 py-3">
-                        {user.organization_id ||
-                          "—"}
-                      </td> */}
-
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {user.email || "—"}
+                      {/* Bank ID */}
+                      <td className="whitespace-nowrap px-4 py-3">
+                        {user.organization_id || "—"}
                       </td>
 
+                      {/* Name */}
                       <td className="whitespace-nowrap px-4 py-3 font-medium">
                         {getUserName(user)}
                       </td>
 
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {user.date_of_birth ||
-                          user.dob ||
-                          user.DOB ||
-                          "—"}
-                      </td>
-
+                      {/* Mobile */}
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {user.mobile || "—"}
                       </td>
 
-                      <td className="whitespace-nowrap px-4 py-3">
-                        {user.gender || "—"}
-                      </td>
-
+                      {/* Designation */}
                       <td className="whitespace-nowrap px-4 py-3">
                         {user.designation || "—"}
                       </td>
 
+                      {/* Role */}
                       <td className="whitespace-nowrap px-4 py-3">
-
                         <span className="rounded-md bg-secondary px-2 py-1 text-xs font-medium">
                           {getUserRole(user)}
                         </span>
-
                       </td>
 
+                      {/* Status */}
                       <td className="whitespace-nowrap px-4 py-3">
-
                         <UserStatusBadge
-                          status={getUserStatus(
-                            user,
-                          )}
-                          active={
-                            user.is_active ?? false
-                          }
+                          status={getUserStatus(user)}
+                          active={user.is_active ?? false}
                         />
-
                       </td>
 
+                      {/* Login Branch */}
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {user.login_branch_name ||
-                          user.login_branch ||
-                          "—"}
+                        {user.login_branch_name || user.login_branch || "—"}
                       </td>
 
+                      {/* ===================================== */}
+                      {/* ACTION                                 */}
+                      {/* ===================================== */}
+
+                      <td
+                        className="
+                          relative
+                          whitespace-nowrap
+                          px-4
+                          py-3
+                          text-center
+                        "
+                        onClick={(event) => {
+                          /*
+                           * VERY IMPORTANT:
+                           * Prevent clicking Action from
+                           * triggering row View action.
+                           */
+                          event.stopPropagation();
+                        }}
+                      >
+                        <UserActions
+                          user={user}
+                          onView={handleViewUser}
+                          onEdit={handleEditUser}
+                          onDelete={handleDeleteUser}
+                        />
+                      </td>
                     </tr>
-
                   ))}
-
                 </tbody>
-
               </table>
-
             </div>
           )}
-
         </div>
-
       </div>
     </AppShell>
   );
 }
 
-/* -------------------------------- */
-/* Loading                           */
-/* -------------------------------- */
+/* ========================================================= */
+/* USER ACTIONS                                               */
+/* ========================================================= */
+
+type UserActionsProps = {
+  user: ApiUser;
+  onView: (user: ApiUser) => void;
+  onEdit: (user: ApiUser) => void;
+  onDelete: (user: ApiUser) => void;
+};
+
+function UserActions({ user, onView, onEdit, onDelete }: UserActionsProps) {
+  return (
+    <div
+      className="inline-flex items-center gap-1"
+      onClick={(event) => event.stopPropagation()}
+    >
+      {/* View */}
+      <button
+        type="button"
+        title="View User"
+        onClick={() => onView(user)}
+        className="
+          inline-flex
+          size-8
+          items-center
+          justify-center
+          rounded-md
+          text-muted-foreground
+          transition-colors
+          hover:bg-secondary
+          hover:text-foreground
+          focus:outline-none
+          focus:ring-2
+          focus:ring-ring
+        "
+      >
+        <Eye className="size-4" />
+      </button>
+
+      {/* Edit */}
+      <button
+        type="button"
+        title="Edit User"
+        onClick={() => onEdit(user)}
+        className="
+          inline-flex
+          size-8
+          items-center
+          justify-center
+          rounded-md
+          text-muted-foreground
+          transition-colors
+          hover:bg-secondary
+          hover:text-foreground
+          focus:outline-none
+          focus:ring-2
+          focus:ring-ring
+        "
+      >
+        <Pencil className="size-4" />
+      </button>
+
+      {/* Delete */}
+      <button
+        type="button"
+        title="Delete User"
+        onClick={() => onDelete(user)}
+        className="
+          inline-flex
+          size-8
+          items-center
+          justify-center
+          rounded-md
+          text-muted-foreground
+          transition-colors
+          hover:bg-destructive/10
+          hover:text-destructive
+          focus:outline-none
+          focus:ring-2
+          focus:ring-ring
+        "
+      >
+        <Trash2 className="size-4" />
+      </button>
+    </div>
+  );
+}
+
+/* ========================================================= */
+/* LOADING STATE                                              */
+/* ========================================================= */
 
 function LoadingState() {
   return (
     <div className="flex flex-col items-center gap-3 px-6 py-20 text-center">
-
       <div
         className="
           size-8
@@ -357,51 +531,38 @@ function LoadingState() {
         "
       />
 
-      <p className="font-medium">
-        Loading users...
-      </p>
+      <p className="font-medium">Loading users...</p>
 
       <p className="text-sm text-muted-foreground">
         Fetching users from the server.
       </p>
-
     </div>
   );
 }
 
-/* -------------------------------- */
-/* Empty                             */
-/* -------------------------------- */
+/* ========================================================= */
+/* EMPTY STATE                                                */
+/* ========================================================= */
 
-function EmptyState({
-  searching,
-}: {
-  searching: boolean;
-}) {
+function EmptyState({ searching }: { searching: boolean }) {
   return (
     <div className="flex flex-col items-center gap-3 px-6 py-20 text-center">
-
       <span className="grid size-12 place-items-center rounded-2xl bg-secondary text-muted-foreground">
         <Users className="size-6" />
       </span>
 
-      <p className="font-medium">
-        No users found
-      </p>
+      <p className="font-medium">No users found</p>
 
       <p className="text-sm text-muted-foreground">
-        {searching
-          ? "Try changing your search."
-          : "No users are available."}
+        {searching ? "Try changing your search." : "No users are available."}
       </p>
-
     </div>
   );
 }
 
-/* -------------------------------- */
-/* User Status                       */
-/* -------------------------------- */
+/* ========================================================= */
+/* USER STATUS                                                */
+/* ========================================================= */
 
 function UserStatusBadge({
   status,
@@ -411,9 +572,7 @@ function UserStatusBadge({
   active?: boolean;
 }) {
   const isActive =
-    active === true ||
-    status === "OPERATIVE" ||
-    status === "ACTIVE";
+    active === true || status === "OPERATIVE" || status === "ACTIVE";
 
   return (
     <span

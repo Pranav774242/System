@@ -13,7 +13,8 @@ import {
   ShieldCheck,
   ArrowLeft,
   Menu,
-          X,
+  X,
+  BookOpen,
 } from "lucide-react";
 
 import { useAdminStore } from "@/lib/admin-store";
@@ -33,6 +34,7 @@ const NAV = [
   { label: "Bank Management", to: "/tenants", icon: Building2 },
   { label: "User Management", to: "/users", icon: Users },
   { label: "Activity Log", to: "/activity-log", icon: Activity },
+  { label: "Lookup Management", to: "/lookup-management", icon: BookOpen },
 ] as const;
 
 export function AppShell({
@@ -75,15 +77,6 @@ export function AppShell({
 
   const handleNavigation = () => {
     setMobileMenuOpen(false);
-    const navigation = [
-  // existing items...
-
-  {
-    label: "Activity Log",
-    href: "/activity-log",
-    icon: Activity,
-  },
-];
   };
 
   return (
@@ -102,21 +95,20 @@ export function AppShell({
 
           {!collapsed && (
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">
-                Allianza LOS
-              </p>
+              <p className="truncate text-sm font-semibold">Allianza LOS</p>
 
               <p className="truncate text-xs text-sidebar-foreground/60">
                 System Administrator
               </p>
+              {/* <p className="truncate text-sm font-semibold">Banking LOS</p> */}
+              {/* <p className="truncate text-xs text-sidebar-foreground/60">System Administrator</p> */}
             </div>
           )}
         </div>
 
         <nav className="mt-4 flex flex-1 flex-col gap-1 px-3">
           {NAV.map(({ label, to, icon: Icon }) => {
-            const active =
-              pathname === to || pathname.startsWith(`${to}/`);
+            const active = pathname === to || pathname.startsWith(`${to}/`);
 
             return (
               <Link
@@ -139,9 +131,7 @@ export function AppShell({
                   strokeWidth={2}
                 />
 
-                {!collapsed && (
-                  <span className="truncate">{label}</span>
-                )}
+                {!collapsed && <span className="truncate">{label}</span>}
               </Link>
             );
           })}
@@ -177,9 +167,7 @@ export function AppShell({
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-xl transition-transform duration-300 md:hidden",
-          mobileMenuOpen
-            ? "translate-x-0"
-            : "-translate-x-full",
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <div className="flex h-16 items-center justify-between gap-3 border-b border-sidebar-border px-4">
@@ -189,9 +177,7 @@ export function AppShell({
             </div>
 
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">
-                Allianza LOS
-              </p>
+              <p className="truncate text-sm font-semibold">Allianza LOS</p>
 
               <p className="truncate text-xs text-sidebar-foreground/60">
                 System Administrator
@@ -212,8 +198,7 @@ export function AppShell({
 
         <nav className="mt-4 flex flex-1 flex-col gap-1 px-3">
           {NAV.map(({ label, to, icon: Icon }) => {
-            const active =
-              pathname === to || pathname.startsWith(`${to}/`);
+            const active = pathname === to || pathname.startsWith(`${to}/`);
 
             return (
               <Link
@@ -316,14 +301,9 @@ export function AppShell({
                 </button>
               </DropdownMenuTrigger>
 
-              <DropdownMenuContent
-                align="end"
-                className="w-52"
-              >
+              <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuLabel>
-                  <p className="text-sm font-medium">
-                    {adminName}
-                  </p>
+                  <p className="text-sm font-medium">{adminName}</p>
 
                   <p className="text-xs font-normal text-muted-foreground">
                     System Administrator

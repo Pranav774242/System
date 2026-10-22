@@ -11,11 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ActivityLogRouteImport } from './routes/activity-log'
+import { Route as BankUsersRouteImport } from './routes/bank-users'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as LookupManagementRouteImport } from './routes/lookup-management'
 import { Route as TenantsIndexRouteImport } from './routes/tenants.index'
 import { Route as TenantsTenantIdRouteImport } from './routes/tenants.$tenantId'
 import { Route as UsersIndexRouteImport } from './routes/users.index'
-import { Route as UsersUserIdRouteImport } from './routes/users.$userId'
+import { Route as UsersDetailRouteImport } from './routes/users/detail'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -27,9 +29,19 @@ const ActivityLogRoute = ActivityLogRouteImport.update({
   path: '/activity-log',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BankUsersRoute = BankUsersRouteImport.update({
+  id: '/bank-users',
+  path: '/bank-users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LookupManagementRoute = LookupManagementRouteImport.update({
+  id: '/lookup-management',
+  path: '/lookup-management',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TenantsIndexRoute = TenantsIndexRouteImport.update({
@@ -47,27 +59,31 @@ const UsersIndexRoute = UsersIndexRouteImport.update({
   path: '/users/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const UsersUserIdRoute = UsersUserIdRouteImport.update({
-  id: '/users/$userId',
-  path: '/users/$userId',
+const UsersDetailRoute = UsersDetailRouteImport.update({
+  id: '/users/detail',
+  path: '/users/detail',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/activity-log': typeof ActivityLogRoute
+  '/bank-users': typeof BankUsersRoute
   '/dashboard': typeof DashboardRoute
+  '/lookup-management': typeof LookupManagementRoute
   '/tenants/$tenantId': typeof TenantsTenantIdRoute
-  '/users/$userId': typeof UsersUserIdRoute
+  '/users/detail': typeof UsersDetailRoute
   '/tenants/': typeof TenantsIndexRoute
   '/users/': typeof UsersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/activity-log': typeof ActivityLogRoute
+  '/bank-users': typeof BankUsersRoute
   '/dashboard': typeof DashboardRoute
+  '/lookup-management': typeof LookupManagementRoute
   '/tenants/$tenantId': typeof TenantsTenantIdRoute
-  '/users/$userId': typeof UsersUserIdRoute
+  '/users/detail': typeof UsersDetailRoute
   '/tenants': typeof TenantsIndexRoute
   '/users': typeof UsersIndexRoute
 }
@@ -75,9 +91,11 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/activity-log': typeof ActivityLogRoute
+  '/bank-users': typeof BankUsersRoute
   '/dashboard': typeof DashboardRoute
+  '/lookup-management': typeof LookupManagementRoute
   '/tenants/$tenantId': typeof TenantsTenantIdRoute
-  '/users/$userId': typeof UsersUserIdRoute
+  '/users/detail': typeof UsersDetailRoute
   '/tenants/': typeof TenantsIndexRoute
   '/users/': typeof UsersIndexRoute
 }
@@ -86,27 +104,33 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/activity-log'
+    | '/bank-users'
     | '/dashboard'
+    | '/lookup-management'
     | '/tenants/$tenantId'
-    | '/users/$userId'
+    | '/users/detail'
     | '/tenants/'
     | '/users/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/activity-log'
+    | '/bank-users'
     | '/dashboard'
+    | '/lookup-management'
     | '/tenants/$tenantId'
-    | '/users/$userId'
+    | '/users/detail'
     | '/tenants'
     | '/users'
   id:
     | '__root__'
     | '/'
     | '/activity-log'
+    | '/bank-users'
     | '/dashboard'
+    | '/lookup-management'
     | '/tenants/$tenantId'
-    | '/users/$userId'
+    | '/users/detail'
     | '/tenants/'
     | '/users/'
   fileRoutesById: FileRoutesById
@@ -114,9 +138,11 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActivityLogRoute: typeof ActivityLogRoute
+  BankUsersRoute: typeof BankUsersRoute
   DashboardRoute: typeof DashboardRoute
+  LookupManagementRoute: typeof LookupManagementRoute
   TenantsTenantIdRoute: typeof TenantsTenantIdRoute
-  UsersUserIdRoute: typeof UsersUserIdRoute
+  UsersDetailRoute: typeof UsersDetailRoute
   TenantsIndexRoute: typeof TenantsIndexRoute
   UsersIndexRoute: typeof UsersIndexRoute
 }
@@ -137,11 +163,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ActivityLogRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/bank-users': {
+      id: '/bank-users'
+      path: '/bank-users'
+      fullPath: '/bank-users'
+      preLoaderRoute: typeof BankUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lookup-management': {
+      id: '/lookup-management'
+      path: '/lookup-management'
+      fullPath: '/lookup-management'
+      preLoaderRoute: typeof LookupManagementRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tenants/': {
@@ -165,11 +205,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsersIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/users/$userId': {
-      id: '/users/$userId'
-      path: '/users/$userId'
-      fullPath: '/users/$userId'
-      preLoaderRoute: typeof UsersUserIdRouteImport
+    '/users/detail': {
+      id: '/users/detail'
+      path: '/users/detail'
+      fullPath: '/users/detail'
+      preLoaderRoute: typeof UsersDetailRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -178,9 +218,11 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityLogRoute: ActivityLogRoute,
+  BankUsersRoute: BankUsersRoute,
   DashboardRoute: DashboardRoute,
+  LookupManagementRoute: LookupManagementRoute,
   TenantsTenantIdRoute: TenantsTenantIdRoute,
-  UsersUserIdRoute: UsersUserIdRoute,
+  UsersDetailRoute: UsersDetailRoute,
   TenantsIndexRoute: TenantsIndexRoute,
   UsersIndexRoute: UsersIndexRoute,
 }
