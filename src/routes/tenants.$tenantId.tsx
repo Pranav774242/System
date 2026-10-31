@@ -121,23 +121,18 @@ const USERS_URL = API_ENDPOINTS.userManagementUsers;
 /* HELPERS                                                                    */
 /* -------------------------------------------------------------------------- */
 
-function getValue(
-  source: Record<string, unknown> | null | undefined,
-  ...keys: string[]
+function getProvidedValue(
+  source: Record<string, unknown> | undefined,
+  keys: string[],
+  fallback: unknown,
 ): unknown {
-  if (!source) {
-    return undefined;
-  }
-
   for (const key of keys) {
-    const value = source[key];
-
-    if (value !== null && value !== undefined && String(value).trim() !== "") {
-      return value;
+    if (source && Object.prototype.hasOwnProperty.call(source, key)) {
+      return source[key];
     }
   }
 
-  return undefined;
+  return fallback;
 }
 
 function asString(value: unknown): string {
@@ -161,63 +156,101 @@ function getNestedRecord(
   return isRecord(value) ? value : undefined;
 }
 
+function getApiErrorMessage(
+  body: unknown,
+  status: number,
+  action: string,
+): string {
+  if (isRecord(body)) {
+    const message = body["message"] ?? body["error"] ?? body["detail"];
+    const validationErrors = body["validationErrors"];
+    const validationMessage =
+      validationErrors && typeof validationErrors === "object"
+        ? ` ${JSON.stringify(validationErrors)}`
+        : "";
+
+    if (message !== null && message !== undefined && String(message).trim()) {
+      return `${String(message)}${validationMessage}`;
+    }
+
+    if (validationMessage) {
+      return `Request validation failed.${validationMessage}`;
+    }
+  } else if (typeof body === "string" && body.trim()) {
+    return body.trim();
+  }
+
+  return `${action} (${status}).`;
+}
+
 /* -------------------------------------------------------------------------- */
 /* RESPONSE UNWRAPPER                                                         */
 /* -------------------------------------------------------------------------- */
 
-function unwrapOrganization(body: unknown, pkid: number): RawOrganization {
-  if (!isRecord(body)) {
+function unwrapOrganization(
+  body: unknown,
+  requestedId: string,
+): RawOrganization {
+  if (!isRecord(body) || Array.isArray(body)) {
     throw new Error("Invalid bank details response.");
   }
 
-  const data = body["data"];
+  const data = isRecord(body["data"]) ? body["data"] : undefined;
+  const organization = data?.["organization"] ?? body["organization"];
+  const bank = data?.["bank"] ?? body["bank"];
+  const record =
+    (isRecord(organization) && !Array.isArray(organization)
+      ? organization
+      : undefined) ??
+    (isRecord(bank) && !Array.isArray(bank) ? bank : undefined) ??
+    data ??
+    body;
 
-  if (isRecord(data)) {
-    const organization = data["organization"];
-
-    if (isRecord(organization)) {
-      return {
-        ...(organization as RawOrganization),
-        pkid: Number(organization["pkid"] ?? organization["id"] ?? pkid),
-      };
-    }
-
-    const bank = data["bank"];
-
-    if (isRecord(bank)) {
-      return {
-        ...(bank as RawOrganization),
-        pkid: Number(bank["pkid"] ?? bank["id"] ?? pkid),
-      };
-    }
-
-    return {
-      ...(data as RawOrganization),
-      pkid: Number(data["pkid"] ?? data["id"] ?? pkid),
-    };
+  if (Array.isArray(record)) {
+    throw new Error("Bank details response did not contain a single bank.");
   }
 
-  const organization = body["organization"];
+  const numericPkid = Number(record["pkid"]);
+  const pkid =
+    Number.isSafeInteger(numericPkid) &&
+    numericPkid > 0 &&
+    String(numericPkid) === String(record["pkid"]).trim()
+      ? numericPkid
+      : undefined;
+  const returnedId = record["id"];
+  const id =
+    returnedId !== null && returnedId !== undefined && String(returnedId).trim()
+      ? String(returnedId).trim()
+      : pkid !== undefined
+        ? String(pkid)
+        : requestedId;
 
-  if (isRecord(organization)) {
-    return {
-      ...(organization as RawOrganization),
-      pkid: Number(organization["pkid"] ?? organization["id"] ?? pkid),
-    };
+  if (!id) {
+    throw new Error("Bank details response did not include a valid bank ID.");
   }
 
-  const bank = body["bank"];
-
-  if (isRecord(bank)) {
-    return {
-      ...(bank as RawOrganization),
-      pkid: Number(bank["pkid"] ?? bank["id"] ?? pkid),
-    };
+  const hasBankDetails = [
+    "bank_name",
+    "bankName",
+    "name",
+    "institution_name",
+    "institutionName",
+    "bank_code",
+    "bankCode",
+  ].some((key) => {
+    const value = record[key];
+    return value !== null && value !== undefined && String(value).trim() !== "";
+  });
+  if (!hasBankDetails) {
+    throw new Error(
+      "The bank details response did not contain bank information.",
+    );
   }
 
   return {
-    ...(body as RawOrganization),
-    pkid,
+    ...(record as RawOrganization),
+    id,
+    ...(pkid === undefined ? {} : { pkid }),
   };
 }
 
@@ -233,149 +266,153 @@ function buildBankUpdatePayload(
   const source = input as unknown as Record<string, unknown>;
 
   const regulatory = currentTenant.regulatoryDetails;
+  const regulatoryInput = getNestedRecord(source, "regulatoryDetails");
+  const addressInput = getNestedRecord(source, "addressDetails");
 
   const raw = currentRaw as Record<string, unknown> | undefined;
 
   const nested = getNestedRecord(raw, "regulatory_details");
 
-  const statusValue =
-    getValue(source, "status") ?? currentTenant.status ?? "Active";
-
-  const normalizedStatus =
-    asString(statusValue).toUpperCase() === "INACTIVE" ? "INACTIVE" : "ACTIVE";
+  const getInput = (keys: string[], fallback: unknown = "") =>
+    asString(getProvidedValue(source, keys, fallback)).trim();
+  const getRegulatory = (key: string, fallback: unknown) =>
+    asString(getProvidedValue(regulatoryInput, [key], fallback)).trim();
+  const getAddress = (key: string, fallback: unknown) =>
+    asString(getProvidedValue(addressInput, [key], fallback)).trim();
+  const status =
+    asString(
+      getProvidedValue(source, ["status"], currentTenant.status ?? "Active"),
+    ).toUpperCase() === "INACTIVE"
+      ? "INACTIVE"
+      : "ACTIVE";
 
   return {
-    /* -------------------------------------------------------------------- */
-    /* BANK DETAILS                                                         */
-    /* -------------------------------------------------------------------- */
-
-    bank_code: getValue(source, "bankCode") ?? currentTenant.bankCode ?? "",
-
-    bank_name:
-      getValue(source, "bankName", "instituteName") ??
-      currentTenant.bankName ??
-      currentTenant.instituteName ??
-      "",
-
+    bank_code: getInput(["bankCode"], currentTenant.bankCode),
+    bank_name: getInput(
+      ["bankName", "instituteName"],
+      currentTenant.bankName || currentTenant.instituteName,
+    ),
     bank_type:
-      getValue(source, "bankType", "instituteType") ??
-      currentTenant.bankType ??
-      "BANK",
+      getProvidedValue(
+        source,
+        ["bankType", "instituteType"],
+        currentTenant.bankType,
+      ) ?? "BANK",
+    legal_name: getInput(["legalName"], currentTenant.legalName),
+    pan_no: getInput(["panNo", "PAN"], currentTenant.panNo).toUpperCase(),
+    gst_no: getInput(["gstNo", "GST"], currentTenant.gstNo).toUpperCase(),
+    license_no: getInput(
+      ["licenseNo", "registrationNumber"],
+      currentTenant.licenseNo || currentTenant.registrationNumber,
+    ),
+    registration_number: getInput(
+      ["registrationNumber", "licenseNo"],
+      currentTenant.registrationNumber,
+    ),
+    cin: getInput(["cin", "CIN"], currentTenant.cin),
+    website: getInput(["website"], currentTenant.website),
+    logo_url: getInput(["logoUrl", "logo"], currentTenant.logoUrl),
+    status,
+    contact_email: getInput(["contactEmail"], currentTenant.contactEmail),
+    contact_phone: getInput(["contactPhone"], currentTenant.contactPhone),
 
-    legal_name: getValue(source, "legalName") ?? currentTenant.legalName ?? "",
-
-    pan_no: getValue(source, "panNo", "PAN") ?? currentTenant.panNo ?? "",
-
-    gst_no: getValue(source, "gstNo", "GST") ?? currentTenant.gstNo ?? "",
-
-    license_no:
-      getValue(source, "licenseNo", "registrationNumber") ??
-      currentTenant.licenseNo ??
-      currentTenant.registrationNumber ??
-      "",
-
-    registration_number: currentTenant.registrationNumber ?? "",
-
-    cin: getValue(source, "cin", "CIN") ?? currentTenant.cin ?? "",
-
-    website: getValue(source, "website") ?? currentTenant.website ?? "",
-
-    logo_url:
-      getValue(source, "logoUrl", "logo") ?? currentTenant.logoUrl ?? "",
-
-    status: normalizedStatus,
-
-    contact_email:
-      getValue(source, "contactEmail") ?? currentTenant.contactEmail ?? "",
-
-    contact_phone:
-      getValue(source, "contactPhone") ?? currentTenant.contactPhone ?? "",
-
-    /* -------------------------------------------------------------------- */
-    /* REGULATORY DETAILS                                                   */
-    /* -------------------------------------------------------------------- */
-
-    direct_clg_member:
+    direct_clg_member: getRegulatory(
+      "directClgMember",
       regulatory?.directClgMember ??
-      asString(raw?.["direct_clg_member"] ?? nested?.["direct_clg_member"]),
-
-    direct_member_iftas:
+        raw?.["direct_clg_member"] ??
+        nested?.["direct_clg_member"],
+    ),
+    direct_member_iftas: getRegulatory(
+      "directMemberIftas",
       regulatory?.directMemberIftas ??
-      asString(raw?.["direct_member_iftas"] ?? nested?.["direct_member_iftas"]),
-
-    micr_code:
-      regulatory?.micrCode ??
-      asString(raw?.["micr_code"] ?? nested?.["micr_code"]),
-
-    micr_number:
-      regulatory?.micrNumber ??
-      asString(raw?.["micr_number"] ?? nested?.["micr_number"]),
-
-    micr_city_code:
+        raw?.["direct_member_iftas"] ??
+        nested?.["direct_member_iftas"],
+    ),
+    micr_code: getRegulatory(
+      "micrCode",
+      regulatory?.micrCode ?? raw?.["micr_code"] ?? nested?.["micr_code"],
+    ),
+    micr_number: getRegulatory(
+      "micrNumber",
+      regulatory?.micrNumber ?? raw?.["micr_number"] ?? nested?.["micr_number"],
+    ),
+    micr_city_code: getRegulatory(
+      "micrCityCode",
       regulatory?.micrCityCode ??
-      asString(raw?.["micr_city_code"] ?? nested?.["micr_city_code"]),
-
-    micr_branch_code:
+        raw?.["micr_city_code"] ??
+        nested?.["micr_city_code"],
+    ),
+    micr_branch_code: getRegulatory(
+      "micrBranchCode",
       regulatory?.micrBranchCode ??
-      asString(raw?.["micr_branch_code"] ?? nested?.["micr_branch_code"]),
-
-    ifsc_code:
-      regulatory?.ifscCode ??
-      asString(raw?.["ifsc_code"] ?? nested?.["ifsc_code"]),
-
-    number_of_branches:
+        raw?.["micr_branch_code"] ??
+        nested?.["micr_branch_code"],
+    ),
+    ifsc_code: getRegulatory(
+      "ifscCode",
+      regulatory?.ifscCode ?? raw?.["ifsc_code"] ?? nested?.["ifsc_code"],
+    ).toUpperCase(),
+    number_of_branches: getRegulatory(
+      "numberOfBranches",
       regulatory?.numberOfBranches ??
-      asString(
         raw?.["number_of_branches"] ??
-          raw?.["no_of_branches"] ??
-          nested?.["number_of_branches"] ??
-          nested?.["no_of_branches"],
-      ),
-
-    sponsor_bank_for_clg:
+        raw?.["no_of_branches"] ??
+        nested?.["number_of_branches"] ??
+        nested?.["no_of_branches"],
+    ),
+    sponsor_bank_for_clg: getRegulatory(
+      "sponsorBankForClg",
       regulatory?.sponsorBankForClg ??
-      asString(
-        raw?.["sponsor_bank_for_clg"] ?? nested?.["sponsor_bank_for_clg"],
-      ),
-
-    sponsor_bank_for_iftas:
+        raw?.["sponsor_bank_for_clg"] ??
+        nested?.["sponsor_bank_for_clg"],
+    ),
+    sponsor_bank_for_iftas: getRegulatory(
+      "sponsorBankForIftas",
       regulatory?.sponsorBankForIftas ??
-      asString(
-        raw?.["sponsor_bank_for_iftas"] ?? nested?.["sponsor_bank_for_iftas"],
-      ),
+        raw?.["sponsor_bank_for_iftas"] ??
+        nested?.["sponsor_bank_for_iftas"],
+    ),
 
-    /* -------------------------------------------------------------------- */
-    /* ADDRESS                                                              */
-    /* -------------------------------------------------------------------- */
-
-    address_type:
-      currentTenant.addressDetails?.addressType ??
-      asString(raw?.["address_type"]),
-
-    unit_gala_name_no:
+    address_type: getAddress(
+      "addressType",
+      currentTenant.addressDetails?.addressType ?? raw?.["address_type"],
+    ),
+    unit_gala_name_no: getAddress(
+      "unitGalaNameNo",
       currentTenant.addressDetails?.unitGalaNameNo ??
-      asString(raw?.["unit_gala_name_no"]),
-
-    street_road:
-      currentTenant.addressDetails?.streetRoad ??
-      asString(raw?.["street_road"]),
-
-    land_mark:
+        raw?.["unit_gala_name_no"],
+    ),
+    street_road: getAddress(
+      "streetRoad",
+      currentTenant.addressDetails?.streetRoad ?? raw?.["street_road"],
+    ),
+    land_mark: getAddress(
+      "landMark",
       currentTenant.addressDetails?.landMark ??
-      asString(raw?.["land_mark"] ?? raw?.["landmark"]),
-
-    city: currentTenant.addressDetails?.city ?? asString(raw?.["city"]),
-
-    state: currentTenant.addressDetails?.state ?? asString(raw?.["state"]),
-
-    pin_code:
-      currentTenant.addressDetails?.pinCode ?? asString(raw?.["pin_code"]),
-
-    country: asString(raw?.["country"]),
-
-    registered_address: asString(raw?.["registered_address"]),
-
-    corporate_address: asString(raw?.["corporate_address"]),
+        raw?.["land_mark"] ??
+        raw?.["landmark"],
+    ),
+    city: getAddress(
+      "city",
+      currentTenant.addressDetails?.city ?? raw?.["city"],
+    ),
+    state: getAddress(
+      "state",
+      currentTenant.addressDetails?.state ?? raw?.["state"],
+    ),
+    pin_code: getAddress(
+      "pinCode",
+      currentTenant.addressDetails?.pinCode ?? raw?.["pin_code"],
+    ),
+    country: getInput(["country"], raw?.["country"]),
+    registered_address: getInput(
+      ["registeredAddress"],
+      raw?.["registered_address"],
+    ),
+    corporate_address: getInput(
+      ["corporateAddress"],
+      raw?.["corporate_address"],
+    ),
   };
 }
 
@@ -383,14 +420,19 @@ function buildBankUpdatePayload(
 /* UPDATE BANK API                                                            */
 /* -------------------------------------------------------------------------- */
 
-async function updateBank(bankId: number, payload: unknown): Promise<unknown> {
+async function updateBank(
+  bankId: string | number,
+  payload: unknown,
+): Promise<unknown> {
   const token = getAccessToken();
 
   if (!token) {
     throw new Error("Session expired. Please login again.");
   }
 
-  const url = `${BANK_UPDATE_URL}/${bankId}`;
+  const url = `${BANK_UPDATE_URL.replace(/\/$/, "")}/${encodeURIComponent(
+    String(bankId),
+  )}`;
 
   const sendRequest = async (method: "PUT" | "PATCH") => {
     const response = await fetch(url, {
@@ -429,12 +471,12 @@ async function updateBank(bankId: number, payload: unknown): Promise<unknown> {
   }
 
   if (!result.response.ok) {
-    const message = isRecord(result.data)
-      ? asString(result.data["message"])
-      : "";
-
     throw new Error(
-      message || `Bank update failed with status ${result.response.status}.`,
+      getApiErrorMessage(
+        result.data,
+        result.response.status,
+        "Bank update failed",
+      ),
     );
   }
 
@@ -473,6 +515,10 @@ function TenantDetailsPage() {
   /* ---------------------------------------------------------------------- */
 
   const loadBankDetails = useCallback(async () => {
+    setTenant(null);
+    setRawBank(null);
+    setLoading(true);
+
     const token = getAccessToken();
 
     if (!token) {
@@ -482,9 +528,9 @@ function TenantDetailsPage() {
       return;
     }
 
-    const parsedId = Number(tenantId);
+    const bankId = tenantId.trim();
 
-    if (!Number.isFinite(parsedId)) {
+    if (!bankId) {
       toast.error("Invalid bank ID.");
 
       setLoading(false);
@@ -494,14 +540,17 @@ function TenantDetailsPage() {
     try {
       setLoading(true);
 
-      const response = await fetch(`${ORGANIZATION_GET_URL}/${parsedId}`, {
-        method: "GET",
+      const response = await fetch(
+        `${ORGANIZATION_GET_URL.replace(/\/$/, "")}/${encodeURIComponent(bankId)}`,
+        {
+          method: "GET",
 
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         },
-      });
+      );
 
       const text = await response.text();
 
@@ -511,19 +560,21 @@ function TenantDetailsPage() {
         try {
           body = JSON.parse(text);
         } catch {
-          body = null;
+          body = text;
         }
       }
 
       if (!response.ok) {
-        const message = isRecord(body) ? asString(body["message"]) : "";
-
         throw new Error(
-          message || `Failed to load bank details (${response.status}).`,
+          getApiErrorMessage(
+            body,
+            response.status,
+            "Failed to load bank details",
+          ),
         );
       }
 
-      const raw = unwrapOrganization(body, parsedId);
+      const raw = unwrapOrganization(body, bankId);
 
       const mapped = mapOrganizationToTenant(raw);
 
@@ -591,15 +642,16 @@ function TenantDetailsPage() {
   /* ---------------------------------------------------------------------- */
 
   const loadUsers = useCallback(async () => {
+    setUsers([]);
     const token = getAccessToken();
 
     if (!token) {
       return;
     }
 
-    const bankId = Number(tenantId);
+    const bankId = tenantId.trim();
 
-    if (!Number.isFinite(bankId)) {
+    if (!bankId) {
       return;
     }
 
@@ -627,7 +679,7 @@ function TenantDetailsPage() {
         try {
           body = JSON.parse(text);
         } catch {
-          body = null;
+          body = text;
         }
       }
 
@@ -650,7 +702,7 @@ function TenantDetailsPage() {
         const organizationId =
           item["organization_id"] ?? item["organizationId"];
 
-        return String(organizationId ?? "") === String(bankId);
+        return String(organizationId ?? "") === bankId;
       });
 
       setUsers(bankUsers);
@@ -677,9 +729,9 @@ function TenantDetailsPage() {
         return;
       }
 
-      const bankId = Number(tenant.pkid ?? tenant.id);
+      const bankId = tenant.pkid ?? tenant.id;
 
-      if (!Number.isFinite(bankId)) {
+      if (!String(bankId).trim()) {
         toast.error("Bank ID is invalid.");
 
         return;
@@ -700,14 +752,19 @@ function TenantDetailsPage() {
           throw new Error("Session expired. Please login again.");
         }
 
-        const response = await fetch(`${ORGANIZATION_GET_URL}/${bankId}`, {
-          method: "GET",
+        const response = await fetch(
+          `${ORGANIZATION_GET_URL.replace(/\/$/, "")}/${encodeURIComponent(
+            String(bankId),
+          )}`,
+          {
+            method: "GET",
 
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
           },
-        });
+        );
 
         const text = await response.text();
 
@@ -723,11 +780,15 @@ function TenantDetailsPage() {
 
         if (!response.ok) {
           throw new Error(
-            `Bank was updated but refreshed details could not be loaded (${response.status}).`,
+            `Bank was updated, but refreshed details could not be loaded. ${getApiErrorMessage(
+              body,
+              response.status,
+              "Refresh failed",
+            )}`,
           );
         }
 
-        const refreshedRaw = unwrapOrganization(body, bankId);
+        const refreshedRaw = unwrapOrganization(body, String(bankId));
 
         const refreshedTenant = mapOrganizationToTenant(refreshedRaw);
 
@@ -811,7 +872,7 @@ function TenantDetailsPage() {
 
   const micrNumber = regulatory?.micrNumber || rawBank?.micr_number || "-";
 
-  const bankId = tenant?.pkid ?? Number(tenantId);
+  const bankId = tenant?.pkid ?? tenant?.id ?? tenantId;
 
   const pageTitle = tenant?.bankName || tenant?.instituteName || "Bank Details";
 

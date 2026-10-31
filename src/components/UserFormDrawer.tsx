@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import {
@@ -20,8 +20,8 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
-import { useAdminStore, type Tenant, type UserInput } from "@/lib/admin-store";
-import { postAdminJson } from "@/lib/admin-api";
+import { type Branch, type Tenant } from "@/lib/admin-store";
+import { AdminApiError, postAdminJson } from "@/lib/admin-api";
 import { API_ENDPOINTS } from "@/lib/api-endpoints";
 
 type AddUserForm = {
@@ -48,26 +48,26 @@ type AddUserForm = {
 };
 
 type AddUserPayload = {
-  bank_id: number;
-  employee_id: string;
-  // name: string;
-  firstName: string;
-  middleName: string;
-  lastName: string;
+  organization_id: number;
+  organization_code?: string;
+  emp_no: string;
+  first_name: string;
+  middle_name: string;
+  last_name: string;
   status: "ACTIVE" | "INACTIVE" | "OPERATIVE";
   mobile: string;
-  date_of_birth: string;
+  dob: string;
   email: string;
   password: string;
   designation: string;
   role: string;
-  failed_login_attempts: number;
-  multi_branch_enabled: boolean;
-  login_branch: string;
-  holiday_login_allowed: boolean;
+  no_of_bad_logins: number;
+  allow_multibranch: number;
+  login_branch: number;
+  allow_login_in_holidays: number;
   login_time: string;
   logout_time: string;
-  two_factor_enabled: boolean;
+  "2fA": boolean;
   gender: "MALE" | "FEMALE" | "OTHER";
 };
 
@@ -107,14 +107,6 @@ const DESIGNATIONS = [
 
 const ROLES = ["SUPER_ADMIN", "ADMIN", "MAKER", "CHECKER", "VIEWER"];
 
-const BRANCH_OPTIONS = [
-  { label: "Head Office", value: 0 },
-  { label: "Branch 001", value: 1 },
-  { label: "Branch 002", value: 2 },
-  { label: "Branch 003", value: 3 },
-  { label: "Branch 004", value: 4 },
-];
-
 function validateForm(
   form: AddUserForm,
   bankPkid: number | undefined,
@@ -125,80 +117,176 @@ function validateForm(
     errors.employee_id = "Selected bank ID is missing";
   }
 
-  if (!form.employee_id.trim()) {
+  const employeeId = form.employee_id.trim();
+  if (!employeeId) {
     errors.employee_id = "Employee ID is required";
+  } else if (!/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(employeeId)) {
+    errors.employee_id =
+      "Use letters, numbers, periods, underscores, slashes, or hyphens only";
   }
 
-  if (!form.firstName.trim()) {
+  const firstName = form.firstName.trim();
+  if (!firstName) {
     errors.firstName = "First name is required";
+  } else if (!isValidPersonName(firstName)) {
+    errors.firstName =
+      "Enter a valid name using letters and common punctuation";
   }
 
-  // if (!form.middleName.trim()) {
-  //   errors.middleName = "Middle name is required";
-  // }
+  const middleName = form.middleName.trim();
+  if (middleName && !isValidPersonName(middleName)) {
+    errors.middleName =
+      "Enter a valid name using letters and common punctuation";
+  }
 
-  if (!form.lastName.trim()) {
+  const lastName = form.lastName.trim();
+  if (!lastName) {
     errors.lastName = "Last name is required";
+  } else if (!isValidPersonName(lastName)) {
+    errors.lastName = "Enter a valid name using letters and common punctuation";
   }
 
-  if (!form.status) {
+  if (!["ACTIVE", "INACTIVE", "OPERATIVE"].includes(form.status)) {
     errors.status = "Status is required";
   }
 
-  if (!form.date_of_birth) {
+  if (!form.date_of_birth.trim()) {
     errors.date_of_birth = "Date of birth is required";
-  } else if (new Date(`${form.date_of_birth}T00:00:00`) > new Date()) {
-    errors.date_of_birth = "Date of birth cannot be in the future";
+  } else {
+    const dateParts = form.date_of_birth.split("-").map(Number);
+    const year = dateParts[0] ?? Number.NaN;
+    const month = dateParts[1] ?? Number.NaN;
+    const day = dateParts[2] ?? Number.NaN;
+    const dateOfBirth = new Date(year, month - 1, day);
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(form.date_of_birth) ||
+      dateOfBirth.getFullYear() !== year ||
+      dateOfBirth.getMonth() !== month - 1 ||
+      dateOfBirth.getDate() !== day
+    ) {
+      errors.date_of_birth = "Enter a valid date of birth";
+    } else {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (dateOfBirth > today) {
+        errors.date_of_birth = "Date of birth cannot be in the future";
+      }
+    }
   }
 
-  if (!form.email.trim()) {
+  const email = form.email.trim();
+  if (!email) {
     errors.email = "Email is required";
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     errors.email = "Enter a valid email address";
   }
 
-  if (!form.password) {
+  if (!form.password.trim()) {
     errors.password = "Password is required";
   } else if (form.password.length < 8) {
     errors.password = "Password must be at least 8 characters";
   }
 
-  if (!form.mobile.trim()) {
+  const mobile = form.mobile.trim();
+  if (!mobile) {
     errors.mobile = "Mobile number is required";
-  } else if (!/^(?:\+91)?[6-9]\d{9}$/.test(form.mobile.trim())) {
+  } else if (!/^(?:\+91)?[6-9]\d{9}$/.test(mobile)) {
     errors.mobile = "Enter a valid Indian mobile number";
   }
 
-  if (!form.gender) {
+  if (!["MALE", "FEMALE", "OTHER"].includes(form.gender)) {
     errors.gender = "Gender is required";
   }
 
-  if (!form.designation) {
+  if (!DESIGNATIONS.includes(form.designation)) {
     errors.designation = "Designation is required";
   }
 
-  if (!form.role) {
+  if (!ROLES.includes(form.role)) {
     errors.role = "Role is required";
   }
 
+  const failedLoginAttempts = form.failed_login_attempts.trim();
   if (
-    !form.failed_login_attempts.trim() ||
-    !/^\d+$/.test(form.failed_login_attempts)
+    !failedLoginAttempts ||
+    !/^\d+$/.test(failedLoginAttempts) ||
+    !Number.isSafeInteger(Number(failedLoginAttempts)) ||
+    Number(failedLoginAttempts) < 0
   ) {
     errors.failed_login_attempts =
       "Enter a valid number of failed login attempts";
   }
 
-  if (!form.login_branch) {
-    errors.login_branch = "Login branch is required";
-  }
-
-  if (!form.login_time) {
+  if (!form.login_time.trim()) {
     errors.login_time = "Login time is required";
+  } else if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(form.login_time)) {
+    errors.login_time = "Select a valid login time";
   }
 
-  if (!form.logout_time) {
+  if (!form.logout_time.trim()) {
     errors.logout_time = "Logout time is required";
+  } else if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(form.logout_time)) {
+    errors.logout_time = "Select a valid logout time";
+  }
+
+  return errors;
+}
+
+function isValidPersonName(value: string): boolean {
+  return (
+    /^[\p{L}\p{M}]+(?:[ '\u2019.-][\p{L}\p{M}]+)*$/u.test(value) &&
+    /\p{L}/u.test(value)
+  );
+}
+
+function getServerFieldErrors(
+  error: unknown,
+): Partial<Record<keyof AddUserForm, string>> {
+  if (!(error instanceof AdminApiError) || !error.validationErrors) {
+    return {};
+  }
+
+  const fieldAliases: Record<string, keyof AddUserForm> = {
+    employeeid: "employee_id",
+    empno: "employee_id",
+    firstname: "firstName",
+    middlename: "middleName",
+    lastname: "lastName",
+    dateofbirth: "date_of_birth",
+    dob: "date_of_birth",
+    email: "email",
+    password: "password",
+    mobile: "mobile",
+    gender: "gender",
+    designation: "designation",
+    role: "role",
+    status: "status",
+    failedloginattempts: "failed_login_attempts",
+    noofbadlogins: "failed_login_attempts",
+    loginbranch: "login_branch",
+    logintime: "login_time",
+    logouttime: "logout_time",
+  };
+  const errors: Partial<Record<keyof AddUserForm, string>> = {};
+
+  for (const [key, value] of Object.entries(error.validationErrors)) {
+    const field = fieldAliases[key.toLowerCase().replace(/[^a-z]/g, "")];
+    if (!field) continue;
+
+    const message = Array.isArray(value)
+      ? value.find((item): item is string => typeof item === "string")
+      : typeof value === "string"
+        ? value
+        : value &&
+            typeof value === "object" &&
+            "message" in value &&
+            typeof value.message === "string"
+          ? value.message
+          : undefined;
+
+    if (message?.trim()) {
+      errors[field] = message.trim();
+    }
   }
 
   return errors;
@@ -207,15 +295,23 @@ function validateForm(
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  bank: Pick<Tenant, "id" | "pkid" | "instituteName">;
+  bank: Pick<Tenant, "id" | "pkid" | "instituteName"> & {
+    organization_code?: string;
+    branches: Branch[];
+  };
 };
 
 export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
-  const { createUser } = useAdminStore();
-
   const [form, setForm] = useState<AddUserForm>(emptyForm);
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [touchedFields, setTouchedFields] = useState<Set<keyof AddUserForm>>(
+    () => new Set(),
+  );
+  const [serverErrors, setServerErrors] = useState<
+    Partial<Record<keyof AddUserForm, string>>
+  >({});
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     if (!open) return;
@@ -223,72 +319,55 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
     setForm(emptyForm);
     setSubmitted(false);
     setBusy(false);
-  }, [open, bank]);
+    setTouchedFields(new Set());
+    setServerErrors({});
+    submittingRef.current = false;
+  }, [open, bank.id, bank.pkid, bank.instituteName, bank.organization_code]);
 
   const set = <K extends keyof AddUserForm>(key: K, value: AddUserForm[K]) => {
     setForm((previous) => ({
       ...previous,
       [key]: value,
     }));
-  };
-
-  const errors = validateForm(form, bank.pkid);
-
-  const fieldError = (key: keyof AddUserForm) => (submitted ? errors[key] : "");
-
-  const toggleBranch = (branch: string) => {
-    setForm((previous) => {
-      const exists = previous.multi_branch_enabled.includes(branch);
-
-      return {
-        ...previous,
-        multi_branch_enabled: exists
-          ? previous.multi_branch_enabled.filter((item) => item !== branch)
-          : [...previous.multi_branch_enabled, branch],
-      };
+    setServerErrors((previous) => {
+      if (!(key in previous)) return previous;
+      const next = { ...previous };
+      delete next[key];
+      return next;
     });
   };
+
+  const loginBranchOptions = bank.branches.filter(
+    (branch) =>
+      /^\d+$/.test(branch.id) && Number.isSafeInteger(Number(branch.id)),
+  );
+  const errors = validateForm(form, bank.pkid);
+  const fieldError = (key: keyof AddUserForm) =>
+    submitted || touchedFields.has(key)
+      ? (errors[key] ?? serverErrors[key] ?? "")
+      : "";
   const save = async () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitted(true);
 
-    if (Object.values(errors).some(Boolean)) return;
-
-    if (bank.pkid == null) {
-      toast.error("Selected bank ID is missing");
+    const currentErrors = validateForm(form, bank.pkid);
+    if (Object.values(currentErrors).some(Boolean)) {
+      submittingRef.current = false;
       return;
     }
 
-    // const payload: AddUserPayload = {
-    //   organization_id: bank.pkid,
-    //   employee_id: form.employee_id.trim(),
-
-    //   first_name: form.firstName.trim(),
-    //   middle_name: form.middleName.trim(),
-    //   last_name: form.lastName.trim(),
-
-    //   status: form.status,
-    //   mobile: form.mobile.trim(),
-    //   dob: form.date_of_birth,
-    //   email: form.email.trim(),
-    //   password: form.password,
-    //   designation: form.designation,
-    //   role: form.role,
-    //   failed_login_attempts: Number(form.failed_login_attempts),
-    //   multi_branch_enabled: form.multi_branch_enabled,
-
-    //   // FIX
-    //   login_branch: Number(form.login_branch),
-
-    //   holiday_login_allowed: form.holiday_login_allowed,
-    //   login_time: form.login_time,
-    //   logout_time: form.logout_time,
-    //   2fA: form.two_factor_enabled,
-    //   gender: form.gender,
-    // };
+    if (bank.pkid == null) {
+      toast.error("Selected bank ID is missing");
+      submittingRef.current = false;
+      return;
+    }
 
     const payload: AddUserPayload = {
       organization_id: bank.pkid,
-      organization_code: bank.organization_code,
+      ...(bank.organization_code
+        ? { organization_code: bank.organization_code }
+        : {}),
 
       emp_no: form.employee_id.trim(),
 
@@ -297,7 +376,6 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
       last_name: form.lastName.trim(),
 
       dob: form.date_of_birth,
-      // username: form.username.trim(),
       email: form.email.trim(),
       password: form.password,
       mobile: form.mobile.trim(),
@@ -330,12 +408,14 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
       onOpenChange(false);
     } catch (error) {
       console.error("Create user API error:", error);
+      setServerErrors(getServerFieldErrors(error));
 
       toast.error(
         error instanceof Error ? error.message : "Unable to create user",
       );
     } finally {
       setBusy(false);
+      submittingRef.current = false;
     }
   };
 
@@ -350,7 +430,23 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 space-y-7 px-6 py-6">
+        <div
+          className="flex-1 space-y-7 px-6 py-6"
+          onBlurCapture={(event) => {
+            const target = event.target;
+            if (!(target instanceof HTMLElement)) return;
+            const field = target.dataset["validationKey"] as
+              keyof AddUserForm | undefined;
+            if (field && field in emptyForm) {
+              setTouchedFields((previous) => {
+                if (previous.has(field)) return previous;
+                const next = new Set(previous);
+                next.add(field);
+                return next;
+              });
+            }
+          }}
+        >
           {/* ACCOUNT DETAILS */}
           <section className="space-y-4">
             <SectionHeading>Account Details</SectionHeading>
@@ -362,6 +458,7 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
                 error={fieldError("employee_id")}
               >
                 <Input
+                  data-validation-key="employee_id"
                   value={form.employee_id}
                   onChange={(event) => set("employee_id", event.target.value)}
                   placeholder="Employee ID"
@@ -383,6 +480,7 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
 
               <Field label="Email ID" required error={fieldError("email")}>
                 <Input
+                  data-validation-key="email"
                   type="email"
                   autoComplete="email"
                   value={form.email}
@@ -393,6 +491,7 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
 
               <Field label="Password" required error={fieldError("password")}>
                 <Input
+                  data-validation-key="password"
                   type="password"
                   autoComplete="new-password"
                   value={form.password}
@@ -431,14 +530,16 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
                 error={fieldError("firstName")}
               >
                 <Input
+                  data-validation-key="firstName"
                   value={form.firstName}
                   onChange={(event) => set("firstName", event.target.value)}
                   placeholder="First name"
                 />
               </Field>
 
-              <Field label="Middle Name">
+              <Field label="Middle Name" error={fieldError("middleName")}>
                 <Input
+                  data-validation-key="middleName"
                   value={form.middleName}
                   onChange={(event) => set("middleName", event.target.value)}
                   placeholder="Middle name"
@@ -447,6 +548,7 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
 
               <Field label="Last Name" required error={fieldError("lastName")}>
                 <Input
+                  data-validation-key="lastName"
                   value={form.lastName}
                   onChange={(event) => set("lastName", event.target.value)}
                   placeholder="Last name"
@@ -455,17 +557,11 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
 
               <Field label="Mobile" required error={fieldError("mobile")}>
                 <Input
+                  data-validation-key="mobile"
                   type="tel"
                   inputMode="tel"
                   value={form.mobile}
-                  onChange={(event) =>
-                    set(
-                      "mobile",
-                      event.target.value
-                        .replace(/[^\d+]/g, "")
-                        .replace(/(?!^)\+/g, ""),
-                    )
-                  }
+                  onChange={(event) => set("mobile", event.target.value)}
                   placeholder="+919876543210"
                 />
               </Field>
@@ -476,6 +572,7 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
                 error={fieldError("date_of_birth")}
               >
                 <Input
+                  data-validation-key="date_of_birth"
                   type="date"
                   value={form.date_of_birth}
                   onChange={(event) => set("date_of_birth", event.target.value)}
@@ -489,7 +586,10 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
                     set("gender", value as AddUserForm["gender"])
                   }
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger
+                    className="w-full"
+                    data-validation-key="gender"
+                  >
                     <SelectValue placeholder="Select gender" />
                   </SelectTrigger>
 
@@ -519,7 +619,10 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
                   value={form.designation}
                   onValueChange={(value) => set("designation", value)}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger
+                    className="w-full"
+                    data-validation-key="designation"
+                  >
                     <SelectValue placeholder="Select designation" />
                   </SelectTrigger>
 
@@ -538,7 +641,7 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
                   value={form.role}
                   onValueChange={(value) => set("role", value)}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full" data-validation-key="role">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
 
@@ -559,7 +662,10 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
                     set("status", value as AddUserForm["status"])
                   }
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger
+                    className="w-full"
+                    data-validation-key="status"
+                  >
                     <SelectValue />
                   </SelectTrigger>
 
@@ -579,6 +685,7 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
                 error={fieldError("failed_login_attempts")}
               >
                 <Input
+                  data-validation-key="failed_login_attempts"
                   type="number"
                   min="0"
                   step="1"
@@ -606,29 +713,35 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
                 }
               />
 
-              <Field
-                label="Login Branch"
-                required
-                error={fieldError("login_branch")}
-              >
-                <select
+              <Field label="Login Branch">
+                <Select
                   value={form.login_branch}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      login_branch: e.target.value,
-                    }))
-                  }
-                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  onValueChange={(value) => set("login_branch", value)}
                 >
-                  <option value="">Select Login Branch</option>
+                  <SelectTrigger
+                    className="w-full"
+                    data-validation-key="login_branch"
+                  >
+                    <SelectValue placeholder="Select Login Branch" />
+                  </SelectTrigger>
 
-                  {BRANCH_OPTIONS.map((branch) => (
-                    <option key={branch.value} value={branch.value}>
-                      {branch.label}
-                    </option>
-                  ))}
-                </select>
+                  <SelectContent>
+                    {loginBranchOptions.length === 0 ? (
+                      <div
+                        className="px-2 py-1.5 text-sm text-muted-foreground"
+                        role="status"
+                      >
+                        No branches are available.
+                      </div>
+                    ) : (
+                      loginBranchOptions.map((branch) => (
+                        <SelectItem key={branch.id} value={branch.id}>
+                          {branch.location}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               </Field>
             </div>
           </section>
@@ -644,6 +757,7 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
                 error={fieldError("login_time")}
               >
                 <Input
+                  data-validation-key="login_time"
                   type="time"
                   value={form.login_time}
                   onChange={(event) => set("login_time", event.target.value)}
@@ -656,6 +770,7 @@ export function UserFormDrawer({ open, onOpenChange, bank }: Props) {
                 error={fieldError("logout_time")}
               >
                 <Input
+                  data-validation-key="logout_time"
                   type="time"
                   value={form.logout_time}
                   onChange={(event) => set("logout_time", event.target.value)}

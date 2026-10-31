@@ -1,5 +1,15 @@
 import { getAccessToken } from "@/lib/admin-store";
 
+export class AdminApiError extends Error {
+  constructor(
+    message: string,
+    readonly validationErrors?: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = "AdminApiError";
+  }
+}
+
 /**
  * Returns a clean access token without the "Bearer " prefix.
  */
@@ -7,9 +17,7 @@ function getCleanAccessToken(): string {
   const token = getAccessToken();
 
   if (!token) {
-    throw new Error(
-      "Access token not found. Please login again.",
-    );
+    throw new Error("Access token not found. Please login again.");
   }
 
   return token
@@ -21,9 +29,7 @@ function getCleanAccessToken(): string {
 /**
  * Parse API response safely.
  */
-async function parseResponse(
-  response: Response,
-): Promise<unknown> {
+async function parseResponse(response: Response): Promise<unknown> {
   const responseText = await response.text();
 
   if (!responseText.trim()) {
@@ -40,27 +46,17 @@ async function parseResponse(
 /**
  * Extract a useful backend error message.
  */
-function getErrorMessage(
-  responseData: unknown,
-  status: number,
-): string {
-  let message =
-    `Request failed with status ${status}.`;
+function getErrorMessage(responseData: unknown, status: number): string {
+  let message = `Request failed with status ${status}.`;
 
-  if (
-    responseData &&
-    typeof responseData === "object"
-  ) {
+  if (responseData && typeof responseData === "object") {
     const body = responseData as {
       success?: boolean;
       status?: number;
       error?: string;
       message?: string;
       detail?: string;
-      validationErrors?: Record<
-        string,
-        unknown
-      >;
+      validationErrors?: Record<string, unknown>;
     };
 
     if (body.message) {
@@ -72,37 +68,46 @@ function getErrorMessage(
     }
 
     if (body.validationErrors) {
-      console.error(
-        "Backend validation errors:",
-        body.validationErrors,
-      );
+      console.error("Backend validation errors:", body.validationErrors);
 
-      message +=
-        ` ${JSON.stringify(
-          body.validationErrors,
-        )}`;
+      message += ` ${JSON.stringify(body.validationErrors)}`;
     }
-  } else if (
-    typeof responseData === "string" &&
-    responseData.trim()
-  ) {
+  } else if (typeof responseData === "string" && responseData.trim()) {
     message = responseData;
   }
 
   return message;
 }
 
+function getValidationErrors(
+  responseData: unknown,
+): Record<string, unknown> | undefined {
+  if (!responseData || typeof responseData !== "object") return undefined;
+
+  const body = responseData as Record<string, unknown>;
+  const nestedData =
+    body["data"] && typeof body["data"] === "object"
+      ? (body["data"] as Record<string, unknown>)
+      : undefined;
+  const errors =
+    body["validationErrors"] ??
+    body["errors"] ??
+    nestedData?.["validationErrors"] ??
+    nestedData?.["errors"];
+
+  return errors && typeof errors === "object" && !Array.isArray(errors)
+    ? (errors as Record<string, unknown>)
+    : undefined;
+}
+
 /**
  * POST JSON request for authenticated admin APIs.
  */
-export async function postAdminJson<
-  TResponse = unknown,
->(
+export async function postAdminJson<TResponse = unknown>(
   url: string,
   payload: unknown,
 ): Promise<TResponse> {
-  const cleanToken =
-    getCleanAccessToken();
+  const cleanToken = getCleanAccessToken();
 
   let response: Response;
 
@@ -111,54 +116,38 @@ export async function postAdminJson<
       method: "POST",
 
       headers: {
-        Accept:
-          "application/json",
+        Accept: "application/json",
 
-        "Content-Type":
-          "application/json",
+        "Content-Type": "application/json",
 
-        Authorization:
-          `Bearer ${cleanToken}`,
+        Authorization: `Bearer ${cleanToken}`,
       },
 
-      body: JSON.stringify(
-        payload,
-      ),
+      body: JSON.stringify(payload),
     });
   } catch (error) {
-    console.error(
-      "Network error while calling POST API:",
-      error,
-    );
+    console.error("Network error while calling POST API:", error);
 
-    throw new Error(
-      "Unable to connect to the backend server.",
-      {
-        cause: error,
-      },
-    );
+    throw new Error("Unable to connect to the backend server.", {
+      cause: error,
+    });
   }
 
-  const responseData =
-    await parseResponse(response);
+  const responseData = await parseResponse(response);
 
   /**
    * 401 means the current access token
    * was rejected by the backend.
    */
   if (response.status === 401) {
-    console.error(
-      "401 Unauthorized: backend rejected the access token.",
-    );
+    console.error("401 Unauthorized: backend rejected the access token.");
 
     /*
      * Remove stale token so the application
      * does not keep sending the same invalid token.
      */
     try {
-      window.localStorage.removeItem(
-        "accessToken",
-      );
+      window.localStorage.removeItem("accessToken");
     } catch {
       // Ignore localStorage errors.
     }
@@ -169,15 +158,10 @@ export async function postAdminJson<
   }
 
   if (!response.ok) {
-    const message =
-      getErrorMessage(
-        responseData,
-        response.status,
-      );
+    const message = getErrorMessage(responseData, response.status);
 
-    throw new Error(message);
+    throw new AdminApiError(message, getValidationErrors(responseData));
   }
 
   return responseData as TResponse;
 }
-

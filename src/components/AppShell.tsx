@@ -4,7 +4,6 @@ import { Activity } from "lucide-react";
 import {
   LayoutDashboard,
   Building2,
-  Users,
   PanelLeftClose,
   PanelLeftOpen,
   Moon,
@@ -32,10 +31,19 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
   { label: "Bank Management", to: "/tenants", icon: Building2 },
-  { label: "User Management", to: "/users", icon: Users },
   { label: "Activity Log", to: "/activity-log", icon: Activity },
   { label: "Lookup Management", to: "/lookup-management", icon: BookOpen },
 ] as const;
+
+const SIDEBAR_COLLAPSED_KEY = "admin-sidebar-collapsed";
+
+function isNavItemActive(pathname: string, route: string): boolean {
+  return (
+    pathname === route ||
+    pathname.startsWith(`${route}/`) ||
+    (route === "/tenants" && pathname === "/bank-users")
+  );
+}
 
 export function AppShell({
   children,
@@ -45,13 +53,23 @@ export function AppShell({
 }: {
   children: ReactNode;
   title: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   actions?: ReactNode;
 }) {
   const { authed, adminName, logout, theme, toggleTheme } = useAdminStore();
   const navigate = useNavigate();
 
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return (
+        typeof window !== "undefined" &&
+        window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true"
+      );
+    } catch (error) {
+      console.error("Unable to read sidebar state:", error);
+      return false;
+    }
+  });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const pathname = useRouterState({
@@ -77,6 +95,18 @@ export function AppShell({
 
   const handleNavigation = () => {
     setMobileMenuOpen(false);
+  };
+
+  const toggleSidebar = () => {
+    setCollapsed((current) => {
+      const next = !current;
+      try {
+        window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
+      } catch (error) {
+        console.error("Unable to save sidebar state:", error);
+      }
+      return next;
+    });
   };
 
   return (
@@ -108,7 +138,7 @@ export function AppShell({
 
         <nav className="mt-4 flex flex-1 flex-col gap-1 px-3">
           {NAV.map(({ label, to, icon: Icon }) => {
-            const active = pathname === to || pathname.startsWith(`${to}/`);
+            const active = isNavItemActive(pathname, to);
 
             return (
               <Link
@@ -140,7 +170,9 @@ export function AppShell({
         <div className="p-3">
           <button
             type="button"
-            onClick={() => setCollapsed((current) => !current)}
+            onClick={toggleSidebar}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
           >
             {collapsed ? (
@@ -198,7 +230,7 @@ export function AppShell({
 
         <nav className="mt-4 flex flex-1 flex-col gap-1 px-3">
           {NAV.map(({ label, to, icon: Icon }) => {
-            const active = pathname === to || pathname.startsWith(`${to}/`);
+            const active = isNavItemActive(pathname, to);
 
             return (
               <Link

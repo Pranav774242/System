@@ -65,7 +65,10 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tenant?: Tenant;
-  onSubmit: (input: BankInput) => void | Promise<void>;
+  onSubmit: (
+    input: BankInput,
+    bankId?: string | number,
+  ) => void | Promise<void>;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -188,13 +191,62 @@ function yesNoToBoolean(value: YesNo): boolean {
   return value === "Yes";
 }
 
+function getCreatedBankId(response: unknown): string | number | undefined {
+  const idKeys = [
+    "pkid",
+    "id",
+    "bankId",
+    "bank_id",
+    "organizationId",
+    "organization_id",
+  ];
+
+  const findId = (current: unknown): string | number | undefined => {
+    if (!current || typeof current !== "object" || Array.isArray(current)) {
+      return undefined;
+    }
+
+    const record = current as Record<string, unknown>;
+    for (const key of ["data", "bank", "organization"]) {
+      const nestedId = findId(record[key]);
+      if (nestedId !== undefined) {
+        return nestedId;
+      }
+    }
+
+    for (const key of idKeys) {
+      const candidate = record[key];
+      if (
+        typeof candidate === "number" &&
+        Number.isSafeInteger(candidate) &&
+        candidate > 0
+      ) {
+        return candidate;
+      }
+      if (typeof candidate === "string" && candidate.trim()) {
+        return candidate.trim();
+      }
+    }
+    return undefined;
+  };
+
+  return findId(response);
+}
+
 /* -------------------------------------------------------------------------- */
 /* VALIDATION                                                                 */
 /* -------------------------------------------------------------------------- */
 
 const ifscPattern = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-const panPattern = /^[A-Z]{5}\d{4}[A-Z]$/;
-const gstPattern = /^[0-9A-Z]{15}$/;
+const panPattern = /^[A-Z]{3}[PCHFATBLJG][A-Z]\d{4}[A-Z]$/;
+const gstPattern = /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+const bankCodePattern = /^[A-Z0-9]+$/i;
+const bankNamePattern =
+  /^(?!.*[&'’().,/+-]\s*[&'’().,/+-])(?=.*\p{L})[\p{L}\p{M}](?:[\p{L}\p{M}\p{Zs}&'’().,/+-]*[\p{L}\p{M}.])?$/u;
+const entityNamePattern =
+  /^(?!.*[&'’().,/+-]\s*[&'’().,/+-])[\p{L}\p{M}\p{N}][\p{L}\p{M}\p{N}\p{Zs}&'’().,/+-]*$/u;
+const licenseNumberPattern =
+  /^(?!.*[./-]\s*[./-])[\p{L}\p{N}][\p{L}\p{N}\p{Zs}./-]*$/u;
 
 function isHttpUrl(value: string): boolean {
   try {
@@ -205,17 +257,35 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
+function isValidEntityName(value: string): boolean {
+  return entityNamePattern.test(value) && /\p{L}/u.test(value);
+}
+
+function isValidBankName(value: string): boolean {
+  return bankNamePattern.test(value);
+}
+
+function containsControlCharacters(value: string): boolean {
+  return [...value].some((character) => {
+    const code = character.charCodeAt(0);
+    return code < 32 || code === 127;
+  });
+}
+
 function getPage1Errors(form: typeof emptyForm): FormErrors {
   const errors: FormErrors = {};
 
   if (!form.bankCode.trim()) {
     errors.bankCode = "Bank code is required";
+  } else if (!bankCodePattern.test(form.bankCode)) {
+    errors.bankCode = "Use letters and numbers only";
   }
 
   if (!form.bankName.trim()) {
     errors.bankName = "Bank name is required";
-  } else if (form.bankName.trim().length < 2) {
-    errors.bankName = "Enter a valid bank name";
+  } else if (!isValidBankName(form.bankName.trim())) {
+    errors.bankName =
+      "Use letters, spaces, and legitimate punctuation only; numbers are not allowed";
   }
 
   if (!form.bankType) {
@@ -224,20 +294,31 @@ function getPage1Errors(form: typeof emptyForm): FormErrors {
 
   if (!form.legalName.trim()) {
     errors.legalName = "Legal name is required";
+  } else if (!isValidEntityName(form.legalName.trim())) {
+    errors.legalName =
+      "Enter a valid legal name using letters and valid punctuation";
   }
 
-  // FIX: the "!" was missing, so valid PANs were being rejected.
   if (form.PAN.trim() && !panPattern.test(form.PAN.trim().toUpperCase())) {
     errors.PAN = "Enter a valid 10-character Indian PAN";
   }
 
-  // FIX: the "!" was missing, so valid GST numbers were being rejected.
-  if (form.GST.trim() && !gstPattern.test(form.GST.trim().toUpperCase())) {
-    errors.GST = "Enter a valid 15-character GST number";
+  if (form.GST.trim()) {
+    const gst = form.GST.trim().toUpperCase();
+    const pan = form.PAN.trim().toUpperCase();
+
+    if (!gstPattern.test(gst)) {
+      errors.GST = "Enter a valid 15-character GSTIN";
+    } else if (pan && gst.slice(2, 12) !== pan) {
+      errors.GST = "GSTIN PAN must match the PAN number";
+    }
   }
 
   if (!form.licenseNo.trim()) {
     errors.licenseNo = "License number is required";
+  } else if (!licenseNumberPattern.test(form.licenseNo.trim())) {
+    errors.licenseNo =
+      "Use letters, numbers, spaces, periods, slashes, or hyphens only";
   }
 
   if (form.website.trim() && !isHttpUrl(form.website.trim())) {
@@ -258,25 +339,30 @@ function getPage1Errors(form: typeof emptyForm): FormErrors {
 function getPage2Errors(regulatory: RegulatoryDetails): RegulatoryErrors {
   const errors: RegulatoryErrors = {};
 
-  if (!regulatory.directClgMember) {
+  if (!regulatory.directClgMember.trim()) {
     errors.directClgMember = "Please select an option";
   }
 
-  if (!regulatory.directMemberIftas) {
+  if (!regulatory.directMemberIftas.trim()) {
     errors.directMemberIftas = "Please select an option";
   }
 
-  // FIX: removed stray string literals that followed these assignments.
   if (!regulatory.micr1.trim()) {
     errors.micr1 = "MICR code is required";
+  } else if (!/^\d{9}$/.test(regulatory.micr1.trim())) {
+    errors.micr1 = "Enter a valid 9-digit MICR code";
   }
 
   if (!regulatory.micr2.trim()) {
     errors.micr2 = "MICR city code is required";
+  } else if (!/^\d{3}$/.test(regulatory.micr2.trim())) {
+    errors.micr2 = "Enter a valid 3-digit MICR city code";
   }
 
   if (!regulatory.micr3.trim()) {
     errors.micr3 = "MICR branch code is required";
+  } else if (!/^\d{3}$/.test(regulatory.micr3.trim())) {
+    errors.micr3 = "Enter a valid 3-digit MICR branch code";
   }
 
   if (!regulatory.ifscCode.trim()) {
@@ -293,10 +379,14 @@ function getPage2Errors(regulatory: RegulatoryDetails): RegulatoryErrors {
 
   if (!regulatory.sponsorBankClg.trim()) {
     errors.sponsorBankClg = "Sponsor bank for Clg is required";
+  } else if (!isValidBankName(regulatory.sponsorBankClg.trim())) {
+    errors.sponsorBankClg = "Enter a valid sponsor bank name";
   }
 
   if (!regulatory.sponsorBankIftas.trim()) {
     errors.sponsorBankIftas = "Sponsor bank for IFTAS is required";
+  } else if (!isValidBankName(regulatory.sponsorBankIftas.trim())) {
+    errors.sponsorBankIftas = "Enter a valid sponsor bank name";
   }
 
   return errors;
@@ -307,6 +397,15 @@ function getPage3Errors(address: AddressDetails): AddressErrors {
 
   if (!address.addressType.trim()) {
     errors.addressType = "Address type is required";
+  } else if (
+    ![
+      "Registered Office",
+      "Corporate Office",
+      "Head Office",
+      "Branch Office",
+    ].includes(address.addressType.trim())
+  ) {
+    errors.addressType = "Select a valid address type";
   }
 
   if (!address.unitGala.trim()) {
@@ -333,6 +432,13 @@ function getPage3Errors(address: AddressDetails): AddressErrors {
     errors.pinCode = "PIN code is required";
   } else if (!/^\d{6}$/.test(address.pinCode.trim())) {
     errors.pinCode = "Enter a valid 6-digit PIN code";
+  }
+
+  for (const [field, value] of Object.entries(address)) {
+    if (containsControlCharacters(value)) {
+      errors[field as keyof AddressDetails] =
+        "Remove unsupported control characters";
+    }
   }
 
   return errors;
@@ -363,6 +469,12 @@ export function TenantFormDrawer({
   const [busy, setBusy] = useState(false);
   const submittingRef = useRef(false);
   const [submitted, setSubmitted] = useState(false);
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [changedFields, setChangedFields] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   /* ------------------------------------------------------------------------ */
   /* LOAD FORM                                                                */
@@ -375,6 +487,8 @@ export function TenantFormDrawer({
 
     setPage(1);
     setSubmitted(false);
+    setTouchedFields(new Set());
+    setChangedFields(new Set());
     setBusy(false);
     submittingRef.current = false;
 
@@ -479,6 +593,7 @@ export function TenantFormDrawer({
     value: (typeof emptyForm)[K],
   ) => {
     setForm((previous) => ({ ...previous, [key]: value }));
+    setChangedFields((previous) => new Set(previous).add(key));
   };
 
   const setRegulatoryField = <K extends keyof RegulatoryDetails>(
@@ -486,6 +601,7 @@ export function TenantFormDrawer({
     value: RegulatoryDetails[K],
   ) => {
     setRegulatory((previous) => ({ ...previous, [key]: value }));
+    setChangedFields((previous) => new Set(previous).add(key));
   };
 
   const setAddressField = <K extends keyof AddressDetails>(
@@ -493,6 +609,7 @@ export function TenantFormDrawer({
     value: AddressDetails[K],
   ) => {
     setAddress((previous) => ({ ...previous, [key]: value }));
+    setChangedFields((previous) => new Set(previous).add(key));
   };
 
   /* ------------------------------------------------------------------------ */
@@ -506,7 +623,10 @@ export function TenantFormDrawer({
   const getError = (
     errors: Record<string, string | undefined>,
     key: string,
-  ): string | undefined => (submitted ? errors[key] : undefined);
+  ): string | undefined =>
+    submitted || touchedFields.has(key) || changedFields.has(key)
+      ? errors[key]
+      : undefined;
 
   /* ------------------------------------------------------------------------ */
   /* NEXT                                                                     */
@@ -576,6 +696,7 @@ export function TenantFormDrawer({
     }
 
     setBusy(true);
+    let bankCreated = false;
 
     /* FIX: was hard-coded to "BANK", so NBFC was never sent. */
     const bankType: "BANK" | "NBFC" =
@@ -699,14 +820,17 @@ export function TenantFormDrawer({
           country: "India",
         };
 
-        await postAdminJson(API_ENDPOINTS.bankOnboard, apiPayload);
+        const response = await postAdminJson<unknown>(
+          API_ENDPOINTS.bankOnboard,
+          apiPayload,
+        );
+        bankCreated = true;
+        const createdBankId = getCreatedBankId(response);
+
+        await onSubmit(storePayload, createdBankId);
+      } else {
+        await onSubmit(storePayload);
       }
-
-      /* -------------------------------------------------------------------- */
-      /* UPDATE FRONTEND STORE                                                */
-      /* -------------------------------------------------------------------- */
-
-      await onSubmit(storePayload);
 
       toast.success(
         tenant ? "Bank updated successfully" : "Bank created successfully",
@@ -724,7 +848,13 @@ export function TenantFormDrawer({
       console.error("Bank onboarding failed:", error);
 
       toast.error(
-        error instanceof Error ? error.message : "Bank onboarding failed.",
+        bankCreated
+          ? error instanceof Error
+            ? error.message
+            : "Bank was created, but the bank list could not be updated."
+          : error instanceof Error
+            ? error.message
+            : "Bank onboarding failed.",
       );
     } finally {
       setBusy(false);
@@ -790,7 +920,28 @@ export function TenantFormDrawer({
           </div>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto">
+        <div
+          className="flex-1 overflow-y-auto"
+          onBlurCapture={(event) => {
+            const target = event.target;
+            if (
+              target instanceof HTMLInputElement ||
+              target instanceof HTMLSelectElement
+            ) {
+              const fieldKey = target.dataset["validationKey"];
+              if (fieldKey) {
+                setTouchedFields((previous) => {
+                  if (previous.has(fieldKey)) {
+                    return previous;
+                  }
+                  const next = new Set(previous);
+                  next.add(fieldKey);
+                  return next;
+                });
+              }
+            }
+          }}
+        >
           <div className="space-y-8 px-6 py-6">
             {/* ============================================================ */}
             {/* PAGE 1                                                       */}
@@ -807,6 +958,7 @@ export function TenantFormDrawer({
                     error={getError(page1Errors, "bankCode")}
                   >
                     <Input
+                      data-validation-key="bankCode"
                       value={form.bankCode}
                       onChange={(event) =>
                         setFormField(
@@ -814,7 +966,6 @@ export function TenantFormDrawer({
                           event.target.value.toUpperCase(),
                         )
                       }
-                      maxLength={30}
                       className={inputClass}
                     />
                   </Field>
@@ -825,6 +976,7 @@ export function TenantFormDrawer({
                     error={getError(page1Errors, "bankName")}
                   >
                     <Input
+                      data-validation-key="bankName"
                       value={form.bankName}
                       onChange={(event) =>
                         setFormField("bankName", event.target.value)
@@ -841,6 +993,7 @@ export function TenantFormDrawer({
                     error={getError(page1Errors, "bankType")}
                   >
                     <select
+                      data-validation-key="bankType"
                       value={form.bankType}
                       onChange={(event) =>
                         setFormField(
@@ -873,6 +1026,7 @@ export function TenantFormDrawer({
                     error={getError(page1Errors, "legalName")}
                   >
                     <Input
+                      data-validation-key="legalName"
                       value={form.legalName}
                       onChange={(event) =>
                         setFormField("legalName", event.target.value)
@@ -885,6 +1039,7 @@ export function TenantFormDrawer({
                 <div className="grid gap-5 sm:grid-cols-2">
                   <Field label="PAN No." error={getError(page1Errors, "PAN")}>
                     <Input
+                      data-validation-key="PAN"
                       value={form.PAN}
                       onChange={(event) =>
                         setFormField("PAN", event.target.value.toUpperCase())
@@ -896,6 +1051,7 @@ export function TenantFormDrawer({
 
                   <Field label="GST No." error={getError(page1Errors, "GST")}>
                     <Input
+                      data-validation-key="GST"
                       value={form.GST}
                       onChange={(event) =>
                         setFormField("GST", event.target.value.toUpperCase())
@@ -914,6 +1070,7 @@ export function TenantFormDrawer({
                     error={getError(page1Errors, "licenseNo")}
                   >
                     <Input
+                      data-validation-key="licenseNo"
                       value={form.licenseNo}
                       onChange={(event) =>
                         setFormField("licenseNo", event.target.value)
@@ -928,6 +1085,7 @@ export function TenantFormDrawer({
                     error={getError(page1Errors, "status")}
                   >
                     <select
+                      data-validation-key="status"
                       value={form.status}
                       onChange={(event) =>
                         setFormField(
@@ -950,6 +1108,7 @@ export function TenantFormDrawer({
                     error={getError(page1Errors, "website")}
                   >
                     <Input
+                      data-validation-key="website"
                       type="url"
                       value={form.website}
                       onChange={(event) =>
@@ -961,6 +1120,7 @@ export function TenantFormDrawer({
 
                   <Field label="Logo URL" error={getError(page1Errors, "logo")}>
                     <Input
+                      data-validation-key="logo"
                       type="url"
                       value={form.logo}
                       onChange={(event) =>
@@ -988,6 +1148,7 @@ export function TenantFormDrawer({
                     error={getError(page2Errors, "directClgMember")}
                   >
                     <select
+                      data-validation-key="directClgMember"
                       value={regulatory.directClgMember}
                       onChange={(event) =>
                         setRegulatoryField(
@@ -1011,6 +1172,7 @@ export function TenantFormDrawer({
                     error={getError(page2Errors, "directMemberIftas")}
                   >
                     <select
+                      data-validation-key="directMemberIftas"
                       value={regulatory.directMemberIftas}
                       onChange={(event) =>
                         setRegulatoryField(
@@ -1037,6 +1199,7 @@ export function TenantFormDrawer({
 
                     <Field error={getError(page2Errors, "micr1")}>
                       <Input
+                        data-validation-key="micr1"
                         aria-label="MICR Code"
                         placeholder="MICR Code"
                         value={regulatory.micr1}
@@ -1056,6 +1219,7 @@ export function TenantFormDrawer({
 
                     <Field error={getError(page2Errors, "micr2")}>
                       <Input
+                        data-validation-key="micr2"
                         aria-label="MICR City Code"
                         placeholder="City Code"
                         value={regulatory.micr2}
@@ -1073,6 +1237,7 @@ export function TenantFormDrawer({
 
                     <Field error={getError(page2Errors, "micr3")}>
                       <Input
+                        data-validation-key="micr3"
                         aria-label="MICR Branch Code"
                         placeholder="Branch Code"
                         value={regulatory.micr3}
@@ -1097,6 +1262,7 @@ export function TenantFormDrawer({
                     error={getError(page2Errors, "ifscCode")}
                   >
                     <Input
+                      data-validation-key="ifscCode"
                       value={regulatory.ifscCode}
                       onChange={(event) =>
                         setRegulatoryField(
@@ -1115,6 +1281,7 @@ export function TenantFormDrawer({
                     error={getError(page2Errors, "noOfBranches")}
                   >
                     <Input
+                      data-validation-key="noOfBranches"
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
@@ -1137,6 +1304,7 @@ export function TenantFormDrawer({
                     error={getError(page2Errors, "sponsorBankClg")}
                   >
                     <Input
+                      data-validation-key="sponsorBankClg"
                       value={regulatory.sponsorBankClg}
                       onChange={(event) =>
                         setRegulatoryField("sponsorBankClg", event.target.value)
@@ -1151,6 +1319,7 @@ export function TenantFormDrawer({
                     error={getError(page2Errors, "sponsorBankIftas")}
                   >
                     <Input
+                      data-validation-key="sponsorBankIftas"
                       value={regulatory.sponsorBankIftas}
                       onChange={(event) =>
                         setRegulatoryField(
@@ -1180,6 +1349,7 @@ export function TenantFormDrawer({
                     error={getError(page3Errors, "addressType")}
                   >
                     <select
+                      data-validation-key="addressType"
                       value={address.addressType}
                       onChange={(event) =>
                         setAddressField("addressType", event.target.value)
@@ -1206,6 +1376,7 @@ export function TenantFormDrawer({
                     error={getError(page3Errors, "unitGala")}
                   >
                     <Input
+                      data-validation-key="unitGala"
                       value={address.unitGala}
                       onChange={(event) =>
                         setAddressField("unitGala", event.target.value)
@@ -1222,6 +1393,7 @@ export function TenantFormDrawer({
                     error={getError(page3Errors, "streetRoad")}
                   >
                     <Input
+                      data-validation-key="streetRoad"
                       value={address.streetRoad}
                       onChange={(event) =>
                         setAddressField("streetRoad", event.target.value)
@@ -1236,6 +1408,7 @@ export function TenantFormDrawer({
                     error={getError(page3Errors, "landmark")}
                   >
                     <Input
+                      data-validation-key="landmark"
                       value={address.landmark}
                       onChange={(event) =>
                         setAddressField("landmark", event.target.value)
@@ -1252,6 +1425,7 @@ export function TenantFormDrawer({
                     error={getError(page3Errors, "city")}
                   >
                     <Input
+                      data-validation-key="city"
                       value={address.city}
                       onChange={(event) =>
                         setAddressField("city", event.target.value)
@@ -1266,6 +1440,7 @@ export function TenantFormDrawer({
                     error={getError(page3Errors, "state")}
                   >
                     <Input
+                      data-validation-key="state"
                       value={address.state}
                       onChange={(event) =>
                         setAddressField("state", event.target.value)
@@ -1280,6 +1455,7 @@ export function TenantFormDrawer({
                     error={getError(page3Errors, "pinCode")}
                   >
                     <Input
+                      data-validation-key="pinCode"
                       inputMode="numeric"
                       maxLength={6}
                       value={address.pinCode}

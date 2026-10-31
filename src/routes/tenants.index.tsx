@@ -87,7 +87,8 @@ const PAGE_SIZE = 10;
 /* -------------------------------------------------------------------------- */
 
 function TenantsPage() {
-  const { tenants, tenantsLoading, createTenant } = useAdminStore();
+  const { tenants, tenantsLoading, createTenant, refreshTenants } =
+    useAdminStore();
 
   const navigate = useNavigate();
 
@@ -195,8 +196,8 @@ function TenantsPage() {
 
     console.log("View Users clicked. Selected pkid:", pkid, tenant);
 
-    if (pkid === undefined || pkid === null) {
-      toast.error("Unable to open users: this bank has no pkid.");
+    if (pkid === undefined || !Number.isSafeInteger(pkid) || pkid <= 0) {
+      toast.error("Unable to open users: this bank has no valid ID.");
       return;
     }
 
@@ -205,6 +206,8 @@ function TenantsPage() {
       state: {
         organizationId: String(pkid),
         bankName: tenant.instituteName,
+        organizationCode: tenant.bankCode,
+        branches: tenant.branches,
       } as never,
     });
   };
@@ -481,8 +484,29 @@ function TenantsPage() {
       <TenantFormDrawer
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
-        onSubmit={async (input) => {
-          createTenant(input);
+        onSubmit={async (input, bankId) => {
+          if (bankId !== undefined) {
+            createTenant(input, bankId);
+            return;
+          }
+
+          const refreshedBanks = await refreshTenants();
+          if (!refreshedBanks) {
+            throw new Error(
+              "Bank was created, but the bank list could not be refreshed.",
+            );
+          }
+
+          const createdBankIsListed = refreshedBanks.some(
+            (bank) =>
+              bank.bankCode.toUpperCase() === input.bankCode.toUpperCase() &&
+              bank.bankName.toLowerCase() === input.bankName.toLowerCase(),
+          );
+          if (!createdBankIsListed) {
+            throw new Error(
+              "Bank was created, but it was not found in the refreshed bank list.",
+            );
+          }
         }}
       />
     </AppShell>

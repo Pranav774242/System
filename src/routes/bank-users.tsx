@@ -65,22 +65,30 @@ export const Route = createFileRoute("/bank-users")({
  */
 function useOrgContext(): BankUserContext {
   const state = useLocation({ select: (l) => l.state }) as {
-    organizationId?: string;
+    organizationId?: string | number;
     bankName?: string;
     organizationCode?: string;
+    branches?: { id: string; location: string }[];
   };
 
   return useMemo(() => {
-    if (state?.organizationId) {
-      const ctx = {
-        organizationId: state.organizationId,
-        bankName: state.bankName,
-        organizationCode: state.organizationCode,
+    if (state?.organizationId !== undefined) {
+      const organizationId = String(state.organizationId).trim();
+      if (!organizationId) {
+        return { organizationId: "" };
+      }
+
+      const ctx: BankUserContext = {
+        organizationId,
+        ...(typeof state.bankName === "string"
+          ? { bankName: state.bankName }
+          : {}),
+        ...(typeof state.organizationCode === "string"
+          ? { organizationCode: state.organizationCode }
+          : {}),
+        ...(state.branches ? { branches: state.branches } : {}),
       };
-      storeBankUserContext({
-        ...ctx,
-        organizationId: String(ctx.organizationId),
-      });
+      storeBankUserContext(ctx);
       return ctx;
     }
 
@@ -89,10 +97,13 @@ function useOrgContext(): BankUserContext {
 
     return {
       organizationId: "",
-      bankName: undefined,
-      organizationCode: undefined,
     };
-  }, [state?.organizationId, state?.bankName, state?.organizationCode]);
+  }, [
+    state?.organizationId,
+    state?.bankName,
+    state?.organizationCode,
+    state?.branches,
+  ]);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -135,7 +146,9 @@ function pickText(record: ApiRecord, keys: string[]): string {
     if (value && typeof value === "object" && !Array.isArray(value)) {
       const nested = value as ApiRecord;
       const nestedText =
-        text(nested.name) || text(nested.title) || text(nested.role_name);
+        text(nested["name"]) ||
+        text(nested["title"]) ||
+        text(nested["role_name"]);
       if (nestedText) return nestedText;
       continue;
     }
@@ -144,7 +157,7 @@ function pickText(record: ApiRecord, keys: string[]): string {
       const first = value[0];
       if (first && typeof first === "object") {
         const nested = first as ApiRecord;
-        const nestedText = text(nested.name) || text(nested.role_name);
+        const nestedText = text(nested["name"]) || text(nested["role_name"]);
         if (nestedText) return nestedText;
       } else if (text(first)) {
         return text(first);
@@ -160,13 +173,13 @@ function pickText(record: ApiRecord, keys: string[]): string {
 }
 
 function resolveStatus(record: ApiRecord): "Active" | "Inactive" {
-  const flag = record.is_active ?? record.isActive ?? record.active;
+  const flag = record["is_active"] ?? record["isActive"] ?? record["active"];
 
   if (typeof flag === "boolean") {
     return flag ? "Active" : "Inactive";
   }
 
-  const raw = text(record.status).toLowerCase();
+  const raw = text(record["status"]).toLowerCase();
 
   if (raw) {
     return raw === "active" || raw === "enabled" || raw === "true"
@@ -180,7 +193,7 @@ function resolveStatus(record: ApiRecord): "Active" | "Inactive" {
 function normalizeUser(record: ApiRecord, index: number): BankUser {
   const fullName =
     pickText(record, ["full_name", "fullName", "name", "display_name"]) ||
-    [text(record.first_name), text(record.last_name)]
+    [text(record["first_name"]), text(record["last_name"])]
       .filter(Boolean)
       .join(" ") ||
     pickText(record, ["username", "user_name"]);
@@ -188,10 +201,10 @@ function normalizeUser(record: ApiRecord, index: number): BankUser {
   const email = pickText(record, ["email", "email_id", "contact_email"]);
 
   const userId =
-    text(record.id) ||
-    text(record.user_id) ||
-    text(record.userId) ||
-    text(record.pkid);
+    text(record["id"]) ||
+    text(record["user_id"]) ||
+    text(record["userId"]) ||
+    text(record["pkid"]);
 
   return {
     // Use the actual user ID for the row identity where possible.
@@ -207,34 +220,55 @@ function normalizeUser(record: ApiRecord, index: number): BankUser {
 }
 
 function extractUsers(data: unknown): ApiRecord[] {
-  if (Array.isArray(data)) return data as ApiRecord[];
+  const asUserRecords = (value: unknown[]): ApiRecord[] => {
+    if (!value.every(isApiRecord)) {
+      throw new Error("The users response contains invalid user records.");
+    }
+    return value;
+  };
 
-  if (data && typeof data === "object") {
-    const body = data as Record<string, unknown>;
+  if (Array.isArray(data)) return asUserRecords(data);
+  if (data == null) {
+    throw new Error("The users response did not contain a user list.");
+  }
+  if (isApiRecord(data)) {
+    if (data["success"] === false) {
+      const message = text(data["message"]);
+      throw new Error(message || "Unable to load users.");
+    }
 
     for (const key of ["data", "users", "results", "items"]) {
-      const candidate = body[key];
+      const candidate = data[key];
 
-      if (Array.isArray(candidate)) return candidate as ApiRecord[];
+      if (Array.isArray(candidate)) return asUserRecords(candidate);
 
-      if (candidate && typeof candidate === "object") {
-        const inner = candidate as Record<string, unknown>;
+      if (isApiRecord(candidate)) {
+        const inner = candidate;
         for (const innerKey of ["users", "results", "items", "data"]) {
           if (Array.isArray(inner[innerKey])) {
-            return inner[innerKey] as ApiRecord[];
+            return asUserRecords(inner[innerKey]);
           }
         }
       }
     }
+
+    if (data["success"] === true && data["data"] == null) {
+      return [];
+    }
   }
 
-  return [];
+  throw new Error("The users response did not contain a user list.");
+}
+
+function isApiRecord(value: unknown): value is ApiRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function initials(name: string): string {
   const parts = name.split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  return (parts[0][0] + (parts[1]?.[0] ?? "")).toUpperCase();
+  const firstInitial = parts[0]?.[0];
+  if (!firstInitial) return "?";
+  return (firstInitial + (parts[1]?.[0] ?? "")).toUpperCase();
 }
 
 function csvCell(value: string): string {
@@ -249,7 +283,8 @@ function BankUsersPage() {
   const navigate = useNavigate();
 
   /* Organization ID passed from the Bank list (selected bank's pkid). */
-  const { organizationId, bankName, organizationCode } = useOrgContext();
+  const { organizationId, bankName, organizationCode, branches } =
+    useOrgContext();
 
   const openUserDetails = useCallback(
     (user: BankUser) => {
@@ -277,7 +312,7 @@ function BankUsersPage() {
         state: {
           userId: user.userId,
           organizationId,
-        },
+        } as never,
       });
     },
     [navigate, organizationId],
@@ -307,6 +342,7 @@ function BankUsersPage() {
     console.log("Organization ID being sent:", organizationId);
 
     if (!organizationId) {
+      setUsers([]);
       setError("No bank selected. Go back to Banks and choose View Users.");
       setLoading(false);
       return;
@@ -315,6 +351,7 @@ function BankUsersPage() {
     const token = getAccessToken();
 
     if (!token) {
+      setUsers([]);
       setError("Session expired. Please login again.");
       setLoading(false);
       toast.error("Session expired. Please login again.");
@@ -328,6 +365,7 @@ function BankUsersPage() {
     try {
       setLoading(true);
       setError(null);
+      setUsers([]);
 
       const response = await fetch(url, {
         method: "GET",
@@ -361,7 +399,9 @@ function BankUsersPage() {
         throw new Error(`Failed to load users (${response.status}).`);
       }
 
-      const mapped = extractUsers(responseData).map(normalizeUser);
+      const mapped = extractUsers(responseData).map((record, index) =>
+        normalizeUser(record, index),
+      );
 
       console.log("Users mapped for table:", mapped);
 
@@ -587,13 +627,21 @@ function BankUsersPage() {
         {/* TABLE */}
         <div className="surface-card animate-rise overflow-hidden">
           {loading ? (
-            <div className="space-y-3 p-5">
+            <div
+              className="space-y-3 p-5"
+              role="status"
+              aria-busy="true"
+              aria-label={`Loading users for ${displayName}`}
+            >
               {Array.from({ length: 6 }).map((_, index) => (
                 <Skeleton key={index} className="h-11 w-full" />
               ))}
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
+            <div
+              className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center"
+              role="alert"
+            >
               <span className="grid size-12 place-items-center rounded-2xl bg-secondary text-muted-foreground">
                 <AlertCircle className="size-6" />
               </span>
@@ -607,20 +655,23 @@ function BankUsersPage() {
               </Button>
             </div>
           ) : pageRows.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
+            <div
+              className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center"
+              role="status"
+            >
               <span className="grid size-12 place-items-center rounded-2xl bg-secondary text-muted-foreground">
                 <Users className="size-6" />
               </span>
 
               <p className="font-medium">
                 {users.length === 0
-                  ? "No users found for this bank"
+                  ? `No users are associated with ${displayName}.`
                   : "No users match your filters"}
               </p>
 
               <p className="max-w-sm text-sm text-muted-foreground">
                 {users.length === 0
-                  ? "Users added to this organization will appear here."
+                  ? "Users added to this bank will appear here. Use Add user to get started."
                   : "Try a different search term or clear the filters."}
               </p>
             </div>
@@ -773,10 +824,14 @@ function BankUsersPage() {
       <UserFormDrawer
         open={userDrawerOpen}
         bank={{
-          id: Number(organizationId),
-          pkid: Number(organizationId),
+          id: organizationId,
+          ...(/^\d+$/.test(organizationId) &&
+          Number.isSafeInteger(Number(organizationId))
+            ? { pkid: Number(organizationId) }
+            : {}),
           instituteName: displayName,
           organization_code: organizationCode ?? "",
+          branches: branches ?? [],
         }}
         onOpenChange={(nextOpen) => {
           setUserDrawerOpen(nextOpen);

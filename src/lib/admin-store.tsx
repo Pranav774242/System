@@ -735,11 +735,13 @@ type AdminStore = {
 
   tenantsLoading: boolean;
 
+  refreshTenants: () => Promise<Tenant[] | null>;
+
   users: User[];
 
   activity: ActivityItem[];
 
-  createTenant: (input: BankInput) => Tenant;
+  createTenant: (input: BankInput, bankId?: string | number) => Tenant;
 
   updateTenant: (id: string, input: BankInput) => void;
 
@@ -892,6 +894,41 @@ function normalizeBankType(value?: string): InstituteType {
   return normalized === "NBFC" ? "NBFC" : "BANK";
 }
 
+function mapOrganizationBranches(branches: unknown): Branch[] {
+  if (!Array.isArray(branches)) return [];
+
+  return branches.flatMap((branch) => {
+    if (!branch || typeof branch !== "object" || Array.isArray(branch)) {
+      return [];
+    }
+
+    const record = branch as Record<string, unknown>;
+    const id =
+      record["pkid"] ??
+      record["id"] ??
+      record["branch_id"] ??
+      record["branchId"];
+    const location =
+      record["branch_name"] ??
+      record["branchName"] ??
+      record["name"] ??
+      record["location"] ??
+      record["branch_code"] ??
+      record["branchCode"];
+
+    if (
+      (typeof id !== "string" && typeof id !== "number") ||
+      String(id).trim() === "" ||
+      (typeof location !== "string" && typeof location !== "number") ||
+      String(location).trim() === ""
+    ) {
+      return [];
+    }
+
+    return [{ id: String(id), location: String(location) }];
+  });
+}
+
 /* -------------------------------------------------------------------------- */
 /* MAP ORGANIZATION                                                           */
 /* -------------------------------------------------------------------------- */
@@ -1021,7 +1058,7 @@ function mapOrganizationToTenant(
 
     organization: bankName,
 
-    branches: [],
+    branches: mapOrganizationBranches(organization.branches),
 
     designation: "Relationship Manager",
 
@@ -1300,6 +1337,26 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
     void load();
   }, [accessToken]);
 
+  const refreshTenants = useCallback(async () => {
+    const token = getAccessToken();
+    if (!token) {
+      return null;
+    }
+
+    setTenantsLoading(true);
+    try {
+      const apiTenants = await fetchOrganizations(token);
+      if (getAccessToken() !== token || apiTenants === null) {
+        return null;
+      }
+
+      setTenants(apiTenants);
+      return apiTenants;
+    } finally {
+      setTenantsLoading(false);
+    }
+  }, []);
+
   /* ------------------------------------------------------------------------ */
   /* THEME                                                                    */
   /* ------------------------------------------------------------------------ */
@@ -1346,11 +1403,19 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
   /* ------------------------------------------------------------------------ */
 
   const createTenant = useCallback(
-    (input: BankInput) => {
+    (input: BankInput, bankId?: string | number) => {
       const now = new Date().toISOString();
+      const resolvedBankId = bankId === undefined ? "" : String(bankId).trim();
+      const numericBankId = Number(resolvedBankId);
+      const hasNumericBankId =
+        Number.isSafeInteger(numericBankId) &&
+        numericBankId > 0 &&
+        String(numericBankId) === resolvedBankId;
 
       const tenant: Tenant = {
-        id: nextId("tnt"),
+        id: resolvedBankId || nextId("tnt"),
+
+        ...(hasNumericBankId ? { pkid: numericBankId } : {}),
 
         firstName: input.bankName,
 
@@ -1673,6 +1738,8 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
 
       createTenant,
 
+      refreshTenants,
+
       updateTenant,
 
       toggleTenantStatus,
@@ -1699,6 +1766,8 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
       toggleTheme,
 
       createTenant,
+
+      refreshTenants,
 
       updateTenant,
 
