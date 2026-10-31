@@ -54,7 +54,12 @@ function UsersPage() {
   });
 
   const [users, setUsers] = useState<ApiUser[]>([]);
-  const [organizationId, setOrganizationId] = useState("");
+  const [organizationId, setOrganizationId] = useState(() => {
+    const storedContext = getStoredBankUserContext();
+    return routeOrganizationId != null
+      ? String(routeOrganizationId)
+      : (storedContext?.organizationId ?? "");
+  });
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
